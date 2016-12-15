@@ -1,7 +1,9 @@
 {
-  "name": "ts-library-starter",
-  "version": "0.1.0",
-  "description": "Example git project that is used for typescript libraries as a starter pack",
+  "name": "intervaltree",
+  "version": "0.0.1",
+  "description": "port of chaimleib/intervaltree to JS.",
+  "author": "Jordan Baker",
+  "license": "ISC",
   "main": "dist/main.js",
   "typings": "dist/main.d.ts",
   "jam": {
