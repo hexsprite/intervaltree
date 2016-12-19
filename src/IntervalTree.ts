@@ -3,7 +3,6 @@ let SortedMap = require('collections/sorted-map')
 import { Node } from './Node'
 import { Interval } from './Interval'
 import { IntervalSet } from './set'
-import { ValueError } from './error'
 
 export class IntervalTree {
   public allIntervals: IntervalSet
@@ -29,7 +28,7 @@ export class IntervalTree {
     }
 
     if (interval.isNull()) {
-      throw new ValueError(`IntervalTree: Null Interval objects not allowed in IntervalTree: ${interval}`)
+      throw new TypeError(`IntervalTree: Null Interval objects not allowed in IntervalTree: ${interval}`)
     }
 
     if (!this.topNode) {
@@ -42,7 +41,7 @@ export class IntervalTree {
     this.addBoundaries(interval)
   }
 
-  public addInterval(start: number, end: number, data: any) {
+  public addInterval(start: number, end: number, data?: any) {
     let interval = new Interval(start, end, data)
     return this.add(interval)
   }
@@ -99,14 +98,14 @@ export class IntervalTree {
   public remove(interval: Interval, ignoreMissing=false) {
     /*
     Removes an interval from the tree, if present. If not, raises
-    ValueError.
+    TypeError.
 
     Completes in O(log n) time.
     */
     if (!this.allIntervals.has(interval)) {
       if (ignoreMissing)
         return
-      throw new ValueError('dont exist buddy')
+      throw new TypeError('dont exist buddy')
     }
     this.topNode = this.topNode.remove(interval)
     this.allIntervals.delete(interval)
@@ -223,14 +222,14 @@ export class IntervalTree {
 
   public removeBoundaries(interval: Interval) {
     // Removes the boundaries of the interval from the boundary table.
-    const updateValue = key => {
+    const updateValue = (key:number) => {
       const boundaryTable = this.boundaryTable
       if (boundaryTable.get(key) == 1)
         boundaryTable.delete(key)
       else
         boundaryTable.set(key, boundaryTable.get(key) - 1)
     }
-    const { start, end } = interval
+    const {start, end} = interval
     updateValue(start)
     updateValue(end)
   }
@@ -279,7 +278,7 @@ export class IntervalTree {
     return result
   }
 
-  public searchByLength(length: number) {
+  public searchByLength(length: number):IntervalSet {
     return this.allIntervals.filter((interval:Interval) => (interval.end - interval.start) >= length)
   }
 }

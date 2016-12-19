@@ -10,10 +10,10 @@ export class Node {
   private depth: number
   private balance: number
 
-  public constructor(xCenter:number, sCenter:Array<Interval>|IntervalSet=[], leftNode:Node, rightNode:Node) {
+  public constructor(xCenter?:number, sCenter?:Array<Interval>|IntervalSet, leftNode?:Node, rightNode?:Node) {
     if (xCenter) {
       this.xCenter = xCenter
-      this.sCenter = new IntervalSet(sCenter)
+      this.sCenter = new IntervalSet(sCenter || [])
       this.leftNode = leftNode
       this.rightNode = rightNode
       this.depth = 0 // set when rotated
@@ -111,7 +111,7 @@ export class Node {
       for (const iv of promotees) {
         save.setBranch(light, save.getBranch(light).remove(iv))
       }
-      save.sCenter.update(promotees)
+      save.sCenter.addEach(promotees)
     }
     save.refreshBalance()
     return save
@@ -216,7 +216,7 @@ export class Node {
     return result
   }
 
-  public searchOverlap(pointList: Array<number>) {
+  public searchOverlap(pointList: Array<number>):IntervalSet {
     const result = new IntervalSet()
     for (let point of pointList) {
       this.searchPoint(point, result)
@@ -256,7 +256,7 @@ export class Node {
         this.sCenter.remove(interval)
       } catch (e) {
         this.printStructure()
-        throw new KeyError(interval)
+        throw new TypeError(interval.toString())
       }
       if (this.sCenter.length) { // keep this node
         done.push(1)  // no rebalancing necessary

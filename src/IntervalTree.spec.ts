@@ -7,9 +7,9 @@ require("babel-polyfill")
 import { IntervalTree } from "./IntervalTree"
 
 fdescribe("IntervalTree", () => {
-  let tree
+  let tree: IntervalTree
 
-  const expectTree = (value) => {
+  const expectTree = (value: string) => {
     expect(tree.toString()).toBe(value)
   }
 

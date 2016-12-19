@@ -3,7 +3,7 @@ export class Interval {
   public end: number
   public data: any
 
-  public constructor(start: number, end: number, data: Object) {
+  public constructor(start: number, end: number, data?: Object) {
     this.start = start
     this.end = end
     this.data = data

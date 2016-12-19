@@ -1,8 +1,8 @@
-let SortedSet = require('collections/sorted-set')
 import { Interval } from './Interval'
+import { SortedSet } from 'collections/sorted-set'
 
-export class IntervalSet extends SortedSet {
-  public constructor(intervals:any) {
+export class IntervalSet extends SortedSet<Interval> {
+  public constructor(intervals:any=[Interval]) {
     super(intervals, Interval.equals, Interval.compare)
   }
 }

@@ -8,7 +8,7 @@
 		"suppressImplicitAnyIndexErrors": true,
 		"moduleResolution": "node",
 		"emitDecoratorMetadata": true,
-		"sourceMap": false,
+		"sourceMap": true,
 		"declaration": true,
 		"outDir": "dist",
 		"removeComments": false,
@@ -16,12 +16,13 @@
 			"node_modules/@types"
 		],
 		"types": [
-			"@types/node"
+			"@types/node",
+			"@types/jest"
 		]
 	},
-	"files": [
-		"src/main.ts",
-		"src/*.ts"
+	"include": [
+		"src/**/*.d.ts",
+		"src/**/*"
 	],
 	"exclude": [
 		"node_modules"
