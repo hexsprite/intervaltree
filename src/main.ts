@@ -1,1 +1,2 @@
-export * from "./index"
+export { IntervalTree } from "./IntervalTree"
+export { Interval } from "./Interval"

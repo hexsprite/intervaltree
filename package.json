@@ -2,8 +2,8 @@
   "name": "intervaltree",
   "version": "0.0.1",
   "description": "port of chaimleib/intervaltree to JS.",
-  "author": "Jordan Baker",
-  "license": "ISC",
+  "author": "Hagai Cohen",
+  "license": "MIT",
   "main": "dist/main.js",
   "typings": "dist/main.d.ts",
   "jam": {
@@ -42,8 +42,6 @@
     "boilerplate",
     "awesome-typescript-loader"
   ],
-  "author": "Hagai Cohen",
-  "license": "MIT",
   "bugs": {
     "url": "https://github.com/DxCx/ts-library-starter/issues"
   },

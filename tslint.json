@@ -1,6 +1,8 @@
 {
 	"extends": "tslint:recommended",
 	"rules": {
-		"use-strict": true
+		"use-strict": true,
+		"semicolon": [true, "never"],
+		"quotemark": [true, "single", "avoid-escape"]
 	}
 }
