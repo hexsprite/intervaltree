@@ -10,16 +10,14 @@ export class Node {
   private depth: number
   private balance: number
 
-  public constructor(xCenter?:number, sCenter?:Array<Interval>|IntervalSet, leftNode?:Node, rightNode?:Node) {
-    if (xCenter) {
-      this.xCenter = xCenter
-      this.sCenter = new IntervalSet(sCenter || [])
-      this.leftNode = leftNode
-      this.rightNode = rightNode
-      this.depth = 0 // set when rotated
-      this.balance = 0 // ditto
-      this.rotate()
-    }
+  public constructor(xCenter:number, sCenter:Array<Interval>|IntervalSet, leftNode?:Node, rightNode?:Node) {
+    this.xCenter = xCenter
+    this.sCenter = new IntervalSet(sCenter || [])
+    this.leftNode = leftNode
+    this.rightNode = rightNode
+    this.depth = 0 // set when rotated
+    this.balance = 0 // ditto
+    this.rotate()
   }
 
   public static fromInterval(interval:Interval) {
@@ -30,12 +28,10 @@ export class Node {
     if (!intervals || intervals.length < 1) {
       return null
     }
-    let node = new Node()
     console.log('fromIntervals: intervals', intervals)
     let centerIv = intervals[Math.floor(intervals.length / 2)]
     console.log('fromIntervals: centerIv', centerIv)
-    node.xCenter = centerIv.start
-    node.sCenter = new IntervalSet()
+    let node = new Node(centerIv.start, new IntervalSet())
     let sLeft:Interval[] = []
     let sRight:Interval[] = []
     for (let iv of intervals) {
@@ -100,7 +96,7 @@ export class Node {
 
     // Some intervals may overlap both self.x_center and save.x_center
     // Promote those to the new tip of the tree
-    const promotees = []
+    const promotees:Interval[] = []
     for (let iv of save.getBranch(light).sCenter.toArray()) {
       if (save.centerHit(iv)) {
         promotees.push(iv)
@@ -202,11 +198,13 @@ export class Node {
   public searchPoint(point:number, result:IntervalSet):IntervalSet {
     // Returns all intervals that contain point.
     console.log('searchPoint: point=', point, this.toString())
-    if (!this.sCenter) console.log('sCenter', this)
+    console.log('searchPoint: result=', result)
     this.sCenter.forEach(interval => {
       console.log('searchPoint: interval=', interval)
-      if (interval.start <= point && point < interval.end)
+      if (interval.start <= point && point < interval.end) {
+        console.log('searchPoint interval', interval)
         result.add(interval)
+      }
     })
     if (point < this.xCenter && this.getBranch(0)) {
       return this.getBranch(0).searchPoint(point, result)
@@ -273,7 +271,7 @@ export class Node {
           throw new TypeError()
         }
         done.push(1)
-        return this
+        // return this
 
         console.log(`removeIntervalHelper: Descending to ${direction} branch`)
         this.setBranch(direction,
@@ -303,19 +301,19 @@ export class Node {
       console.log(`prune: Grafting ${direction ? 'right' : 'left'} branch`)
       return this.getBranch(direction)
     } else {
-      // Replace the root node with the greatest predecessor.
-      let [heir, newBranch] = this.getBranch(0).popGreatestChild()
-      console.log(`prune: Replacing ${this.xCenter} with ${heir.xCenter}`)
+      // // Replace the root node with the greatest predecessor.
+      // let [heir, newBranch] = this.getBranch(0).popGreatestChild()
+      // console.log(`prune: Replacing ${this.xCenter} with ${heir.xCenter}`)
 
-      // Set up the heir as the new root node
-      heir.setBranch(0, this.getBranch(0))
-      heir.setBranch(1, this.getBranch(1))
+      // // Set up the heir as the new root node
+      // heir.setBranch(0, this.getBranch(0))
+      // heir.setBranch(1, this.getBranch(1))
 
-      // popping the predecessor may have unbalanced this node;
-      // fix it
-      heir.refreshBalance()
-      heir = heir.rotate()
-      return heir
+      // // popping the predecessor may have unbalanced this node;
+      // // fix it
+      // heir.refreshBalance()
+      // heir = heir.rotate()
+      // return heir
     }
   }
 }

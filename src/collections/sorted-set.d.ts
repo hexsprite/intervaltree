@@ -2,7 +2,7 @@ declare module 'collections/sorted-set' {
   class SortedSet<T> {
     public length: number
 
-    constructor(intervals:[T], compare: Function, equals: Function)
+    constructor(intervals:[T]|SortedSet<T>|undefined[], compare: Function, equals: Function)
     add(v:T):null
     has(v:T):boolean
     toArray():Array<T>

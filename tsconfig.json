@@ -8,10 +8,12 @@
 		"suppressImplicitAnyIndexErrors": true,
 		"moduleResolution": "node",
 		"emitDecoratorMetadata": true,
-		"sourceMap": true,
+		"sourceMap": false,
+		"inlineSources": true,
+		"inlineSourceMap": true,
 		"declaration": true,
-		"outDir": "dist",
 		"removeComments": false,
+		"outDir": "dist",
 		"typeRoots": [
 			"node_modules/@types"
 		],
@@ -22,7 +24,7 @@
 	},
 	"include": [
 		"src/**/*.d.ts",
-		"src/**/*"
+		"src/**/*.ts"
 	],
 	"exclude": [
 		"node_modules"

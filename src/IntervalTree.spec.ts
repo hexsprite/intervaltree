@@ -6,7 +6,7 @@ require("babel-polyfill")
 
 import { IntervalTree } from "./IntervalTree"
 
-fdescribe("IntervalTree", () => {
+describe("IntervalTree", () => {
   let tree: IntervalTree
 
   const expectTree = (value: string) => {
@@ -50,8 +50,7 @@ fdescribe("IntervalTree", () => {
     expect(tree.last().toString()).toBe("Interval(5, 10)")
   })
 
-  fit("chops tree", () => {
-    debugger
+  it("chops tree", () => {
     tree.addInterval(0, 10)
     tree.printStructure()
     tree.chop(3, 7)

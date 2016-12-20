@@ -23,6 +23,7 @@ export class IntervalTree {
   }
 
   public add(interval: Interval) {
+    console.log('tree/add', interval)
     if (this.allIntervals.has(interval)) {
       return
     }
@@ -30,7 +31,6 @@ export class IntervalTree {
     if (interval.isNull()) {
       throw new TypeError(`IntervalTree: Null Interval objects not allowed in IntervalTree: ${interval}`)
     }
-
     if (!this.topNode) {
       this.topNode = Node.fromInterval(interval)
     } else {

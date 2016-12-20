@@ -15,6 +15,7 @@
   "scripts": {
     "prebuild": "npm install",
     "build": "webpack || echo not ok",
+    "pretest": "tsc",
     "test": "jest",
     "test:watch": "npm test -- --watch",
     "coverage": "npm test -- --coverage --no-cache",
