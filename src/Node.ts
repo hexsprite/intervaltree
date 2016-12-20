@@ -224,7 +224,7 @@ export class Node {
   }
 
 
-  public remove(interval: Interval) {
+  public remove(interval: Interval):Node {
     /*
     Returns self after removing the interval and balancing.
     If interval is not present, raise ValueError.
@@ -235,7 +235,8 @@ export class Node {
     return this.removeIntervalHelper(interval, done, true)
   }
 
-  public removeIntervalHelper(interval: Interval, done: Array<number>, shouldRaiseError:Boolean=false) {
+  public removeIntervalHelper(interval: Interval, done: Array<number>,
+                              shouldRaiseError:Boolean=false):Node {
     /*
     Returns self after removing interval and balancing.
     If interval doesn't exist, raise ValueError.
@@ -264,32 +265,32 @@ export class Node {
       }
       // If we reach here, no intervals are left in self.s_center.
       // So, prune self.
+      console.log('removeIntervalHelper: pruning self')
       return this.prune()
     } else { // interval not in sCenter
+      console.log('removeIntervalHelper: not in center')
       let direction = this.hitBranch(interval)
       if (!this.getBranch(direction)) {
         if (shouldRaiseError) {
           throw new TypeError()
         }
         done.push(1)
-        // return this
-
-        console.log(`removeIntervalHelper: Descending to ${direction} branch`)
-        this.setBranch(direction,
-          this.getBranch(direction).removeIntervalHelper(
-            interval, done, shouldRaiseError))
-
-        // Clean up
-        if (!done.length) {
-          console.log(`removeIntervalHelper: rotating ${this.xCenter}`)
-          return this.rotate()
-        }
         return this
       }
+      console.log(`removeIntervalHelper: Descending to ${direction} branch`)
+      this.setBranch(direction, this.getBranch(direction).removeIntervalHelper(interval, done, shouldRaiseError))
+      // this.branch[direction] = this.branch[direction].removeIntervalHelper(interval, done, shouldRaiseError)
+
+      // Clean up
+      if (!done.length) {
+        console.log(`removeIntervalHelper: rotating ${this.xCenter}`)
+        return this.rotate()
+      }
+      return this
     }
   }
 
-  public prune() {
+  public prune():Node {
     /*
     On a subtree where the root node's s_center is empty,
     return a new subtree with no empty s_centers.
@@ -302,19 +303,86 @@ export class Node {
       console.log(`prune: Grafting ${direction ? 'right' : 'left'} branch`)
       return this.getBranch(direction)
     } else {
-      // // Replace the root node with the greatest predecessor.
-      // let [heir, newBranch] = this.getBranch(0).popGreatestChild()
-      // console.log(`prune: Replacing ${this.xCenter} with ${heir.xCenter}`)
+      // Replace the root node with the greatest predecessor.
+      let [heir, newBranch] = this.getBranch(0).popGreatestChild()
+      console.log(`prune: Replacing ${this.xCenter} with ${heir.xCenter}`)
 
-      // // Set up the heir as the new root node
-      // heir.setBranch(0, this.getBranch(0))
-      // heir.setBranch(1, this.getBranch(1))
+      // Set up the heir as the new root node
+      heir.setBranch(0, this.getBranch(0))
+      heir.setBranch(1, this.getBranch(1))
 
-      // // popping the predecessor may have unbalanced this node;
-      // // fix it
-      // heir.refreshBalance()
-      // heir = heir.rotate()
-      // return heir
+      // popping the predecessor may have unbalanced this node;
+      // fix it
+      heir.refreshBalance()
+      heir = heir.rotate()
+      return heir
+    }
+  }
+
+  public popGreatestChild():[Node, Node] {
+    /*
+      Used when pruning a node with both a left and a right branch.
+      Returns (greatest_child, node), where:
+        * greatest_child is a new node to replace the removed node.
+        * node is the subtree after:
+            - removing the greatest child
+            - balancing
+            - moving overlapping nodes into greatest_child
+      Assumes that self.s_center is not empty.
+      See Eternally Confuzzled's jsw_remove_r function (lines 34-54)
+      in his AVL tree article for reference.
+    */
+    if (!this.rightNode) { // This node is the greatest child.
+      // To reduce the chances of an overlap with a parent, return
+      // a child node containing the smallest possible number of
+      // intervals, as close as possible to the maximum bound.
+      let ivs = this.sCenter.sorted((a:Interval, b:Interval) => {
+        let keyA = `${a.end},${a.start}`
+        let keyB = `${b.end},${b.start}`
+        if (keyA < keyB) {
+          return -1
+        } else if (keyA > keyB) {
+          return 1
+        }
+        return 0
+      })
+      let maxIv = ivs.pop()
+      let newXCenter = this.xCenter
+      while (ivs.length) {
+        let nextMaxIv = ivs.pop()
+        if (nextMaxIv.end === maxIv.end) continue
+        newXCenter = Math.max(newXCenter, nextMaxIv.end)
+      }
+      // Create a new node with the largest x_center possible.
+      let child = Node.fromIntervals(this.sCenter.filter(iv => iv.containsPoint(newXCenter)).toArray())
+      child.xCenter = newXCenter
+      this.sCenter = this.sCenter.difference(child.sCenter)
+
+      if (this.sCenter.length) {
+        return [child, this]
+      } else {
+        return [child, this.getBranch(0)]  // Rotate left child up
+      }
+    } else {
+        let [greatestChild, newRightBranch] = this.getBranch(1).popGreatestChild()
+        this.setBranch(1, newRightBranch)
+        this.refreshBalance()
+        let newSelf = this.rotate()
+
+        // Move any overlaps into greatest_child
+        newSelf.sCenter.forEach((iv) => {
+          if (iv.containsPoint(greatestChild.xCenter)) {
+            newSelf.sCenter.remove(iv)
+            greatestChild.add(iv)
+          }
+        })
+
+        if (newSelf.sCenter.length) {
+          return [greatestChild, newSelf]
+        } else {
+          newSelf = newSelf.prune()
+          return [greatestChild, newSelf]
+        }
     }
   }
 }

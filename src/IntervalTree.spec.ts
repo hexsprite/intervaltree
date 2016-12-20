@@ -2,7 +2,7 @@ import 'jest'
 require("babel-core/register")
 require("babel-polyfill")
 
-import { IntervalTree } from "./IntervalTree"
+import { IntervalTree, Interval } from "./main"
 
 describe("IntervalTree", () => {
   let tree: IntervalTree
@@ -53,6 +53,38 @@ describe("IntervalTree", () => {
     tree.printStructure()
     tree.chop(3, 7)
     expectTree("IntervalTree([Interval(0, 3),Interval(7, 10)])")
+  })
+
+  it('chops bigger things', () => {   
+    let allIntervals = [
+      [1481157540000, 1481158800000],
+      [1481216400000, 1481234400000],
+      [1481239800000, 1481245200000],
+      [1481302800000, 1481320800000],
+      [1481326200000, 1481331600000],
+      [1481389200000, 1481418000000],
+      [1481475600000, 1481504400000],
+      [1481562000000, 1481580000000],
+      [1481585400000, 1481590800000],
+      [1481648400000, 1481677200000],
+      [1481734800000, 1481752800000],
+      [1481758200000, 1481763600000],
+      [1481821200000, 1481839200000],
+      [1481844600000, 1481850000000],
+      [1481907600000, 1481936400000],
+      [1481994000000, 1482022800000],
+      [1482080400000, 1482109200000],
+      [1482166800000, 1482195600000],
+      [1482253200000, 1482282000000],
+      [1482253200000, 1483344000000]
+    ]
+    tree.initFromArray(allIntervals.map(x => new Interval(x[0], x[1])))
+    // tree.mergeOverlaps()
+    // tree.printStructure()
+    // console.log(tree.allIntervals.toArray())
+    tree.chop(1482220800000, 1482253200000)
+    console.log('DONE')
+    console.log(tree.allIntervals.toArray())
   })
 
   it("find intervals of minimum length", () => {

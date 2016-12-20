@@ -13,6 +13,10 @@ export class IntervalTree {
     this.__init(intervals)
   }
 
+  public initFromArray(intervals: Array<Interval>) {
+    this.__init(intervals)
+  }
+
   private __init(intervals:any) {
     this.allIntervals = new IntervalSet(intervals.toArray()) // FIXME: slow
     console.log("__init intervals", intervals, this.allIntervals.toArray())
@@ -54,10 +58,10 @@ export class IntervalTree {
   public chop(start: number, end: number) {
     // Like removeEnveloped(), but trims back Intervals hanging into
     // the chopped area so that nothing overlaps.
-    console.log('chop', start, end)
+    console.log('chop', start, end, this.allIntervals.toArray())
     const insertions = new IntervalSet()
-    const startHits = this.search(start, this.end()) //.filter(iv.begin < begin)
-    const endHits = this.search(end, this.end()) //.filter(iv.end > end)
+    const startHits = this.search(start).filter((iv) => iv.start < start)
+    const endHits = this.search(end).filter((iv) => iv.end > end)
     console.log(`chop: startHits=${startHits.toArray()} endHits=${endHits.toArray()}`)
     for (const iv of startHits.toArray()) {
       insertions.add(new Interval(iv.start, start, iv.data))
@@ -86,6 +90,7 @@ export class IntervalTree {
 
   public differenceUpdate(other: IntervalSet) {
     other.forEach(iv => {
+      console.log('differenceUpdate: discarding', iv)
       this.discard(iv)
     })
   }
@@ -153,7 +158,7 @@ export class IntervalTree {
     }
 
     for (higher of this.allIntervals.toArray()) {
-      console.log('higher', higher)
+      // console.log('mergeOverlaps: higher', higher)
       if (merged.length) {  // series already begun
         const lower = merged[merged.length - 1]
         if (higher.start <= lower.end) { // should merge
@@ -239,7 +244,20 @@ export class IntervalTree {
     updateValue(end)
   }
 
-  public search(start:number, end:number, strict=false):IntervalSet {
+  public slice(start:number|null, stop:number|null):IntervalSet {
+    if (start === null) {
+      start = this.start()
+      if (stop === null) {
+        return this.allIntervals
+      }
+    }
+    if (stop === null) {
+      stop = this.end()
+    }
+    return this.search(start, stop)
+  }
+
+  public search(start:number, end:number|null=null, strict=false):IntervalSet {
     /*
     Returns a set of all intervals overlapping the given range. Or,
      if strict is true, returns the set of all intervals fully
@@ -255,13 +273,18 @@ export class IntervalTree {
     if (!root) {
       return new IntervalSet()
     }
+    if (end === null) {
+      return root.searchPoint(start, new IntervalSet())
+    }
     let result = root.searchPoint(start, new IntervalSet())
     console.log(`search top: result=${result.toArray()}`, result)
     let boundaryTable = this.boundaryTable
-    let boundaryArray = boundaryTable.toArray()
+    let boundaryArray = boundaryTable.keysArray()
+    console.log(`search boundaryTable: ${boundaryArray}`)
     let bisectLeft = (point:number) => {
-      let idx = 0;
-      while (idx < boundaryArray.length && point < boundaryArray[idx])
+      console.log('bisectLeft: point=', point)
+      let idx = 0
+      while (idx < boundaryArray.length && point > boundaryArray[idx])
         idx++
       return idx
     }
