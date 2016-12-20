@@ -43,9 +43,10 @@ export class Node {
         node.sCenter.add(iv)
       }
     }
-    console.log('fromIntervals: leftNode', sLeft, 'rightNode', sRight)
+    console.log('fromIntervals: center', node.sCenter.toArray(), 'leftNode', sLeft, 'rightNode', sRight)
     node.leftNode = Node.fromIntervals(sLeft)
     node.rightNode = Node.fromIntervals(sRight)
+
     return node.rotate()
   }
 

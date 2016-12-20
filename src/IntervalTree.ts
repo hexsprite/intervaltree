@@ -7,15 +7,20 @@ import { IntervalSet } from './set'
 export class IntervalTree {
   public allIntervals: IntervalSet
   private topNode: Node
-  private boundaryTable: any
+  private boundaryTable: SortedMap
 
-  public constructor(intervals:any = []) {
+  public constructor(intervals:Array<Interval> = []) {
     this.__init(intervals)
   }
 
   private __init(intervals:any) {
-    this.allIntervals = new IntervalSet(intervals)
+    this.allIntervals = new IntervalSet(intervals.toArray()) // FIXME: slow
+    console.log("__init intervals", intervals, this.allIntervals.toArray())
     this.topNode = Node.fromIntervals(intervals)
+    if (this.topNode) {
+      console.log("__init new topNode", this.topNode)
+      this.topNode.printStructure()
+    }
     this.boundaryTable = SortedMap()
     for (let iv of intervals) {
       this.addBoundaries(iv)
@@ -253,15 +258,16 @@ export class IntervalTree {
     let result = root.searchPoint(start, new IntervalSet())
     console.log(`search top: result=${result.toArray()}`, result)
     let boundaryTable = this.boundaryTable
-    let bisectLeft = (obj:IntervalSet, key:any) => {
-      let keys = obj.keysArray()
-      console.log(`bisectLeft: key=${key} keys=${keys}`)
-      return keys.indexOf(key)
-    }
-    let boundStart = bisectLeft(boundaryTable, start)
-    let boundEnd = bisectLeft(boundaryTable, end)  // exclude final end bound
-    console.log(`search: boundStart=${boundStart} boundEnd=${boundEnd}`)
     let boundaryArray = boundaryTable.toArray()
+    let bisectLeft = (point:number) => {
+      let idx = 0;
+      while (idx < boundaryArray.length && point < boundaryArray[idx])
+        idx++
+      return idx
+    }
+    let boundStart = bisectLeft(start)
+    let boundEnd = bisectLeft(end)  // exclude final end bound
+    console.log(`search: boundStart=${boundStart} boundEnd=${boundEnd}`)
     let boundIndexes = Array.from(Array(boundEnd - boundStart), (_, i) => boundStart + i)
     result.addEach(root.searchOverlap(
       boundIndexes.map(index => boundaryArray[index])
