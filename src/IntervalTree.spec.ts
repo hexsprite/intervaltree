@@ -104,7 +104,10 @@ describe("IntervalTree", () => {
     tree.addInterval(5,8)
     tree.addInterval(9,13)
     tree.addInterval(14,19)
-    expect(tree.searchByLength(3).toArray().toString())
+    expect(tree.searchByLengthStartingAt(3, 0).toString())
     .toBe("Interval(5, 8),Interval(9, 13),Interval(14, 19)")
+
+    expect(tree.searchByLengthStartingAt(3, 9).toString())
+    .toBe("Interval(9, 13),Interval(14, 19)")
   })
 })

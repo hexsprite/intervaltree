@@ -318,9 +318,17 @@ export class IntervalTree {
     return result
   }
 
-  public searchByLength(length: number):IntervalSet {
-    let result = this.allIntervalsByLength.findLeastGreaterThan(Interval.fromLength(length))
+  public searchByLengthStartingAt(length: number, start:number):Array {
+    // filter by length
+    let result = this.allIntervalsByLength.findLeastGreaterThan(
+      Interval.fromLength(length))
     let idx = this.allIntervalsByLength.indexOf(result.value)
-    return new IntervalSet(this.allIntervalsByLength.slice(idx))
+
+    // filter by start
+    let is = this.allIntervalsByLength.slice(idx)
+    let byStart = new IntervalSet(is)
+    result = byStart.findLeastGreaterThanOrEqual(new Interval(start, start))
+    idx = byStart.indexOf(result.value)
+    return byStart.slice(idx)
   }
 }
