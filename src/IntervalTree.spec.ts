@@ -81,10 +81,10 @@ describe("IntervalTree", () => {
     tree.initFromArray(allIntervals.map(x => new Interval(x[0], x[1])))
     // tree.mergeOverlaps()
     // tree.printStructure()
-    // console.log(tree.allIntervals.toArray())
+//console.log(tree.allIntervals.toArray())
     tree.chop(1482220800000, 1482253200000)
-    console.log('DONE')
-    console.log(tree.allIntervals.toArray())
+//console.log('DONE')
+//console.log(tree.allIntervals.toArray())
   })
 
   it("find intervals of minimum length", () => {

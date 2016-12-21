@@ -15,10 +15,10 @@ describe('Interval', () => {
     .toBe(true)
   })
 
-  it('length', () => {
-    expect(new Interval(0, 0).length())
-    .toBe(0)
-    expect(new Interval(0, 1).length())
-    .toBe(1)
-  })
+  // it('length', () => {
+  //   expect(new Interval(0, 0).length())
+  //   .toBe(0)
+  //   expect(new Interval(0, 1).length())
+  //   .toBe(1)
+  // })
 })

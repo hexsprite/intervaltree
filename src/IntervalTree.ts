@@ -2,10 +2,11 @@ let SortedMap = require('collections/sorted-map')
 
 import { Node } from './Node'
 import { Interval } from './Interval'
-import { IntervalSet } from './set'
+import { IntervalSet, IntervalLengthSet, compareByInterval } from './set'
 
 export class IntervalTree {
   public allIntervals: IntervalSet
+  public allIntervalsByLength: IntervalLengthSet
   private topNode: Node
   private boundaryTable: SortedMap
 
@@ -19,10 +20,11 @@ export class IntervalTree {
 
   private __init(intervals:any) {
     this.allIntervals = new IntervalSet(intervals.toArray()) // FIXME: slow
-    console.log("__init intervals", intervals, this.allIntervals.toArray())
+    this.allIntervalsByLength = new IntervalLengthSet(intervals.toArray()) // FIXME: slow
+//console.log("__init intervals", intervals, this.allIntervals.toArray())
     this.topNode = Node.fromIntervals(intervals)
     if (this.topNode) {
-      console.log("__init new topNode", this.topNode)
+//console.log("__init new topNode", this.topNode)
       this.topNode.printStructure()
     }
     this.boundaryTable = SortedMap()
@@ -32,7 +34,7 @@ export class IntervalTree {
   }
 
   public add(interval: Interval) {
-    console.log('tree/add', interval)
+//console.log('tree/add', interval)
     if (this.allIntervals.has(interval)) {
       return
     }
@@ -47,6 +49,7 @@ export class IntervalTree {
     }
 
     this.allIntervals.add(interval)
+    this.allIntervalsByLength.add(interval)
     this.addBoundaries(interval)
   }
 
@@ -58,18 +61,18 @@ export class IntervalTree {
   public chop(start: number, end: number) {
     // Like removeEnveloped(), but trims back Intervals hanging into
     // the chopped area so that nothing overlaps.
-    console.log('chop', start, end, this.allIntervals.toArray())
+//console.log('chop', start, end, this.allIntervals.toArray())
     const insertions = new IntervalSet()
     const startHits = this.search(start).filter((iv) => iv.start < start)
     const endHits = this.search(end).filter((iv) => iv.end > end)
-    console.log(`chop: startHits=${startHits.toArray()} endHits=${endHits.toArray()}`)
+//console.log(`chop: startHits=${startHits.toArray()} endHits=${endHits.toArray()}`)
     for (const iv of startHits.toArray()) {
       insertions.add(new Interval(iv.start, start, iv.data))
     }
     for (const iv of endHits.toArray()) {
       insertions.add(new Interval(end, iv.end, iv.data))
     }
-    console.log(`chop: insertsions=${insertions.toArray().toString()}`)
+//console.log(`chop: insertsions=${insertions.toArray().toString()}`)
     this.removeEnveloped(start, end)
     this.differenceUpdate(startHits)
     this.differenceUpdate(endHits)
@@ -90,7 +93,7 @@ export class IntervalTree {
 
   public differenceUpdate(other: IntervalSet) {
     other.forEach(iv => {
-      console.log('differenceUpdate: discarding', iv)
+//console.log('differenceUpdate: discarding', iv)
       this.discard(iv)
     })
   }
@@ -119,6 +122,7 @@ export class IntervalTree {
     }
     this.topNode = this.topNode.remove(interval)
     this.allIntervals.delete(interval)
+    this.allIntervalsByLength.remove(interval)
     this.removeBoundaries(interval)
   }
 
@@ -158,7 +162,7 @@ export class IntervalTree {
     }
 
     for (higher of this.allIntervals.toArray()) {
-      // console.log('mergeOverlaps: higher', higher)
+//console.log('mergeOverlaps: higher', higher)
       if (merged.length) {  // series already begun
         const lower = merged[merged.length - 1]
         if (higher.start <= lower.end) { // should merge
@@ -173,7 +177,7 @@ export class IntervalTree {
         newSeries()
       }
     }
-    console.log('merged', merged)
+//console.log('merged', merged)
     this.__init(merged)
   }
 
@@ -198,8 +202,7 @@ export class IntervalTree {
       return null
     }
     let result = this.allIntervals.iterator().next().value
-    // let result = this.allIntervals.get(0)
-    console.log(`first: result=${result}`)
+    // console.log(`first: result=${result}`)
     console.dir(result)
     return result
   }
@@ -210,9 +213,7 @@ export class IntervalTree {
     }
     let intervals = this.allIntervals.toArray()
     let result = intervals[intervals.length - 1]
-    // let result = this.allIntervals.get(0)
-    console.log(`last: result=${result}`)
-    console.dir(result)
+    //console.log(`last: result=${result}`)
     return result
   }
 
@@ -268,7 +269,7 @@ export class IntervalTree {
        * k = size of the search range (this is 1 for a point)
      :rtype: set of Interval
     */
-    console.log(`search: start=${start} end=${end} strict=${strict}`)
+//console.log(`search: start=${start} end=${end} strict=${strict}`)
     let root = this.topNode
     if (!root) {
       return new IntervalSet()
@@ -277,12 +278,12 @@ export class IntervalTree {
       return root.searchPoint(start, new IntervalSet())
     }
     let result = root.searchPoint(start, new IntervalSet())
-    console.log(`search top: result=${result.toArray()}`, result)
+//console.log(`search top: result=${result.toArray()}`, result)
     let boundaryTable = this.boundaryTable
     let boundaryArray = boundaryTable.keysArray()
-    console.log(`search boundaryTable: ${boundaryArray}`)
+//console.log(`search boundaryTable: ${boundaryArray}`)
     let bisectLeft = (point:number) => {
-      console.log('bisectLeft: point=', point)
+//console.log('bisectLeft: point=', point)
       let idx = 0
       while (idx < boundaryArray.length && point > boundaryArray[idx])
         idx++
@@ -290,7 +291,7 @@ export class IntervalTree {
     }
     let boundStart = bisectLeft(start)
     let boundEnd = bisectLeft(end)  // exclude final end bound
-    console.log(`search: boundStart=${boundStart} boundEnd=${boundEnd}`)
+//console.log(`search: boundStart=${boundStart} boundEnd=${boundEnd}`)
     let boundIndexes = Array.from(Array(boundEnd - boundStart), (_, i) => boundStart + i)
     result.addEach(root.searchOverlap(
       boundIndexes.map(index => boundaryArray[index])
@@ -298,16 +299,18 @@ export class IntervalTree {
 
     // TODO: improve strict search to use node info instead of less-efficient filtering
     if (strict) {
-      console.log('result before', result)
+//console.log('result before', result)
       result = new IntervalSet(
         result.toArray().filter(iv => iv.start >= start && iv.end <= end)
       )
     }
-    console.log('search: result=', result, result.toArray())
+//console.log('search: result=', result, result.toArray())
     return result
   }
 
   public searchByLength(length: number):IntervalSet {
-    return this.allIntervals.filter((interval:Interval) => (interval.end - interval.start) >= length)
+    let result = this.allIntervalsByLength.findLeastGreaterThan(Interval.fromLength(length))
+    let idx = this.allIntervalsByLength.indexOf(result.value)
+    return new IntervalSet(this.allIntervalsByLength.slice(idx))
   }
 }
