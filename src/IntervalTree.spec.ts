@@ -43,14 +43,12 @@ describe("IntervalTree", () => {
   it("get first and last interval", () => {
     tree.addInterval(5, 10)
     tree.addInterval(0,4)
-    tree.printStructure()
     expect(tree.first().toString()).toBe("Interval(0, 4)")
     expect(tree.last().toString()).toBe("Interval(5, 10)")
   })
 
   it("chops tree", () => {
     tree.addInterval(0, 10)
-    tree.printStructure()
     tree.chop(3, 7)
     expectTree("IntervalTree([Interval(0, 3),Interval(7, 10)])")
   })
@@ -78,13 +76,26 @@ describe("IntervalTree", () => {
       [1482253200000, 1482282000000],
       [1482253200000, 1483344000000]
     ]
-    tree.initFromArray(allIntervals.map(x => new Interval(x[0], x[1])))
-    // tree.mergeOverlaps()
-    // tree.printStructure()
-//console.log(tree.allIntervals.toArray())
+    tree.initFromSimpleArray(allIntervals)
     tree.chop(1482220800000, 1482253200000)
-//console.log('DONE')
-//console.log(tree.allIntervals.toArray())
+  })
+
+  it("chops in the past", () => {
+    let allIntervals = [
+      [227833200000, 227840400000],
+      [227923200000, 227926800000],
+      [227984400000, 228013200000],
+      [228070800000, 228099600000],
+      [228157200000, 228186000000],
+      [228416400000, 228445200000],
+      [228502800000, 228531600000],
+      [228589200000, 228618000000],
+      [228675600000, 228704400000],
+      [228762000000, 228790800000],
+      [229021200000, 229050000000]]
+    tree.initFromSimpleArray(allIntervals)
+    tree.chop(0, 227923200000)
+    expect(tree.first().start).toBe(227923200000)
   })
 
   it("find intervals of minimum length", () => {

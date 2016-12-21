@@ -89,8 +89,7 @@ export class Node {
     const heavy = this.balance > 0
     const light = !heavy
     const save = this.getBranch(heavy)
-    this.printStructure()
-//console.log('singleRotate', this, 'bal=', this.balance, save.balance)
+    //console.log('singleRotate', this, 'bal=', this.balance, save.balance)
     // assert(save.getBranch(light))
     this.setBranch(heavy, save.getBranch(light))
     save.setBranch(light, this.rotate()) // Needed to ensure the 2 and 3 are balanced under new subnode
@@ -188,7 +187,7 @@ export class Node {
     if (tostring) {
       return result
     } else {
-//console.log(result)
+      console.log(result)
     }
   }
 
