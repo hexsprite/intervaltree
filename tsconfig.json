@@ -8,12 +8,10 @@
 		"suppressImplicitAnyIndexErrors": true,
 		"moduleResolution": "node",
 		"emitDecoratorMetadata": true,
-		"sourceMap": false,
-		"inlineSources": true,
-		"inlineSourceMap": true,
+		"sourceMap": true,
 		"declaration": true,
 		"removeComments": false,
-		"rootDir": "src",
+		"baseUrl": "src",
 		"outDir": "dist",
 		"typeRoots": [
 			"node_modules/@types"
@@ -23,10 +21,10 @@
 			"@types/jest"
 		]
 	},
-	"include": [
-		"src/**/*.d.ts",
-		"src/**/*.ts"
-	],
+	// "include": [
+	// 	"src/**/*.d.ts",
+	// 	"src/**/*.ts"
+	// ],
 	"exclude": [
 		"node_modules"
 	]

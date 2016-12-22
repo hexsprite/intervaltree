@@ -14,7 +14,7 @@
   },
   "scripts": {
     "prebuild": "npm install",
-    "build": "tsc -p .",
+    "build": "node_modules/webpack/bin/webpack.js",
     "test": "jest",
     "test:watch": "npm test -- --watch",
     "coverage": "npm test -- --coverage --no-cache",
