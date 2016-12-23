@@ -11,7 +11,8 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "coverage": "jest --coverage",
-    "coverage:watch": "jest --coverage --watch"
+    "coverage:watch": "jest --coverage --watch",
+    "coverage:open": "open coverage/lcov-report/index.html"
   },
   "repository": {
     "type": "git",
@@ -31,8 +32,9 @@
     "@types/jest": "^16.0.1",
     "@types/node": "^6.0.52",
     "jest": "~18.0.0",
-    "standard-version": "^2.4.0",
     "rimraf": "^2.5.2",
+    "standard-version": "^2.4.0",
+    "ts-jest": "^18.0.0",
     "tslint": "^3.15.1",
     "tslint-microsoft-contrib": "~4.0.0",
     "typescript": "~2.1.4"
@@ -45,7 +47,7 @@
   "jest": {
     "testEnvironment": "node",
     "transform": {
-      ".(ts|tsx)": "<rootDir>/preprocessor.js"
+      ".(ts|tsx)": "<rootDir>/node_modules/ts-jest/preprocessor.js"
     },
     "moduleFileExtensions": [
       "ts",

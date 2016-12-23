@@ -1,4 +1,7 @@
-*
+coverage
+dist
+node_modules
+yarn.lock
 !src/
 !src/**/*
 !*.js
