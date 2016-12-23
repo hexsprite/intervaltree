@@ -6,8 +6,9 @@
   "license": "MIT",
   "main": "dist/main.js",
   "scripts": {
-    "prebuild": "npm install; rimraf dist",
+    "install": "tsc || true",
     "build": "tsc || true",
+    "prebuild": "rimraf dist",
     "test": "jest",
     "test:watch": "jest --watch",
     "coverage": "jest --coverage",
