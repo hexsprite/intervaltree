@@ -1,22 +1,15 @@
 {
   "name": "intervaltree",
   "version": "0.0.1",
-  "description": "port of chaimleib/intervaltree to JS.",
-  "author": "Hagai Cohen",
+  "description": "Interval tree for JavaScript",
+  "author": "Jordan Baker",
   "license": "MIT",
   "main": "dist/main.js",
-  "typings": "dist/main.d.ts",
-  "jam": {
-    "main": "./dist/main.browser.js"
-  },
-  "browser": {
-    "dist/main.js": "./dist/main.browser.js"
-  },
   "scripts": {
-    "prebuild": "npm install",
-    "build": "node_modules/webpack/bin/webpack.js",
+    "prebuild": "npm install; rimraf build",
+    "build": "tsc -p src/ || true",
     "test": "jest",
-    "test:watch": "npm test -- --watch",
+    "test:watch": "jest --watch",
     "coverage": "npm test -- --coverage --no-cache",
     "coverage:watch": "npm run coverage -- --watch",
     "prerelease": "npm run build && npm test",
@@ -24,47 +17,27 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/DxCx/ts-library-starter.git"
+    "url": "git+https://github.com/hexsprite/intervaltree.git"
   },
   "keywords": [
-    "example",
     "typescript",
     "library",
-    "starter",
-    "webpack",
-    "browserify",
-    "dts-bundle",
-    "package",
-    "tslint",
-    "jest",
-    "babel",
-    "tsloader",
-    "boilerplate",
-    "awesome-typescript-loader"
+    "intervaltree",
+    "tree"
   ],
   "bugs": {
-    "url": "https://github.com/DxCx/ts-library-starter/issues"
+    "url": "https://github.com/hexsprite/intervaltree/issues"
   },
-  "homepage": "https://github.com/DxCx/ts-library-starter#readme",
+  "homepage": "https://github.com/hexsprite/intervaltree",
   "devDependencies": {
     "@types/jest": "^16.0.1",
-    "@types/node": "^6.0.38",
-    "awesome-typescript-loader": "^2.2.1",
-    "babel-core": "^6.14.0",
-    "babel-loader": "^6.2.5",
-    "babel-polyfill": "^6.13.0",
-    "babel-preset-es2015": "^6.14.0",
-    "browserify": "^13.1.0",
-    "delete-empty": "^0.1.3",
-    "dts-bundle": "^0.5.0",
-    "jest": "^15.1.1",
+    "@types/node": "^6.0.52",
+    "jest": "~18.0.0",
     "standard-version": "^2.4.0",
+    "rimraf": "^2.5.2",
     "tslint": "^3.15.1",
-    "tslint-loader": "^2.1.5",
-    "typescript": "2.0.0",
-    "typescript-babel-jest": "^0.1.2",
-    "webpack": "2.1.0-beta.22",
-    "webpack-node-externals": "^1.4.3"
+    "tslint-microsoft-contrib": "~4.0.0",
+    "typescript": "~2.1.4"
   },
   "dependencies": {
     "collections": "^5.0.6",
@@ -72,13 +45,21 @@
     "lodash.range": "^3.2.0"
   },
   "jest": {
-    "scriptPreprocessor": "node_modules/typescript-babel-jest",
     "testEnvironment": "node",
-    "testRegex": ".*\\.spec\\.ts$",
+    "transform": {
+      ".(ts|tsx)": "<rootDir>/preprocessor.js"
+    },
     "moduleFileExtensions": [
       "ts",
+      "tsx",
       "js",
-      "json"
+      "jsx"
+    ],
+    "testRegex": ".*\\.(test|spec)\\.(ts)$",
+    "coverageDirectory": "coverage",
+    "collectCoverageFrom": [
+      "src/**/*.{ts,tsx,js,jsx}",
+      "!src/**/*.d.ts"
     ]
   }
 }

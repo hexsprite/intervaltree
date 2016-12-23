@@ -1,7 +1,4 @@
 import 'jest'
-require("babel-core/register")
-require("babel-polyfill")
-
 import { IntervalTree, Interval } from "./main"
 import { bisectLeft } from './bisect'
 
