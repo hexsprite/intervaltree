@@ -10,10 +10,8 @@
     "build": "tsc -p src/ || true",
     "test": "jest",
     "test:watch": "jest --watch",
-    "coverage": "npm test -- --coverage --no-cache",
-    "coverage:watch": "npm run coverage -- --watch",
-    "prerelease": "npm run build && npm test",
-    "release": "standard-version && npm pack"
+    "coverage": "jest --coverage",
+    "coverage:watch": "jest --coverage --watch"
   },
   "repository": {
     "type": "git",
