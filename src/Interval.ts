@@ -1,3 +1,5 @@
+let assert = require('assert')
+
 export class Interval {
   public start: number
   public end: number
@@ -9,6 +11,8 @@ export class Interval {
   }
 
   public constructor(start: number, end: number, data?: Object) {
+    assert.equal(typeof start, 'number', 'start not number')
+    assert.equal(typeof end, 'number', 'end not number')
     this.start = start
     this.end = end
     this.data = data

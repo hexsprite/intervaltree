@@ -1,7 +1,8 @@
-let debug = require('debug')('intervaltree')
 const assert = require('assert')
+import { debug } from './debug'
 import { Interval } from "./Interval"
 import { IntervalSet } from './set'
+import { SortedSet } from 'collections/sorted-set'
 
 export class Node {
   private xCenter: number
@@ -16,8 +17,8 @@ export class Node {
     this.sCenter = new IntervalSet(sCenter || [])
     this.leftNode = leftNode
     this.rightNode = rightNode
-    this.depth = 0 // set when rotated
-    this.balance = 0 // ditto
+    this.depth = 0    // set when rotated
+    this.balance = 0  // ditto
     this.rotate()
   }
 
@@ -59,6 +60,7 @@ export class Node {
     const rightDepth = this.rightNode ? this.rightNode.depth : 0
     this.depth = 1 + Math.max(leftDepth, rightDepth)
     this.balance = rightDepth - leftDepth
+    //debug(`refreshBalance: leftDepth=${leftDepth} rightDepth=${rightDepth} balance=${this.balance}`, this)
   }
 
   public rotate() {
@@ -71,6 +73,7 @@ export class Node {
       return this
     const myHeavy = this.balance > 0
     const childHeavy = this.getBranch(myHeavy).balance > 0
+    //debug(`rotate: myHeavy=${myHeavy} childHeavy=${childHeavy} this.balance=${this.balance}`)
     if (myHeavy === childHeavy || this.getBranch(myHeavy).balance === 0) {
       return this.singleRotate()
     } else {
@@ -84,16 +87,22 @@ export class Node {
     const heavy = this.balance > 0
     const light = !heavy
     const save = this.getBranch(heavy)
+    // this.verify(new IntervalSet([]))
+    //debug('singleRotate', this, 'bal=', this.balance, save.balance)
     // assert(save.getBranch(light))
     this.setBranch(heavy, save.getBranch(light))
     save.setBranch(light, this.rotate()) // Needed to ensure the 2 and 3 are balanced under new subnode
 
+    // Some intervals may overlap both this.xCenter and save.xCenter
     // Promote those to the new tip of the tree
     const promotees:Interval[] = []
+    save.getBranch(light).sCenter.forEach((iv) => {
       if (save.centerHit(iv)) {
         promotees.push(iv)
       }
+    })
     if (promotees.length) {
+      //debug('have promotees', promotees)
       for (const iv of promotees) {
         save.setBranch(light, save.getBranch(light).remove(iv))
       }
@@ -135,31 +144,43 @@ export class Node {
   }
 
   public add(interval: Interval) {
+    //debug('add', interval)
     if (this.centerHit(interval)) {
+      //debug("add: center hit", interval)
       this.sCenter.add(interval)
       return this
     } else {
       let direction = this.hitBranch(interval)
       let branchNode = this.getBranch(direction)
+      //debug("add: on branch", interval, direction)
       if (!this.getBranch(direction)) {
         this.setBranch(direction, Node.fromInterval(interval))
         this.refreshBalance()
         return this
       } else {
         this.setBranch(direction, branchNode.add(interval))
+        //debug('existing branch, rotating')
         return this.rotate()
       }
     }
   }
 
   public printStructure(indent=0, tostring=false):string|null {
+    const spaces = '   '.repeat(indent)
     let result = ''
 
+    const logit = (s:string) => result += spaces + s + '\n'
+
+    result += this.toString() + '\n'
+
     if (this.sCenter.length) {
+       logit(`- [${this.sCenter.toArray()}]`)
     }
     if (this.leftNode) {
+      logit(`<: ${this.leftNode.printStructure(indent + 1, true)}`)
     }
     if (this.rightNode) {
+      logit(`>: ${this.rightNode.printStructure(indent + 1, true)}`)
     }
     if (tostring) {
       return result
@@ -174,8 +195,12 @@ export class Node {
 
   public searchPoint(point:number, result:IntervalSet):IntervalSet {
     // Returns all intervals that contain point.
+    //debug('searchPoint: point=', point, this.toString())
+    //debug('searchPoint: result=', result)
     this.sCenter.forEach(interval => {
+//debug('searchPoint: interval=', interval)
       if (interval.start <= point && point < interval.end) {
+//debug('searchPoint interval', interval)
         result.add(interval)
       }
     })
@@ -217,6 +242,7 @@ export class Node {
     See Eternally Confuzzled's jsw_remove_r function (lines 1-32)
     in his AVL tree article for reference.
     */
+    //debug(`removeIntervalHelper: ${this.toString()}`)
     if (this.centerHit(interval)) {
       if (!shouldRaiseError && !this.sCenter.has(interval)) {
         done.push(1)
@@ -232,10 +258,18 @@ export class Node {
       }
       if (this.sCenter.length) { // keep this node
         done.push(1)  // no rebalancing necessary
+        //debug('removeIntervalHelper: Removed, no rebalancing.')
         return this
+      } else {
+        // If we reach here, no intervals are left in self.s_center.
+        // So, prune self.
+        //debug('removeIntervalHelper: pruning self')
+        return this.prune()
       }
     } else { // interval not in sCenter
+      //debug('removeIntervalHelper: not in center')
       let direction = this.hitBranch(interval)
+      let branch = this.getBranch(direction)
       if (!this.getBranch(direction)) {
         if (shouldRaiseError) {
           throw new TypeError()
@@ -243,11 +277,12 @@ export class Node {
         done.push(1)
         return this
       }
-      this.setBranch(direction, this.getBranch(direction).removeIntervalHelper(interval, done, shouldRaiseError))
-      // this.branch[direction] = this.branch[direction].removeIntervalHelper(interval, done, shouldRaiseError)
-
+      //debug(`removeIntervalHelper: Descending to ${direction} branch`)
+      branch = branch.removeIntervalHelper(interval, done, shouldRaiseError)
+      this.setBranch(direction, branch)     
       // Clean up
       if (!done.length) {
+        //debug(`removeIntervalHelper: rotating ${this.xCenter}`)
         return this.rotate()
       }
       return this
@@ -264,10 +299,14 @@ export class Node {
 
     if (!leftBranch || !rightBranch) { // if I have an empty branch
       let direction = !leftBranch // graft the other branch here
+      //debug(`prune: Grafting ${direction ? 'right' : 'left'} branch`)
       return this.getBranch(direction)
     } else {
       // Replace the root node with the greatest predecessor.
       let [heir, newBranch] = this.getBranch(0).popGreatestChild()
+      this.setBranch(0, newBranch)
+
+      //debug(`prune: Replacing ${this} with ${heir}`)
 
       // Set up the heir as the new root node
       heir.setBranch(0, this.getBranch(0))
@@ -284,10 +323,13 @@ export class Node {
   public popGreatestChild():[Node, Node] {
     /*
       Used when pruning a node with both a left and a right branch.
+      Returns (greatestChild, node), where:
+        * greatestChild is a new node to replace the removed node.
         * node is the subtree after:
             - removing the greatest child
             - balancing
             - moving overlapping nodes into greatest_child
+      Assumes that this.sCenter is not empty.
       See Eternally Confuzzled's jsw_remove_r function (lines 34-54)
       in his AVL tree article for reference.
     */
@@ -295,15 +337,10 @@ export class Node {
       // To reduce the chances of an overlap with a parent, return
       // a child node containing the smallest possible number of
       // intervals, as close as possible to the maximum bound.
-      let ivs = this.sCenter.sorted((a:Interval, b:Interval) => {
+      let ivs = this.sCenter.sorted((a:Interval, b:Interval) => { 
         let keyA = `${a.end},${a.start}`
         let keyB = `${b.end},${b.start}`
-        if (keyA < keyB) {
-          return -1
-        } else if (keyA > keyB) {
-          return 1
-        }
-        return 0
+        return Object.compare(keyA, keyB)
       })
       let maxIv = ivs.pop()
       let newXCenter = this.xCenter
@@ -343,5 +380,61 @@ export class Node {
           return [greatestChild, newSelf]
         }
     }
+  }
+ 
+  public verify(parents=new SortedSet([])) {
+    /*
+    DEBUG ONLY
+    Recursively ensures that the invariants of an interval subtree
+    hold.
+    */
+    // assert(typeof this.sCenter === 'IntervalSet', 
+    //   `sCenter type is incorrect: ${typeof this.sCenter}`)
+
+    let bal = this.balance
+    assert(Math.abs(bal) < 2,
+      "Error: Rotation should have happened, but didn't!")
+    
+    this.refreshBalance()
+    assert(bal === this.balance,
+        "Error: this.balance not set correctly!")
+
+    assert(this.sCenter.length,
+      `Error: sCenter is empty!\n${this.printStructure(0, true)}`)
+    
+    this.sCenter.forEach((iv) => {
+      assert(typeof iv.start === 'number', `start not number: ${iv.start}`)
+      assert(typeof iv.end === 'number', `end not number: ${iv.end}`)
+      assert(iv.start < iv.end, 'start comes before end')
+      assert(iv.overlaps(this.xCenter), 'does not overlap center')
+      parents.forEach((parent:number) => {
+        assert(!iv.containsPoint(parent), "Error: Overlaps ancestor")
+      })
+    })
+
+    if (this.getBranch(0)) {
+      assert(this.getBranch(0).xCenter < this.xCenter,
+        "Error: Out-of-order left child !\n" + this.printStructure(0, true))
+      this.getBranch(0).verify(parents.union([this.xCenter]))
+    }
+
+    if (this.getBranch(1)) {
+      assert(this.getBranch(1).xCenter > this.xCenter,
+        "Error: Out-of-order right child!\n" + this.printStructure(0, true))
+      this.getBranch(1).verify(parents.union([this.xCenter]))
+    }
+  }
+
+  public allChildren():IntervalSet {
+    return this.allChildrenHelper(new IntervalSet([]))
+  }
+
+  private allChildrenHelper(result: IntervalSet):IntervalSet {
+    result.addEach(this.sCenter)
+    if (this.getBranch(0))
+      this.getBranch(0).allChildrenHelper(result)
+    if (this.getBranch(1))
+      this.getBranch(1).allChildrenHelper(result)
+    return result
   }
 }

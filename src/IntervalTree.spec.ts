@@ -3,6 +3,7 @@ require("babel-core/register")
 require("babel-polyfill")
 
 import { IntervalTree, Interval } from "./main"
+import { bisectLeft } from './bisect'
 
 describe("IntervalTree", () => {
   let tree: IntervalTree
@@ -35,8 +36,10 @@ describe("IntervalTree", () => {
   it("merges overlapping intervals", () => {
     tree.addInterval(1, 5)
     tree.addInterval(5, 9)
+    tree.addInterval(15,19)
+    tree.addInterval(19,25)    
     tree.mergeOverlaps()
-    expectTree("IntervalTree([Interval(1, 9)])")
+    expectTree("IntervalTree([Interval(1, 9),Interval(15, 25)])")
   })
 
   // it("can be an array", () => {
@@ -124,7 +127,7 @@ describe("IntervalTree", () => {
     expect(cloned.toString()).toBe(tree.toString())
   })
 
-  fit('chop bugs', () => {
+  it('chop bugs', () => {
     tree.initFromSimpleArray([
       [1406304000000, 1406332800000],
       [1406324425000, 1406328025000],
@@ -171,5 +174,11 @@ describe("IntervalTree", () => {
       [5,6]
     ])
     tree.verify()
+  })
+
+  it('bisectInterval', () => {
+    expect(bisectLeft([0,1,2,3,4,5], 5)).toBe(5)
+    expect(bisectLeft([0,1,2,3,4,5], 10)).toBe(6)
+    expect(bisectLeft([0,1,2,3,4,5], -1)).toBe(0)
   })
 })
