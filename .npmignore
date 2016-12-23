@@ -1,4 +1,3 @@
-*
-!dist/**/*
-!package.json
-!*.md
+#!dist/**/*
+#!package.json
+#!*.md
