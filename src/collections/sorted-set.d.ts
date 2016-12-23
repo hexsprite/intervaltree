@@ -13,5 +13,7 @@ declare module 'collections/sorted-set' {
     addEach(l:SortedSet<T>|Array<T>):null
     iterator():Iterator<T>
     remove(v:T):null
+    sorted(cb: Function):SortedSet<T>
+    slice():SortedSet<T>
    }
 }

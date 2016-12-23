@@ -21,10 +21,9 @@
 			"@types/jest"
 		]
 	},
-	// "include": [
-	// 	"src/**/*.d.ts",
-	// 	"src/**/*.ts"
-	// ],
+	"include": [
+		"src/**/*"
+	],
 	"exclude": [
 		"node_modules"
 	]

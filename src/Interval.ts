@@ -36,4 +36,27 @@ export class Interval {
     */
     return (this.start <= point) && (point < this.end)
   }
+
+  public overlaps(start: number|Interval, end?: number):boolean {
+    /*
+    Whether the interval overlaps the given point, range or Interval.
+    :param begin: beginning point of the range, or the point, or an Interval
+    :param end: end point of the range. Optional if not testing ranges.
+    :return: True or False
+    :rtype: bool
+    */
+    if (end !== undefined) {
+        return (
+            (start <= this.start && this.start < end) ||
+            (start < this.end && this.end <= end) ||
+            (this.start <= start && start < this.end) ||
+            (this.start < end && end <= this.end)
+        )
+    }
+    if (typeof start === 'Interval') {
+      let iv:Interval = start as Interval
+      return this.overlaps(iv.start, iv.end)
+    }
+    return this.containsPoint(start as number)
+  }
 }

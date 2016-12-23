@@ -15,6 +15,10 @@ describe("IntervalTree", () => {
     tree = new IntervalTree()
   })
 
+  afterEach(() => {
+    tree.verify()
+  })
+
   it("Should be pass sanity", () => {
     expect(typeof IntervalTree).toBe("function")
   })
@@ -109,5 +113,63 @@ describe("IntervalTree", () => {
 
     expect(tree.searchByLengthStartingAt(3, 9).toString())
     .toBe("Interval(9, 13),Interval(14, 19)")
+  })
+
+  it('clone', ()=> {
+    tree.addInterval(0,1)
+    tree.addInterval(2,4)
+    tree.addInterval(5,8)
+    tree.addInterval(9,13)
+    let cloned = tree.clone()
+    expect(cloned.toString()).toBe(tree.toString())
+  })
+
+  fit('chop bugs', () => {
+    tree.initFromSimpleArray([
+      [1406304000000, 1406332800000],
+      [1406324425000, 1406328025000],
+      [1406328025000, 1406335225000],
+      [1406563200000, 1406592000000],
+      [1406649600000, 1406678400000],
+      [1406736000000, 1406764800000],
+      [1406822400000, 1406851200000],
+      [1406908800000, 1406937600000],
+      [1407168000000, 1407196800000],
+      [1407254400000, 1407283200000],
+      [1407340800000, 1407369600000],
+      [1407427200000, 1407456000000]
+    ])
+    tree.chop(1406271600000, 1406304000000)
+    tree.chop(1406332800000, 1406358000000)
+    tree.chop(1406358000000, 1406444400000)
+    tree.chop(1406444400000, 1406530800000)
+    tree.chop(1406530800000, 1406563200000)
+    tree.chop(1406592000000, 1406617200000)
+    tree.chop(1406617200000, 1406649600000)
+    tree.chop(1406678400000, 1406703600000)
+    tree.chop(1406703600000, 1406736000000)
+    tree.chop(1406764800000, 1406790000000)
+    tree.chop(1406790000000, 1406822400000)
+    tree.chop(1406851200000, 1406876400000)
+    tree.chop(1406876400000, 1406908800000)
+    tree.chop(1406937600000, 1406962800000)
+    tree.chop(1406962800000, 1407049200000)
+    tree.chop(1407049200000, 1407135600000)
+    tree.chop(1407135600000, 1407168000000)
+    tree.chop(1407196800000, 1407222000000)
+    tree.chop(1407222000000, 1407254400000)
+  })
+
+  it('verifies empty', () => {
+    tree.verify()
+  })
+
+  it('verifies with content', () => {
+    tree.initFromSimpleArray([
+      [1,2],
+      [3,4],
+      [5,6]
+    ])
+    tree.verify()
   })
 })
