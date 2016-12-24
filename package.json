@@ -38,7 +38,7 @@
     "standard-version": "^2.4.0",
     "ts-jest": "^18.0.0",
     "tslint": "^3.15.1",
-    "tslint-microsoft-contrib": "~4.0.0",
+    "tslint-microsoft-contrib": "~4.0.0"
   },
   "dependencies": {
     "collections": "^5.0.6",
