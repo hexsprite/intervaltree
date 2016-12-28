@@ -11,8 +11,10 @@ export class Interval {
   }
 
   public constructor(start: number, end: number, data?: Object) {
-    assert.equal(typeof start, 'number', 'start not number')
-    assert.equal(typeof end, 'number', 'end not number')
+    assert.equal(typeof start, 'number', `start not number: ${start}`)
+    assert.equal(typeof end, 'number', `end not number: ${end}`)
+    assert(start !== NaN)
+    assert(end !== NaN)
     this.start = start
     this.end = end
     this.data = data
