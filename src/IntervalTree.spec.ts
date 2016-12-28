@@ -178,4 +178,19 @@ describe("IntervalTree", () => {
     expect(bisectLeft([0,1,2,3,4,5], 10)).toBe(6)
     expect(bisectLeft([0,1,2,3,4,5], -1)).toBe(0)
   })
+
+  it('JSON serialization', () => {
+    tree.addInterval(1,2, 'data')
+    tree.addInterval(3,4)
+    const json = JSON.stringify(tree)
+    let tree2 = IntervalTree.fromJSON(json)
+    expect(tree.allIntervals.equals(tree2.allIntervals)).toBe(true)
+  })
+
+  it('hashing', () => {
+    tree.addInterval(1,2, 'data')
+    tree.addInterval(3,4)
+    let tree2 = tree.clone()    
+    expect(tree.hash()).toBe(tree2.hash())
+  })
 })

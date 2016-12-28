@@ -2,6 +2,7 @@ let assert = require('assert')
 let SortedMap = require('collections/sorted-map')
 let SortedSet = require('collections/sorted-set')
 let range = require('lodash.range')
+const crypto = require('crypto')
 
 import { bisectLeft } from './bisect'
 import { debug } from './debug'
@@ -27,8 +28,28 @@ export class IntervalTree {
     this.initFromArray(intervals.map(x => new Interval(x[0], x[1])))
   }
 
+  public toJSON() {
+    return this.allIntervals.toArray()
+  }
+
+  public static fromJSON(nodes:any) {
+    const intervals = []
+    if (typeof nodes === 'string')
+      nodes = JSON.parse(nodes)
+    for (const node of nodes) {
+      intervals.push(new Interval(node.start, node.end, node.data))
+    }
+    return new IntervalTree(intervals)
+  }
+
+  public hash() {
+    const hash = crypto.createHash('md5')
+    hash.update(JSON.stringify(this))
+    return hash.digest('hex')
+  }
+
   private __init(intervals:any) {
-    this.allIntervals = new IntervalSet([]).addEach(intervals)
+    this.allIntervals = new IntervalSet().addEach(intervals)
     this.allIntervalsByLength = new IntervalLengthSet([]).addEach(intervals)
     this.topNode = Node.fromIntervals(intervals)
     this.boundaryTable = SortedMap()
@@ -276,12 +297,12 @@ export class IntervalTree {
      :rtype: set of Interval
     */
     if (!this.topNode) {
-      return new IntervalSet([])
+      return new IntervalSet()
     }
     if (end === null) {
-      return this.topNode.searchPoint(start, new IntervalSet([]))
+      return this.topNode.searchPoint(start, new IntervalSet())
     }
-    let result = this.topNode.searchPoint(start, new IntervalSet([]))
+    let result = this.topNode.searchPoint(start, new IntervalSet())
     let keysArray = this.boundaryTable.keysArray()
     let boundStart = bisectLeft(keysArray, start)
     let boundEnd = bisectLeft(keysArray, end)  // exclude final end bound
@@ -324,7 +345,7 @@ export class IntervalTree {
     // PERF: should be possible to use .clone() and pass directly? Faster?
   }
 
-  public verify(parents=new IntervalSet([])) {
+  public verify(parents=new IntervalSet()) {
     /*
     DEBUG ONLY
     Checks the table to ensure that the invariants are held.
