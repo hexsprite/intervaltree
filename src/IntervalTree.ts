@@ -24,8 +24,8 @@ export class IntervalTree {
     this.__init(intervals)
   }
 
-  public initFromSimpleArray(intervals: Array<Array<number>>) {
-    this.initFromArray(intervals.map(x => new Interval(x[0], x[1])))
+  public initFromSimpleArray(intervals: Array<[number, number, null | string]>) {
+    this.initFromArray(intervals.map(x => new Interval(x[0], x[1], x[2])))
   }
 
   public toJSON() {
@@ -179,7 +179,7 @@ export class IntervalTree {
   public printForTests() {
     let arr = this.allIntervals.toArray()
     arr.forEach((iv) => {
-      console.log(`[${iv.start}, ${iv.end}],`)
+      console.log(`[${iv.start}, ${iv.end}, ${iv.data}],`)
     })
   }
 
@@ -321,17 +321,23 @@ export class IntervalTree {
   }
 
   public searchByLengthStartingAt(length: number, start:number):Array {
-    // filter by length
-    let result = this.allIntervalsByLength.findLeastGreaterThan(
-      Interval.fromLength(length))
-    let idx = this.allIntervalsByLength.indexOf(result.value)
+    // find all intervals that overlap start
+    let intervals = this.search(start, Infinity)
 
-    // filter by start
-    let is = this.allIntervalsByLength.slice(idx)
-    let byStart = new IntervalSet(is)
-    result = byStart.findLeastGreaterThanOrEqual(new Interval(start, start))
-    idx = byStart.indexOf(result.value)
-    return byStart.slice(idx)
+    // adjust nodes to match the start time
+    intervals = intervals.map(iv => {
+      // return a new node with changed start time if necessary
+      if (iv.start < start)
+        return new Interval(start, iv.end, iv.data)
+      return iv
+    })
+
+    // now filter by duration
+    // console.log('by duration', intervals.toArray())
+    // console.log('desired length', length)
+    intervals = intervals.filter(iv => iv.length >= length)
+    // console.log('after duration', intervals.toArray())
+    return intervals
   }
   
   public clone():IntervalTree {
@@ -352,7 +358,9 @@ export class IntervalTree {
     */
     if (this.allIntervals.length) {
       assert(this.topNode.allChildren().equals(this.allIntervals), 
-        'Error: the tree and the membership set are out of sync!')
+`Error: the tree and the membership set are out of sync! \
+fromNodes=${this.topNode.allChildren().toArray()} \
+allIntervals=${this.allIntervals.toArray()}`)
 
       // No null intervals
       this.allIntervals.forEach((iv) => {

@@ -12,14 +12,30 @@ export class Node {
   private depth: number
   private balance: number
 
-  public constructor(xCenter:number, sCenter:Array<Interval>|IntervalSet, leftNode?:Node, rightNode?:Node) {
+  public constructor(xCenter:number, sCenter:Array<Interval>|IntervalSet=[],
+                     leftNode?:Node, rightNode?:Node, rotate:boolean=true, 
+                     depth=0, balance=0) {
     this.xCenter = xCenter
-    this.sCenter = new IntervalSet(sCenter || [])
+    this.sCenter = new IntervalSet(sCenter)
     this.leftNode = leftNode
     this.rightNode = rightNode
-    this.depth = 0    // set when rotated
-    this.balance = 0  // ditto
-    this.rotate()
+    this.depth = depth    // set when rotated
+    this.balance = balance  // ditto
+    if (rotate)
+      this.rotate()
+  }
+
+  public clone():Node {
+    function nodeCloner(node) {
+      if (node) {
+        return node.clone()
+      } else {
+        return node
+      }
+    }
+    return new Node(this.xCenter, this.sCenter.clone(),
+      nodeCloner(this.leftNode), nodeCloner(this.rightNode), false,
+      this.depth, this.balance)
   }
 
   public static fromInterval(interval:Interval) {
@@ -338,8 +354,8 @@ export class Node {
       // a child node containing the smallest possible number of
       // intervals, as close as possible to the maximum bound.
       let ivs = this.sCenter.sorted((a:Interval, b:Interval) => { 
-        let keyA = `${a.end},${a.start}`
-        let keyB = `${b.end},${b.start}`
+        let keyA = `${a.end},${a.start},${a.data}`
+        let keyB = `${b.end},${b.start},${b.data}`
         return Object.compare(keyA, keyB)
       })
       let maxIv = ivs.pop()

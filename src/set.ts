@@ -1,24 +1,27 @@
 import { Interval } from './Interval'
 import { SortedSet } from 'collections/sorted-set'
-
+import * as lodash from 'lodash'
 
 /* comparison interface for collectionsjs */
 function equals(a: Interval, b: Interval) {
-  return (a.start === b.start) && (a.end === b.end)
+  return ((a.start === b.start) && (a.end === b.end) &&
+    lodash.isEqual(a.data, b.data))
 }
 
 
 export function compareByInterval(a: Interval, b: Interval) {
-  // compare so that it first compares using start then end
-  if (a.start < b.start) {
-    return -1
-  } else if (a.start > b.start) {
-    return 1
-  } else {
-    if (a.end < b.end) {
-      return -1
-    } else if (a.end > b.end) {
-      return 1
+  for (const key of ['start', 'end', 'data']) {
+    const av = a[key]
+    const bv = b[key]
+    let result = Object.compare(av, bv)
+    if (key === 'data' && result === 0 && av !== bv) {
+      if (av < bv)
+        result = -1
+      else
+        result = 1
+    }
+    if (result !== 0) {
+      return result
     }
   }
   return 0

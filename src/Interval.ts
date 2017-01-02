@@ -22,7 +22,10 @@ export class Interval {
   }
 
   public toString() {
-    return `Interval(${this.start}, ${this.end})` //, length=${this.length})`
+    if (this.data) {
+      return `Interval(${this.start}, ${this.end}, ${this.data})`
+    }
+    return `Interval(${this.start}, ${this.end})`
   }
 
   public isNull() {

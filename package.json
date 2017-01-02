@@ -43,6 +43,7 @@
   "dependencies": {
     "collections": "^5.0.6",
     "debug": "^2.5.1",
+    "lodash": "^4.17.3",
     "lodash.range": "^3.2.0",
     "typescript": "~2.1.4"
   },

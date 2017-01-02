@@ -13,7 +13,7 @@ describe("IntervalTree", () => {
     tree = new IntervalTree()
   })
 
-  afterEach(() => {
+  afterEach(function afterEach() {
     tree.verify()
   })
 
@@ -30,11 +30,27 @@ describe("IntervalTree", () => {
     expectTree("IntervalTree([Interval(1, 5)])")
   })
 
+  it('inserts unique datapoints', () => {
+    tree.addInterval(0, 3)
+    tree.addInterval(0, 3, 'a')
+    tree.addInterval(0, 3, 'b')
+    expect(tree.allIntervals.length).toBe(3)
+  })
+
   it("merges overlapping intervals", () => {
     tree.addInterval(1, 5)
     tree.addInterval(5, 9)
     tree.addInterval(15,19)
     tree.addInterval(19,25)    
+    tree.mergeOverlaps()
+    expectTree("IntervalTree([Interval(1, 9),Interval(15, 25)])")
+  })
+
+  it("merges overlapping intervals with data", () => {
+    tree.addInterval(1, 5)
+    tree.addInterval(5, 9)
+    tree.addInterval(15,19)
+    tree.addInterval(19,25, 'i')
     tree.mergeOverlaps()
     expectTree("IntervalTree([Interval(1, 9),Interval(15, 25)])")
   })
@@ -124,6 +140,38 @@ describe("IntervalTree", () => {
     expect(cloned.toString()).toBe(tree.toString())
   })
 
+  it('search bugs', () => {
+    tree.initFromSimpleArray([
+      [1483315500000, 1483318800000, 'hb3u3ztHuvPttf7dD'],
+      [1483387200000, 1483394400000, null],
+      [1483399800000, 1483405200000, '56NL2yqQJMhZ4w4dD'],
+      [1483462800000, 1483480800000, 'fK3PPyXJss2g4LKWi'],
+      [1483486200000, 1483491600000, 'qXnxZZa5yjeEPtT4z'],
+      [1483549200000, 1483567200000, 'FMrcgBLxHSnvdsxao'],
+      [1483572600000, 1483578000000, 'p8SFaNDiYZDfweknu'],
+      [1483635600000, 1483653600000, 'sTijSr5vv8547KopH'],
+      [1483659000000, 1483664400000, 'o2BiALLdKb56getkD'],
+      [1483722000000, 1483740000000, 'BQxTPexLBK9S7e5JQ'],
+      [1483745400000, 1483750800000, 'BsnAJnyLqCx8MzNqe'],
+      [1483808400000, 1483837200000, 'PauxpTjuhZYpWfpu4'],
+      [1483894800000, 1483923600000, 'v9jid69q9jjneSmFW'],
+      [1483981200000, 1483999200000, 'M8G8wBXzqzCxX8yFh'],
+      [1484004600000, 1484010000000, 'KD5Cb3Cu2ZBGJ9r6g'],
+      [1484067600000, 1484085600000, 'bRyNQepujF78AAFCF'],
+      [1484091000000, 1484096400000, '4uAJHFrSfQDoeJEZH'],
+      [1484154000000, 1484172000000, 'ZNNrQEdmsdEnJe6zc'],
+      [1484177400000, 1484182800000, 'CaaugipzJX3sXB4wP'],
+      [1484240400000, 1484258400000, 'Zb9z5vKiGZ6BSC5pX'],
+      [1484263800000, 1484269200000, 'MbSdt5N4XMTJ88uGt'],
+      [1484326800000, 1484344800000, 'ib7YL6tSt5ZWPd8rL'],
+      [1484350200000, 1484355600000, 'jCNZXuX8hrNnWvZpS'],
+      [1484413200000, 1484442000000, 'null']
+    ])
+    // expect(tree.search(1483315556345, Infinity)).toBe('')
+    expect(tree.searchByLengthStartingAt(3600000, 1483315556345).toString())
+    .toBe("Interval(1483387200000, 1483394400000),Interval(1483399800000, 1483405200000, 56NL2yqQJMhZ4w4dD),Interval(1483462800000, 1483480800000, fK3PPyXJss2g4LKWi),Interval(1483486200000, 1483491600000, qXnxZZa5yjeEPtT4z),Interval(1483549200000, 1483567200000, FMrcgBLxHSnvdsxao),Interval(1483572600000, 1483578000000, p8SFaNDiYZDfweknu),Interval(1483635600000, 1483653600000, sTijSr5vv8547KopH),Interval(1483659000000, 1483664400000, o2BiALLdKb56getkD),Interval(1483722000000, 1483740000000, BQxTPexLBK9S7e5JQ),Interval(1483745400000, 1483750800000, BsnAJnyLqCx8MzNqe),Interval(1483808400000, 1483837200000, PauxpTjuhZYpWfpu4),Interval(1483894800000, 1483923600000, v9jid69q9jjneSmFW),Interval(1483981200000, 1483999200000, M8G8wBXzqzCxX8yFh),Interval(1484004600000, 1484010000000, KD5Cb3Cu2ZBGJ9r6g),Interval(1484067600000, 1484085600000, bRyNQepujF78AAFCF),Interval(1484091000000, 1484096400000, 4uAJHFrSfQDoeJEZH),Interval(1484154000000, 1484172000000, ZNNrQEdmsdEnJe6zc),Interval(1484177400000, 1484182800000, CaaugipzJX3sXB4wP),Interval(1484240400000, 1484258400000, Zb9z5vKiGZ6BSC5pX),Interval(1484263800000, 1484269200000, MbSdt5N4XMTJ88uGt),Interval(1484326800000, 1484344800000, ib7YL6tSt5ZWPd8rL),Interval(1484350200000, 1484355600000, jCNZXuX8hrNnWvZpS),Interval(1484413200000, 1484442000000, null)")
+  })
+  
   it('chop bugs', () => {
     tree.initFromSimpleArray([
       [1406304000000, 1406332800000],
