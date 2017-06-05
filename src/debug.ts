@@ -7,8 +7,12 @@ export function debug(...args:any[]) {
   if (enableDebug) {
     let consoleArgs = args
     if (args.length === 1 && typeof args[0] === 'function')
-      consoleArgs = args[0]()
-    console.log(...consoleArgs)
+      consoleArgs = [args[0]()]
+    if (typeof logger !== 'undefined') {
+      logger.debug(...consoleArgs)
+    }
+    else {
+      console.log(...consoleArgs)
+    }
   }
 }
-
