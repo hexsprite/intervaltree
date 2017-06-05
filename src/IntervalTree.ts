@@ -3,6 +3,7 @@ let SortedMap = require('collections/sorted-map')
 let SortedSet = require('collections/sorted-set')
 let range = require('lodash.range')
 const crypto = require('crypto')
+import * as lodash from 'lodash'
 
 import { bisectLeft } from './bisect'
 import { debug } from './debug'
@@ -345,10 +346,13 @@ export class IntervalTree {
     Checks the table to ensure that the invariants are held.
     */
     if (this.allIntervals.length) {
-      assert(this.topNode.allChildren().equals(this.allIntervals),
-`Error: the tree and the membership set are out of sync! \
+      assert(lodash.isEqual(
+        this.topNode.allChildren().toArray(),
+        this.allIntervals.toArray()
+      ), `Error: the tree and the membership set are out of sync! \
 fromNodes=${this.topNode.allChildren().toArray()} \
-allIntervals=${this.allIntervals.toArray()}`)
+allIntervals=${this.allIntervals.toArray()}`
+      )
 
       // No null intervals
       this.allIntervals.forEach((iv) => {
