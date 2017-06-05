@@ -12,7 +12,6 @@ import { IntervalSet, IntervalLengthSet, compareByInterval } from './set'
 
 export class IntervalTree {
   public allIntervals: IntervalSet
-  public allIntervalsByLength: IntervalLengthSet
   private topNode: Node
   private boundaryTable: SortedMap
 
@@ -48,16 +47,6 @@ export class IntervalTree {
     return hash.digest('hex')
   }
 
-  private __init(intervals:any) {
-    this.allIntervals = new IntervalSet().addEach(intervals)
-    this.allIntervalsByLength = new IntervalLengthSet([]).addEach(intervals)
-    this.topNode = Node.fromIntervals(intervals)
-    this.boundaryTable = SortedMap()
-    for (let iv of intervals) {
-      this.addBoundaries(iv)
-    }
-  }
-
   public add(interval: Interval) {
     //debug('tree/add', interval)
     if (this.allIntervals.has(interval)) {
@@ -72,7 +61,6 @@ export class IntervalTree {
       this.topNode = this.topNode.add(interval)
     }
     this.allIntervals.add(interval)
-    this.allIntervalsByLength.add(interval)
     this.addBoundaries(interval)
   }
 
@@ -133,7 +121,7 @@ export class IntervalTree {
   public remove(interval: Interval, ignoreMissing=false) {
     /*
     Removes an interval from the tree, if present. If not, raises
-    TypeError.
+    RangeError.
 
     Completes in O(log n) time.
     */
@@ -141,15 +129,14 @@ export class IntervalTree {
     if (!this.allIntervals.has(interval)) {
       if (ignoreMissing)
         return
-      throw new RangeError('no such interval')
+      throw new RangeError(`no such interval: ${interval}`)
     }
     this.topNode = this.topNode.remove(interval)
     this.allIntervals.delete(interval)
-    this.allIntervalsByLength.remove(interval)
     this.removeBoundaries(interval)
   }
 
-  public removeEnveloped(start:number, end:number) {
+  public removeEnveloped(start: number, end: number) {
     /*
     Removes all intervals completely enveloped in the given range.
 
@@ -158,10 +145,10 @@ export class IntervalTree {
       * m = number of matches
       * r = size of the search range (this is 1 for a point)
     */
-    //debug(`removeEnveloped: start=${start} end=${end}`)
+    debug(`removeEnveloped: start=${start} end=${end}`)
     let hitlist = this.search(start, end, true)
     hitlist.forEach(iv => {
-      //debug('removing', iv)
+      debug('removing', iv)
       this.remove(iv)
     })
   }
@@ -253,7 +240,7 @@ export class IntervalTree {
         this.boundaryTable.set(point, this.boundaryTable.get(point) + 1)
       } else {
         this.boundaryTable.set(point, 1)
-      }    
+      }
     }
     addBoundary(start)
     addBoundary(end)
@@ -320,15 +307,16 @@ export class IntervalTree {
     return result
   }
 
-  public searchByLengthStartingAt(length: number, start:number):Array {
+  public searchByLengthStartingAt(length: number, start: number): IntervalSet {
     // find all intervals that overlap start
     let intervals = this.search(start, Infinity)
 
     // adjust nodes to match the start time
     intervals = intervals.map(iv => {
       // return a new node with changed start time if necessary
-      if (iv.start < start)
+      if (iv.start < start) {
         return new Interval(start, iv.end, iv.data)
+      }
       return iv
     })
 
@@ -339,12 +327,12 @@ export class IntervalTree {
     // console.log('after duration', intervals.toArray())
     return intervals
   }
-  
-  public clone():IntervalTree {
+
+  public clone(): IntervalTree {
     /*
-    Construct a new IntervalTree using shallow copies of the 
+    Construct a new IntervalTree using shallow copies of the
     intervals in the source tree.
-    
+
     Completes in O(n*log n) time.
     */
     return new IntervalTree(this.allIntervals.toArray())
@@ -357,7 +345,7 @@ export class IntervalTree {
     Checks the table to ensure that the invariants are held.
     */
     if (this.allIntervals.length) {
-      assert(this.topNode.allChildren().equals(this.allIntervals), 
+      assert(this.topNode.allChildren().equals(this.allIntervals),
 `Error: the tree and the membership set are out of sync! \
 fromNodes=${this.topNode.allChildren().toArray()} \
 allIntervals=${this.allIntervals.toArray()}`)
@@ -391,9 +379,18 @@ allIntervals=${this.allIntervals.toArray()}`)
       this.topNode.verify(new SortedSet([]))
     } else {
       // Verify empty tree
-      assert(!this.boundaryTable.length, 
+      assert(!this.boundaryTable.length,
         'boundary table should be empty')
       assert(!this.topNode, 'topNode isn\'t None')
+    }
+  }
+
+  private __init(intervals:any) {
+    this.allIntervals = new IntervalSet().addEach(intervals)
+    this.topNode = Node.fromIntervals(intervals)
+    this.boundaryTable = SortedMap()
+    for (let iv of intervals) {
+      this.addBoundaries(iv)
     }
   }
 }
