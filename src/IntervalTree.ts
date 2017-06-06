@@ -150,7 +150,20 @@ export class IntervalTree {
     let hitlist = this.search(start, end, true)
     hitlist.forEach(iv => {
       debug('removing', iv)
-      this.remove(iv)
+      try {
+        this.remove(iv)
+      } catch (err) {
+        if (err.constructor === RangeError) {
+          err.message += `
+removeEnveloped(${start}, ${end})
+allIntervals=${this.allIntervals.toArray()}
+hitlist=${hitlist.toArray()}
+badInterval=${iv}
+`
+          // rethrow error now that we added more debug info
+          throw err
+        }
+      }
     })
   }
 
