@@ -3,6 +3,8 @@
 intervaltree
 ============
 
+[![Greenkeeper badge](https://badges.greenkeeper.io/hexsprite/intervaltree.svg?token=aea6751002a064303361fddac5458cb3349c8c279c2bec3e02d4a1b88b787353&ts=1496850411833)](https://greenkeeper.io/)
+
 A mutable, self-balancing interval tree for Python 2 and 3. Queries may be by point, by range overlap, or by range envelopment.
 
 This library was designed to allow tagging text and time intervals, where the intervals include the lower bound but not the upper bound.
