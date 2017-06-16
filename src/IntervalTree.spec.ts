@@ -208,6 +208,15 @@ describe("IntervalTree", () => {
     tree.chop(1407222000000, 1407254400000)
   })
 
+  it('FOC-209 removeEnveloped RangeError', () => {
+    debugger;
+    tree.initFromSimpleArray([
+      [ 1496948100000, 1496948400000, 'PfcyAB6iRmDxbfGSF'],
+      [ 1496948100000, 1496948400000 ]
+    ])
+    tree.removeEnveloped(0, 1496948400000)
+  })
+
   it('verifies empty', () => {
     tree.verify()
   })

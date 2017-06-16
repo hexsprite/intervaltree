@@ -11,8 +11,8 @@ function equals(a: Interval, b: Interval) {
 
 export function compareByInterval(a: Interval, b: Interval) {
   for (const key of ['start', 'end', 'data']) {
-    const av = a[key]
-    const bv = b[key]
+    const av = a[key] || ''  // solve problems with undefined values
+    const bv = b[key] || ''  // ""
     let result = Object.compare(av, bv)
     if (key === 'data' && result === 0 && av !== bv) {
       if (av < bv)
