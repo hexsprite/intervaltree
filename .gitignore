@@ -12,5 +12,5 @@ yarn.lock
 !.travis.yml
 !LICENSE
 !.npmignore
-
+src/*.js
 *.log

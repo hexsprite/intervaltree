@@ -31,21 +31,22 @@
   },
   "homepage": "https://github.com/hexsprite/intervaltree",
   "devDependencies": {
-    "@types/jest": "^16.0.1",
-    "@types/node": "^6.0.52",
+    "@types/jest": "^20.0.2",
+    "@types/node": "^8.0.2",
     "jest": "~18.0.0",
     "rimraf": "^2.5.2",
-    "standard-version": "^2.4.0",
-    "ts-jest": "^18.0.0",
-    "tslint": "^3.15.1",
-    "tslint-microsoft-contrib": "~4.0.0"
+    "standard-version": "^4.2.0",
+    "ts-jest": "^20.0.6",
+    "tslint": "^5.4.3",
+    "tslint-microsoft-contrib": "~5.0.0"
   },
   "dependencies": {
-    "collections": "^5.0.6",
+    "assert": "^1.4.1",
+    "collections": "git+https://github.com/Cornally/collections.git",
     "debug": "^2.5.1",
     "lodash": "^4.17.3",
     "lodash.range": "^3.2.0",
-    "typescript": "~2.1.4"
+    "typescript": "^2.4.0"
   },
   "jest": {
     "testEnvironment": "node",

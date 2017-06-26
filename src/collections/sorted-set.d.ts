@@ -1,19 +1,24 @@
 declare module 'collections/sorted-set' {
+  class Iterator<T> {
+    public next(): { done: boolean, value: any }
+  }
   class SortedSet<T> {
     public length: number
 
-    constructor(intervals:[T]|SortedSet<T>|undefined[], compare: Function, equals: Function)
-    add(v:T):null
-    has(v:T):boolean
-    toArray():Array<T>
-    forEach(cb: (v:T) => void):null
-    delete(v:T):null
-    filter(cb: (v:T) => void):SortedSet<T>
-    keysArray():Array<T>
-    addEach(l:SortedSet<T>|Array<T>):null
-    iterator():Iterator<T>
-    remove(v:T):null
-    sorted(cb: Function):SortedSet<T>
-    slice():SortedSet<T>
+    constructor(intervals: [T] | SortedSet<T> | [ null | any],
+                compare: Function, equals: Function)
+    public add(v: T): null
+    public addEach(l: SortedSet<T>|Array<T>): null
+    public delete(v: T): null
+    public filter(cb: (v: T) => void): SortedSet<T>
+    public forEach(cb: (v: T) => void): null
+    public has(v: T): boolean
+    public iterator(): Iterator<T>
+    public keysArray(): Array<T>
+    public map(Function): Array<any>
+    public remove(v: T): null
+    public slice(): SortedSet<T>
+    public sorted(cb: Function): SortedSet<T>
+    public toArray(): Array<T>
    }
 }

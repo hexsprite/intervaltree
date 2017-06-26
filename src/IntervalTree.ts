@@ -1,8 +1,8 @@
-let assert = require('assert')
-let SortedMap = require('collections/sorted-map')
-let SortedSet = require('collections/sorted-set')
-let range = require('lodash.range')
-const crypto = require('crypto')
+import * as assert from 'assert'
+import * as SortedMap from 'collections/sorted-map'
+import * as SortedSet from 'collections/sorted-set'
+import * as range from 'lodash.range'
+import * as crypto from 'crypto'
 import * as lodash from 'lodash'
 
 import { bisectLeft } from './bisect'
@@ -24,7 +24,8 @@ export class IntervalTree {
     this.__init(intervals)
   }
 
-  public initFromSimpleArray(intervals: Array<[number, number, null | string]>) {
+  public initFromSimpleArray(intervals: Array<[number, number, null | string |
+    number, number]>) {
     this.initFromArray(intervals.map(x => new Interval(x[0], x[1], x[2])))
   }
 
@@ -321,12 +322,10 @@ badInterval=${iv}
     return result
   }
 
-  public searchByLengthStartingAt(length: number, start: number): IntervalSet {
+  public searchByLengthStartingAt(length: number, start: number): Array<Interval> {
     // find all intervals that overlap start
-    let intervals = this.search(start, Infinity)
-
     // adjust nodes to match the start time
-    intervals = intervals.map(iv => {
+    let intervals : Array<Interval> = this.search(start, Infinity).map(iv => {
       // return a new node with changed start time if necessary
       if (iv.start < start) {
         return new Interval(start, iv.end, iv.data)

@@ -1,4 +1,4 @@
-const assert = require('assert')
+import * as assert from 'assert'
 import { debug } from './debug'
 import { Interval } from "./Interval"
 import { IntervalSet } from './set'
@@ -12,9 +12,9 @@ export class Node {
   private depth: number
   private balance: number
 
-  public constructor(xCenter:number, sCenter:Array<Interval>|IntervalSet=[],
-                     leftNode?:Node, rightNode?:Node, rotate:boolean=true, 
-                     depth=0, balance=0) {
+  public constructor(xCenter: number, sCenter: [Interval] | IntervalSet = [],
+                     leftNode?: Node, rightNode?: Node, rotate: boolean = true,
+                     depth = 0, balance = 0) {
     this.xCenter = xCenter
     this.sCenter = new IntervalSet(sCenter)
     this.leftNode = leftNode
@@ -99,7 +99,7 @@ export class Node {
 
   private singleRotate() {
     // Single rotation. Assumes that balance is +-2.
-    assert(this.balance != 0)
+    assert(this.balance !== 0)
     const heavy = this.balance > 0
     const light = !heavy
     const save = this.getBranch(heavy)
@@ -295,7 +295,7 @@ export class Node {
       }
       //debug(`removeIntervalHelper: Descending to ${direction} branch`)
       branch = branch.removeIntervalHelper(interval, done, shouldRaiseError)
-      this.setBranch(direction, branch)     
+      this.setBranch(direction, branch)
       // Clean up
       if (!done.length) {
         //debug(`removeIntervalHelper: rotating ${this.xCenter}`)
@@ -353,7 +353,7 @@ export class Node {
       // To reduce the chances of an overlap with a parent, return
       // a child node containing the smallest possible number of
       // intervals, as close as possible to the maximum bound.
-      let ivs = this.sCenter.sorted((a:Interval, b:Interval) => { 
+      let ivs = this.sCenter.sorted((a:Interval, b:Interval) => {
         let keyA = `${a.end},${a.start},${a.data}`
         let keyB = `${b.end},${b.start},${b.data}`
         return Object.compare(keyA, keyB)
@@ -397,27 +397,27 @@ export class Node {
         }
     }
   }
- 
-  public verify(parents=new SortedSet([])) {
+
+  public verify(parents: SortedSet=new SortedSet([])) {
     /*
     DEBUG ONLY
     Recursively ensures that the invariants of an interval subtree
     hold.
     */
-    // assert(typeof this.sCenter === 'IntervalSet', 
+    // assert(typeof this.sCenter === 'IntervalSet',
     //   `sCenter type is incorrect: ${typeof this.sCenter}`)
 
     let bal = this.balance
     assert(Math.abs(bal) < 2,
       "Error: Rotation should have happened, but didn't!")
-    
+
     this.refreshBalance()
     assert(bal === this.balance,
         "Error: this.balance not set correctly!")
 
     assert(this.sCenter.length,
       `Error: sCenter is empty!\n${this.printStructure(0, true)}`)
-    
+
     this.sCenter.forEach((iv) => {
       assert(typeof iv.start === 'number', `start not number: ${iv.start}`)
       assert(typeof iv.end === 'number', `end not number: ${iv.end}`)
