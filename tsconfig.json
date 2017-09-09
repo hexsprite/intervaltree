@@ -9,8 +9,7 @@
     "inlineSources": false,
     "removeComments": true,
     "outDir": "dist/",
-    "typeRoots": ["node_modules/@types"],
-    "types": ["@types/node", "@types/jest"]
+    "typeRoots": ["node_modules/@types"]
   },
   "include": ["src/**/*"],
   "exclude": ["**/*.spec.ts"]
