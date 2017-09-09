@@ -90,10 +90,13 @@ export class IntervalTree {
     endHits.forEach(iv => {
       insertions.add(new Interval(end, iv.end, iv.data))
     })
-    debug(
-      () =>
-        `chop: start=${start} end=${end} insertions=${insertions.toArray()} startHits=${startHits.toArray()} endHits=${endHits.toArray()}`
-    )
+    debug(() => ({
+      end,
+      endHits: endHits.toArray(),
+      insertions: insertions.toArray(),
+      start,
+      startHits: startHits.toArray()
+    }))
     debug(() => `chop: before=${this.allIntervals.toArray()}`)
     this.removeEnveloped(start, end)
     this.differenceUpdate(startHits)
@@ -197,27 +200,27 @@ badInterval=${iv}
   }
 
   public mergeOverlaps() {
-    const merged: [Interval] = [] as [Interval]
-    const currentReduced: [number | null] = [null]
+    const merged: Interval[] = []
+    let currentReduced: string
 
     const newSeries = (higher: Interval) => {
-      currentReduced[0] = higher.data
+      currentReduced = higher.data
       merged.push(higher)
     }
 
     this.allIntervals.forEach(higher => {
-      // debug('mergeOverlaps: higher', higher)
       if (merged.length) {
         // series already begun
         const lower = merged[merged.length - 1]
+        assert(higher.start)
         if (higher.start <= lower.end) {
           // should merge
           const upperBound = Math.max(lower.end, higher.end)
-          currentReduced[0] = null
+          currentReduced = null
           merged[merged.length - 1] = new Interval(
             lower.start,
             upperBound,
-            currentReduced[0]
+            currentReduced
           )
         } else {
           newSeries(higher)
@@ -375,7 +378,7 @@ badInterval=${iv}
     // PERF: should be possible to use .clone() and pass directly? Faster?
   }
 
-  public verify(parents: SortedSet<number> = new SortedSet()) {
+  public verify() {
     /*
     DEBUG ONLY
     Checks the table to ensure that the invariants are held.
@@ -421,7 +424,7 @@ allIntervals=${this.allIntervals.toArray()}`
       )
 
       // Internal tree structure
-      this.topNode.verify(new SortedSet())
+      this.topNode.verify()
     } else {
       // Verify empty tree
       assert(!this.boundaryTable.length, 'boundary table should be empty')

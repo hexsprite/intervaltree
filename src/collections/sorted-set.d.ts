@@ -3,7 +3,7 @@ declare module 'collections/sorted-set' {
   class Iterator<T> {
     public next(): { done: boolean; value: any }
   }
-  export class SortedSet<T> {
+  class SortedSet<T> {
     public length: number
 
     constructor(

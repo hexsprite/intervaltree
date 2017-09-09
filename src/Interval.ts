@@ -10,7 +10,7 @@ export class Interval {
   public data: any
   public length: number
 
-  public constructor(start: number, end: number, data?: object) {
+  public constructor(start: number, end: number, data?: any) {
     assert.equal(typeof start, 'number', `start not number: ${start}`)
     assert.equal(typeof end, 'number', `end not number: ${end}`)
     assert(!isNaN(start))
