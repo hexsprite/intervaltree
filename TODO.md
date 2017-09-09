@@ -1,7 +1,3 @@
-- Coverage
-
-    - npm run coverage works but there are sourcemap problems
-
 - IntervalTree: change to `this.branch[0]` instead of `this.getBranch(0), and
 `this.branch[0] = x` instead of `this.setBranch(0, x)`
 
@@ -17,3 +13,5 @@ a concern.
   - https://github.com/facebook/immutable-js/issues/88
   - https://github.com/rongierlach/immutable-sorted-map
   - https://github.com/applitopia/immutable-sorted
+
+- logger should be imported cleanly (get rid of globals.d.ts ref)

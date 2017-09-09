@@ -21,7 +21,12 @@
     "type": "git",
     "url": "git+https://github.com/hexsprite/intervaltree.git"
   },
-  "keywords": ["typescript", "library", "intervaltree", "tree"],
+  "keywords": [
+    "typescript",
+    "library",
+    "intervaltree",
+    "tree"
+  ],
   "bugs": {
     "url": "https://github.com/hexsprite/intervaltree/issues"
   },
@@ -38,6 +43,7 @@
     "tslint-microsoft-contrib": "^5.0.1"
   },
   "dependencies": {
+    "@types/lodash": "^4.14.74",
     "assert": "^1.4.1",
     "collections": "git+https://github.com/Cornally/collections.git",
     "debug": "^3.0.1",
@@ -50,9 +56,18 @@
     "transform": {
       ".(ts|tsx)": "<rootDir>/node_modules/ts-jest/preprocessor.js"
     },
-    "moduleFileExtensions": ["ts", "tsx", "js", "jsx"],
+    "moduleFileExtensions": [
+      "ts",
+      "tsx",
+      "js",
+      "jsx"
+    ],
     "testRegex": ".*\\.(test|spec)\\.(ts)$",
     "coverageDirectory": "coverage",
-    "collectCoverageFrom": ["src/**/*.{ts,tsx,js,jsx}", "!src/**/*.d.ts"]
+    "collectCoverageFrom": [
+      "src/**/*.{ts,tsx}",
+      "!src/**/*.d.ts"
+    ],
+    "mapCoverage": true
   }
 }

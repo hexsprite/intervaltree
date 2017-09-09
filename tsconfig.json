@@ -3,24 +3,15 @@
   "compilerOptions": {
     "moduleResolution": "node",
     "module": "commonjs",
-    "target": "es5",
+    "target": "es6",
     "sourceMap": false,
     "inlineSourceMap": true,
     "inlineSources": false,
     "removeComments": true,
     "outDir": "dist/",
-    "typeRoots": [
-      "node_modules/@types"
-    ],
-    "types": [
-      "@types/node",
-      "@types/jest"
-    ]
+    "typeRoots": ["node_modules/@types"],
+    "types": ["@types/node", "@types/jest"]
   },
-  "include": [
-    "src/**/*"
-  ],
-  "exclude": [
-    "**/*.spec.ts"
-  ]
+  "include": ["src/**/*"],
+  "exclude": ["**/*.spec.ts"]
 }
