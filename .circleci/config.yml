@@ -5,9 +5,20 @@ jobs:
       - image: node:latest
     steps:
       - checkout
+      - restore_cache:
+          key: dependency-cache-{{ checksum "package.json" }}
       - run:
           name: install
           command: npm install
+      - save_cache:
+          key: dependency-cache-{{ checksum "package.json" }}
+          paths:
+            - ./node_modules
       - run:
           name: test
-          command: npm test
+          command: npm run test:ci
+      - store_test_results:
+          path: junit.xml
+      - store_artifacts:
+          path: junit.xml
+          destination: tests

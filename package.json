@@ -10,6 +10,7 @@
     "build": "tsc || true",
     "prebuild": "rimraf dist",
     "test": "jest",
+    "test:ci": "jest --ci --testResultsProcessor='jest-junit'",
     "test:watch": "jest --watch",
     "coverage": "jest --coverage",
     "coverage:watch": "jest --coverage --watch",
@@ -20,50 +21,38 @@
     "type": "git",
     "url": "git+https://github.com/hexsprite/intervaltree.git"
   },
-  "keywords": [
-    "typescript",
-    "library",
-    "intervaltree",
-    "tree"
-  ],
+  "keywords": ["typescript", "library", "intervaltree", "tree"],
   "bugs": {
     "url": "https://github.com/hexsprite/intervaltree/issues"
   },
   "homepage": "https://github.com/hexsprite/intervaltree",
   "devDependencies": {
-    "@types/jest": "^20.0.2",
-    "@types/node": "^8.0.2",
-    "jest": "~18.0.0",
+    "@types/jest": "^20.0.8",
+    "@types/node": "^8.0.28",
+    "jest": "^21.0.2",
+    "jest-junit": "^3.0.0",
     "rimraf": "^2.5.2",
     "standard-version": "^4.2.0",
-    "ts-jest": "^20.0.6",
-    "tslint": "^5.4.3",
-    "tslint-microsoft-contrib": "~5.0.0"
+    "ts-jest": "^21.0.0",
+    "tslint": "^5.7.0",
+    "tslint-microsoft-contrib": "^5.0.1"
   },
   "dependencies": {
     "assert": "^1.4.1",
     "collections": "git+https://github.com/Cornally/collections.git",
-    "debug": "^2.5.1",
+    "debug": "^3.0.1",
     "lodash": "^4.17.3",
     "lodash.range": "^3.2.0",
-    "typescript": "^2.4.0"
+    "typescript": "^2.5.2"
   },
   "jest": {
     "testEnvironment": "node",
     "transform": {
       ".(ts|tsx)": "<rootDir>/node_modules/ts-jest/preprocessor.js"
     },
-    "moduleFileExtensions": [
-      "ts",
-      "tsx",
-      "js",
-      "jsx"
-    ],
+    "moduleFileExtensions": ["ts", "tsx", "js", "jsx"],
     "testRegex": ".*\\.(test|spec)\\.(ts)$",
     "coverageDirectory": "coverage",
-    "collectCoverageFrom": [
-      "src/**/*.{ts,tsx,js,jsx}",
-      "!src/**/*.d.ts"
-    ]
+    "collectCoverageFrom": ["src/**/*.{ts,tsx,js,jsx}", "!src/**/*.d.ts"]
   }
 }

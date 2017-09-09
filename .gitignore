@@ -1,5 +1,6 @@
 coverage
 dist
+junit.xml
 node_modules
 yarn.lock
 !src/
