@@ -5,9 +5,9 @@ jobs:
       - image: node:latest
     steps:
       - checkout
-      - run
-        name: install
-        command: npm install
-      - run
-        name: test
-        command: npm test
+      - run:
+          name: install
+          command: npm install
+      - run:
+          name: test
+          command: npm test
