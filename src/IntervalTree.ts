@@ -39,7 +39,7 @@ export class IntervalTree {
   }
 
   public initFromSimpleArray(
-    intervals: Array<[number, number, null | string | number, number]>
+    intervals: Array<[number, number, any] | [number, number]>
   ) {
     this.initFromArray(intervals.map(x => new Interval(x[0], x[1], x[2])))
   }
@@ -433,7 +433,7 @@ allIntervals=${this.allIntervals.toArray()}`
   }
 
   private __init(intervals: any) {
-    this.allIntervals = new IntervalSet().addEach(intervals)
+    this.allIntervals = new IntervalSet(intervals)
     this.topNode = Node.fromIntervals(intervals)
     this.boundaryTable = SortedMap()
     for (const iv of intervals) {

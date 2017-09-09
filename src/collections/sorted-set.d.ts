@@ -3,9 +3,8 @@ declare module 'collections/sorted-set' {
   class Iterator<T> {
     public next(): { done: boolean; value: any }
   }
-  class SortedSet<T> {
+  export class SortedSet<T> {
     public length: number
-
     constructor(
       intervals?: T[] | SortedSet<T>,
       equals?: (a: T, b: T) => boolean,
@@ -16,6 +15,7 @@ declare module 'collections/sorted-set' {
     public clone(): SortedSet<T>
     public delete(v: T): null
     public difference(a: SortedSet<T>): SortedSet<T>
+    public equals(a: SortedSet<T>): boolean
     public filter(cb: (v: T) => void): SortedSet<T>
     public forEach(cb: (v: T) => void): null
     public has(v: T): boolean
