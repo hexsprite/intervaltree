@@ -52,10 +52,11 @@
     "typescript": "^3.5.2"
   },
   "jest": {
-    "testEnvironment": "node",
-    "transform": {
-      ".(ts|tsx)": "ts-jest"
-    },
+    "collectCoverageFrom": [
+      "src/**/*.{ts,tsx}",
+      "!src/**/*.d.ts"
+    ],
+    "coverageDirectory": "coverage",
     "moduleFileExtensions": [
       "ts",
       "tsx",
@@ -63,10 +64,9 @@
       "jsx"
     ],
     "testRegex": ".*\\.(test|spec)\\.(ts)$",
-    "coverageDirectory": "coverage",
-    "collectCoverageFrom": [
-      "src/**/*.{ts,tsx}",
-      "!src/**/*.d.ts"
-    ]
+    "testEnvironment": "node",
+    "transform": {
+      ".(ts|tsx)": "ts-jest"
+    }
   }
 }
