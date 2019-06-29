@@ -44,6 +44,10 @@ export class IntervalTree {
     this.initFromArray(intervals.map(x => new Interval(x[0], x[1], x[2])))
   }
 
+  public toArray() {
+    return this.allIntervals.map(e => [e.start, e.end, e.data])
+  }
+
   public toJSON() {
     return this.allIntervals.toArray()
   }

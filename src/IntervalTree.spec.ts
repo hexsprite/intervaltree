@@ -55,10 +55,10 @@ describe('IntervalTree', () => {
     expectTree('IntervalTree([Interval(1, 9),Interval(15, 25)])')
   })
 
-  // it("can be an array", () => {
-  //   tree.addInterval(1, 5, 'hello')
-  //   expect(tree.toArray()).toBe([1,5])
-  // })
+  it('can be an array', () => {
+    tree.addInterval(1, 5, 'hello')
+    expect(tree.toArray()).toEqual([[1, 5, 'hello']])
+  })
 
   it('get first and last interval', () => {
     tree.addInterval(5, 10)
