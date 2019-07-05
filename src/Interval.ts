@@ -1,4 +1,8 @@
 import * as assert from 'assert'
+import 'collections/sorted-set' // for Object.* methods
+import * as _ from 'lodash'
+
+const intervalData = (iv: Interval) => _.pick(iv, ['start', 'end', 'data'])
 
 export class Interval {
   public static fromLength(length: number) {
@@ -63,9 +67,28 @@ export class Interval {
       )
     }
     if (start instanceof Interval) {
-      const iv: Interval = start as Interval
-      return this.overlaps(iv.start, iv.end)
+      return this.overlaps(start.start, start.end)
     }
-    return this.containsPoint(start as number)
+    return this.containsPoint(start)
+  }
+
+  // implement collectionjs interfaces
+  public equals = (b: Interval): boolean =>
+    // @ts-ignore
+    Object.equals(intervalData(this), intervalData(b))
+
+  public compare = (b: Interval): number => {
+    const aData = intervalData(this)
+    const bData = intervalData(b)
+    let result = 0
+
+    for (const key of ['start', 'end', 'data']) {
+      // @ts-ignore
+      result = Object.compare(aData[key] || '', bData[key] || '')
+      if (result !== 0) {
+        break
+      }
+    }
+    return result
   }
 }

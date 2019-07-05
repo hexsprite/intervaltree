@@ -338,6 +338,7 @@ export class Node {
       const ivs = this.sCenter.sorted((a: Interval, b: Interval) => {
         // FIXME: seems like this compare key should be part of Interval class
         const key = iv => `${iv.end},${iv.start},${iv.data}`
+        // @ts-ignore
         return Object.compare(key(a), key(b))
       })
       const maxIv = ivs.pop()
