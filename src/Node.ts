@@ -335,12 +335,7 @@ export class Node {
       // To reduce the chances of an overlap with a parent, return
       // a child node containing the smallest possible number of
       // intervals, as close as possible to the maximum bound.
-      const ivs = this.sCenter.sorted((a: Interval, b: Interval) => {
-        // FIXME: seems like this compare key should be part of Interval class
-        const key = iv => `${iv.end},${iv.start},${iv.data}`
-        // @ts-ignore
-        return Object.compare(key(a), key(b))
-      })
+      const ivs = this.sCenter.sorted()
       const maxIv = ivs.pop()
       let newXCenter = this.xCenter
       while (ivs.length) {
