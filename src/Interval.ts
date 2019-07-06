@@ -2,8 +2,6 @@ import * as assert from 'assert'
 import 'collections/sorted-set' // for Object.* methods
 import * as _ from 'lodash'
 
-const intervalData = (iv: Interval) => _.pick(iv, ['start', 'end', 'data'])
-
 export class Interval {
   public static fromLength(length: number) {
     return new Interval(0, length)
@@ -21,7 +19,7 @@ export class Interval {
     assert(!isNaN(end))
     this.start = start
     this.end = end
-    this.data = data
+    this.data = data || null // cast undefined to null
     this.length = this.end - this.start
   }
 
@@ -75,20 +73,17 @@ export class Interval {
   // implement collectionjs interfaces
   public equals = (b: Interval): boolean =>
     // @ts-ignore
-    Object.equals(intervalData(this), intervalData(b))
+    Object.equals(this.start, b.start) &&
+    // @ts-ignore
+    Object.equals(this.end, b.end) &&
+    // @ts-ignore
+    Object.equals(this.data || '', b.data || '')
 
-  public compare = (b: Interval): number => {
-    const aData = intervalData(this)
-    const bData = intervalData(b)
-    let result = 0
-
-    for (const key of ['start', 'end', 'data']) {
-      // @ts-ignore
-      result = Object.compare(aData[key] || '', bData[key] || '')
-      if (result !== 0) {
-        break
-      }
-    }
-    return result
-  }
+  public compare = (b: Interval): number =>
+    // @ts-ignore
+    Object.compare(this.start, b.start) ||
+    // @ts-ignore
+    Object.compare(this.end, b.end) ||
+    // @ts-ignore
+    Object.compare(this.data || '', b.data || '')
 }

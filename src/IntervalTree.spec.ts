@@ -243,4 +243,12 @@ describe('IntervalTree', () => {
     const tree2 = tree.clone()
     expect(tree.hash()).toBe(tree2.hash())
   })
+
+  it('null data compares properly with undefined', () => {
+    tree.initFromSimpleArray([[1562351400000, 1562354700000, null]])
+    tree.addInterval(1562351400000, 1562354700000) // this triggerred an exception
+    expect(
+      tree.allIntervals.has(new Interval(1562351400000, 1562354700000))
+    ).toBe(true)
+  })
 })
