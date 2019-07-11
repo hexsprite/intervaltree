@@ -137,13 +137,13 @@ export class Node {
   public add(interval: Interval) {
     // debug('add', interval)
     if (this.centerHit(interval)) {
-      // debug("add: center hit", interval)
+      // debug('add: center hit', interval)
       this.sCenter.add(interval)
       return this
     } else {
       const direction = this.hitBranch(interval)
       const branchNode = this.getBranch(direction)
-      // debug("add: on branch", interval, direction)
+      // debug('add: on branch', interval, direction)
       if (!this.getBranch(direction)) {
         this.setBranch(direction, Node.fromInterval(interval))
         this.refreshBalance()
@@ -335,7 +335,13 @@ export class Node {
       // To reduce the chances of an overlap with a parent, return
       // a child node containing the smallest possible number of
       // intervals, as close as possible to the maximum bound.
-      const ivs = this.sCenter.sorted()
+      const compareEndFirst = (a: Interval, b: Interval) => {
+        // FIXME: seems like this compare key should be part of Interval class
+        const key = iv => `${iv.end},${iv.start},${iv.data}`
+        // @ts-ignore
+        return Object.compare(key(a), key(b))
+      }
+      const ivs = this.sCenter.sorted(compareEndFirst)
       const maxIv = ivs.pop()
       let newXCenter = this.xCenter
       while (ivs.length) {
