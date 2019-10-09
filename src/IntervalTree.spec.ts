@@ -243,4 +243,13 @@ describe('IntervalTree', () => {
     const tree2 = tree.clone()
     expect(tree.hash()).toBe(tree2.hash())
   })
+
+  fit('adding existing interval is a no-op', () => {
+    tree.addInterval(1, 2)
+    tree.addInterval(1, 2)
+    tree.addInterval(1, 2)
+    tree.addInterval(1, 2)
+    tree.addInterval(1, 2)
+    expect(tree.toArray()).toEqual([[1,2, undefined]])
+  })
 })

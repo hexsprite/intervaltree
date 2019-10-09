@@ -15,7 +15,7 @@ export class Node {
       return null
     }
     const centerIv = intervals[Math.floor(intervals.length / 2)]
-    const node = new Node(centerIv.start, new IntervalSet())
+    const node = new Node(centerIv.start, [])
     const sLeft: Interval[] = []
     const sRight: Interval[] = []
     for (const iv of intervals) {
@@ -93,11 +93,11 @@ export class Node {
     // debug(`refreshBalance: leftDepth=${leftDepth} rightDepth=${rightDepth} balance=${this.balance}`, this)
   }
 
-  public rotate() {
-    /*
-    Does rotating, if necessary, to balance this node, and
-    returns the new top node.
-    */
+    /**
+     * Rotates, if necessary, to balance this node.
+     * Returns new top node
+     */
+    public rotate() {
     this.refreshBalance()
     if (Math.abs(this.balance) < 2) {
       return this
@@ -137,13 +137,13 @@ export class Node {
   public add(interval: Interval) {
     // debug('add', interval)
     if (this.centerHit(interval)) {
-      // debug("add: center hit", interval)
+      // debug('add: center hit', interval)
       this.sCenter.add(interval)
       return this
     } else {
       const direction = this.hitBranch(interval)
       const branchNode = this.getBranch(direction)
-      // debug("add: on branch", interval, direction)
+      // debug('add: on branch', interval, direction)
       if (!this.getBranch(direction)) {
         this.setBranch(direction, Node.fromInterval(interval))
         this.refreshBalance()

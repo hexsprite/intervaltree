@@ -65,7 +65,7 @@ export class IntervalTree {
     }
     if (interval.isNull()) {
       throw new TypeError(
-        `null Interval objects not allowed in IntervalTree: ${interval}`
+        `null Interval in IntervalTree: ${interval}`
       )
     }
     if (!this.topNode) {

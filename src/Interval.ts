@@ -36,12 +36,9 @@ export class Interval {
   //   return this.end - this.start
   // }
 
-  public containsPoint(point: number) {
+  public containsPoint(point: number): boolean {
     /*
       Whether the Interval contains point.
-      :param point: a point
-      :return: True or False
-      :rtype: bool
     */
     return this.start <= point && point < this.end
   }
@@ -51,8 +48,6 @@ export class Interval {
     Whether the interval overlaps the given point, range or Interval.
     :param begin: beginning point of the range, or the point, or an Interval
     :param end: end point of the range. Optional if not testing ranges.
-    :return: True or False
-    :rtype: bool
     */
     if (end !== undefined) {
       return (
