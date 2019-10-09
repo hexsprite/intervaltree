@@ -244,12 +244,78 @@ describe('IntervalTree', () => {
     expect(tree.hash()).toBe(tree2.hash())
   })
 
-  fit('adding existing interval is a no-op', () => {
+  it('adding existing interval is a no-op', () => {
     tree.addInterval(1, 2)
     tree.addInterval(1, 2)
     tree.addInterval(1, 2)
     tree.addInterval(1, 2)
     tree.addInterval(1, 2)
-    expect(tree.toArray()).toEqual([[1,2, undefined]])
+    expect(tree.toArray()).toEqual([[1,2, null]])
+  })
+
+  it('null data compares properly with undefined', () => {
+    tree.initFromSimpleArray([[1562351400000, 1562354700000, null]])
+    tree.addInterval(1562351400000, 1562354700000) // this triggerred an exception
+    expect(
+      tree.allIntervals.has(new Interval(1562351400000, 1562354700000))
+    ).toBe(true)
+  })
+
+  it('inserts dont fail', () => {
+    /**
+     * we had a broken implementation in popGreatestChild
+     * due to sorting with default comparator rather than using End first
+     */
+    for (const [start, end, data] of [
+      [1562792400000, 1562796000000, 'K4E2oBZwkELiAjo9d'],
+      [1562816700000, 1562823000000, 'QXJXCn86GczNEzuxz'],
+      [1562851800000, 1562866800000, 'XpEcb3fP8MehSMs42'],
+      [1562857200000, 1562858100000, 'hCj7wRkxMm4qGYDbj'],
+      [1562880600000, 1562884200000, 'JBhBjk5aH9Biu4rLn'],
+      [1562896800000, 1562902200000, 'E4BWjdnpZosv7RNbG'],
+      [1562896800000, 1562902200000, 'kmK4c28mZA4qegrvW'],
+      [1562903100000, 1562909400000, 'REz57QrLdSrt6R5RS'],
+      [1562938200000, 1562955000000, 'mgaMjrb7aBMfSfGj4'],
+      [1562941800000, 1562942700000, 'MZgXPmzz484TxJkjZ'],
+      [1562954400000, 1562958000000, 'oZ86SrFhQopojLB8Y'],
+      [1562961600000, 1562965200000, '9BupssckohjSLem8a'],
+      [1562989500000, 1562995800000, '5S2i93BcKb9F5txtc'],
+      [1563024600000, 1563040800000, 'RSeEGNKjrxG9ER7zb'],
+      [1563030000000, 1563030900000, 'xwcyeiEMGxyvztW92'],
+      [1563030000000, 1563033600000, 'YkT6ZQahvugGTYpdG'],
+      [1563039000000, 1563044400000, 'pmGxwEbm63M44sk8Q'],
+      [1563075900000, 1563082200000, 'qB8YKi75669n44Y3Q'],
+      [1563111000000, 1563127200000, 'FSbtj6ae3vJGwPi3K'],
+      [1563116400000, 1563117300000, 'TFn56WbKHikDHsGuD'],
+      [1563162300000, 1563168600000, 'J7G5FQQjFrCpPJFA5'],
+      [1563165000000, 1563166800000, 'Q5DPhm9LZQtz94PW6'],
+      [1563202800000, 1563203700000, 'XYjvLASDuTdjtW75o'],
+      [1563202800000, 1563227100000, 'DSnJ3kkf3ZTnWi5Mh'],
+      [1563289200000, 1563290100000, '8TnH2e6De4qrr5mK5'],
+      [1563375600000, 1563376500000, 'qwomBthCDnK6rvEAc'],
+      [1563395400000, 1563400800000, 'Dzt3LEXCbo6fQHaGD'],
+      [1563462000000, 1563462900000, '9yWBZdng8nnfcRjC8'],
+      [1563510600000, 1563512400000, 'AKwMKjdx2FPtbLYrH'],
+      [1563546600000, 1563547500000, 'yTFWJsBmoDnaa78WR'],
+      [1563570000000, 1563598500000, 'dTZBNfgc95aiQH6Bd'],
+      [1563597000000, 1563598800000, 'vS2cGDPc7WXYa27q6'],
+      [1563629400000, 1563645600000, 'BqhtbaYYKSCoKW7mJ'],
+      [1563634800000, 1563635700000, '44FZWZh89Y8PEACZu'],
+      [1563645600000, 1563649200000, 'AfRMemPPtjgbnXPg9'],
+      [1563656400000, 1563660000000, 'htFHnnmKAD7zSsDbB'],
+      [1563680700000, 1563687000000, 'meo2ZESqTXEnZ5pNP'],
+      [1563715800000, 1563732000000, 'hbaRfNLrtr2pCSsDE'],
+      [1563721200000, 1563722100000, 'QHfxQxP8BKpd9qywf'],
+      [1563735600000, 1563742800000, '3ezrjc7yvT2M2Kp5m'],
+      [1563767100000, 1563773400000, 'FfYmjW79HZk6CgDLT'],
+      [1563769800000, 1563771600000, 'y9aTfEQ3Ar99czkqY'],
+      [1563802200000, 1563817200000, 'F6gFijr7nkRXjiSQ2'],
+      [1563807600000, 1563808500000, 'GoQyaMQxy5uAMkicC'],
+      [1563814800000, 1563822000000, 'Rrzck9MrM4ScLkJBx'],
+      [1563827400000, 1563831000000, 'NdYgZdgfttitwFDz3']
+    ]) {
+      tree.addInterval(start as number, end as number, data)
+    }
+    tree.addInterval(1563843600000, 1563850800000, 'WQSMXKZEKsrp2Dads')
   })
 })

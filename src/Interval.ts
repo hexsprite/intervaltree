@@ -1,4 +1,6 @@
 import * as assert from 'assert'
+import 'collections/sorted-set' // for Object.* methods
+import * as _ from 'lodash'
 
 export class Interval {
   public static fromLength(length: number) {
@@ -17,7 +19,7 @@ export class Interval {
     assert(!isNaN(end))
     this.start = start
     this.end = end
-    this.data = data
+    this.data = data || null // cast undefined to null
     this.length = this.end - this.start
   }
 
@@ -58,9 +60,25 @@ export class Interval {
       )
     }
     if (start instanceof Interval) {
-      const iv: Interval = start as Interval
-      return this.overlaps(iv.start, iv.end)
+      return this.overlaps(start.start, start.end)
     }
-    return this.containsPoint(start as number)
+    return this.containsPoint(start)
   }
+
+  // implement collectionjs interfaces
+  public equals = (b: Interval): boolean =>
+    // @ts-ignore
+    Object.equals(this.start, b.start) &&
+    // @ts-ignore
+    Object.equals(this.end, b.end) &&
+    // @ts-ignore
+    Object.equals(this.data || '', b.data || '')
+
+  public compare = (b: Interval): number =>
+    // @ts-ignore
+    Object.compare(this.start, b.start) ||
+    // @ts-ignore
+    Object.compare(this.end, b.end) ||
+    // @ts-ignore
+    Object.compare(this.data || '', b.data || '')
 }

@@ -16,3 +16,7 @@
   - https://www.npmjs.com/package/@collectable/sorted-set
 
 - logger should be imported cleanly (get rid of globals.d.ts ref)
+
+- review other data structures for our purposes
+  - https://github.com/hunt-genes/ncls
+  - https://github.com/biocore-ntnu/pyranges

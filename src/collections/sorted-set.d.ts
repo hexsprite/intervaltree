@@ -25,7 +25,7 @@ declare module 'collections/sorted-set' {
     public pop(): T
     public remove(v: T): null
     public slice(): SortedSet<T>
-    public sorted(cb: (a: T, b: T) => number): SortedSet<T>
+    public sorted(cb?: (a: T, b: T) => number): SortedSet<T>
     public toArray(): T[]
     public union(a: any): SortedSet<T>
   }
