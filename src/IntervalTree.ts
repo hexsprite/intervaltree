@@ -380,7 +380,7 @@ badInterval=${iv}
     Completes in O(n*log n) time.
     */
     const tree = new IntervalTree()
-    tree.topNode = this.topNode.clone()
+    tree.topNode = this.topNode?.clone()
     tree.boundaryTable = this.boundaryTable.clone(1)
     tree.allIntervals = new IntervalSet(this.allIntervals)
     return tree
