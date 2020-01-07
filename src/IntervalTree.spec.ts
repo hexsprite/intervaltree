@@ -142,6 +142,35 @@ describe('IntervalTree', () => {
     expect(tree.clone().toString()).toBe(tree.toString())
   })
 
+  it('cloned intervals are the same', () => {
+    tree.addInterval(0, 1)
+    tree.addInterval(2, 4)
+    tree.addInterval(5, 8)
+    tree.addInterval(9, 13)
+    const cloned = tree.clone()
+    expect(tree.allIntervals.toArray()[0]).toBe(
+      cloned.allIntervals.toArray()[0]
+    )
+    cloned.verify()
+  })
+
+  // it('cloning is faster than before', () => {
+  //   for (let i = 1; i < 100; i++) {
+  //     tree.addInterval(i * 100, i * 200)
+  //   }
+  //   console.time('clone new')
+  //   for (let i = 0; i <= 1000; i++) {
+  //     tree.clone()
+  //   }
+  //   console.timeEnd('clone new')
+
+  //   console.time('clone old')
+  //   for (let i = 0; i <= 1000; i++) {
+  //     new IntervalTree(tree.allIntervals.toArray())
+  //   }
+  //   console.timeEnd('clone old')
+  // })
+
   it('search bugs', () => {
     tree.initFromSimpleArray([
       [1483315500000, 1483318800000, 'hb3u3ztHuvPttf7dD'],
@@ -225,7 +254,11 @@ describe('IntervalTree', () => {
   })
 
   it('verifies with content', () => {
-    tree.initFromSimpleArray([[1, 2], [3, 4], [5, 6]])
+    tree.initFromSimpleArray([
+      [1, 2],
+      [3, 4],
+      [5, 6]
+    ])
     tree.verify()
   })
 
@@ -250,7 +283,7 @@ describe('IntervalTree', () => {
     tree.addInterval(1, 2)
     tree.addInterval(1, 2)
     tree.addInterval(1, 2)
-    expect(tree.toArray()).toEqual([[1,2, null]])
+    expect(tree.toArray()).toEqual([[1, 2, null]])
   })
 
   it('null data compares properly with undefined', () => {
@@ -317,5 +350,13 @@ describe('IntervalTree', () => {
       tree.addInterval(start as number, end as number, data)
     }
     tree.addInterval(1563843600000, 1563850800000, 'WQSMXKZEKsrp2Dads')
+  })
+
+  it('search', () => {
+    tree.addInterval(1, 5)
+    tree.addInterval(4, 6)
+    tree.addInterval(5, 9)
+    const result = tree.search(5, 6)
+    expect(result.toArray().toString()).toEqual('Interval(4, 6),Interval(5, 9)')
   })
 })

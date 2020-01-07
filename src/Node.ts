@@ -70,7 +70,7 @@ export class Node {
     }
     return new Node(
       this.xCenter,
-      this.sCenter.clone(),
+      this.sCenter.toArray(),
       nodeCloner(this.leftNode),
       nodeCloner(this.rightNode),
       false,
@@ -93,11 +93,11 @@ export class Node {
     // debug(`refreshBalance: leftDepth=${leftDepth} rightDepth=${rightDepth} balance=${this.balance}`, this)
   }
 
-    /**
-     * Rotates, if necessary, to balance this node.
-     * Returns new top node
-     */
-    public rotate() {
+  /**
+   * Rotates, if necessary, to balance this node.
+   * Returns new top node
+   */
+  public rotate() {
     this.refreshBalance()
     if (Math.abs(this.balance) < 2) {
       return this

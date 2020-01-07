@@ -1,6 +1,4 @@
 import * as SortedMap from 'collections/sorted-map'
-import * as SortedSet from 'collections/sorted-set'
-
 import * as assert from 'assert'
 import * as crypto from 'crypto'
 import * as lodash from 'lodash'
@@ -9,10 +7,13 @@ import * as range from 'lodash.range'
 import { bisectLeft } from './bisect'
 import { debug } from './debug'
 import { Node } from './Node'
-
 import { Interval } from './Interval'
-import IntervalLengthSet from './IntervalLengthSet'
 import IntervalSet from './IntervalSet'
+import { SortedSet } from 'collections/sorted-set'
+
+export type SimpleIntervalArray = Array<
+  [number, number, any] | [number, number]
+>
 
 export class IntervalTree {
   public static fromJSON(nodes: any) {
@@ -38,9 +39,7 @@ export class IntervalTree {
     this.__init(intervals)
   }
 
-  public initFromSimpleArray(
-    intervals: Array<[number, number, any] | [number, number]>
-  ) {
+  public initFromSimpleArray(intervals: SimpleIntervalArray) {
     this.initFromArray(intervals.map(x => new Interval(x[0], x[1], x[2])))
   }
 
@@ -64,9 +63,7 @@ export class IntervalTree {
       return
     }
     if (interval.isNull()) {
-      throw new TypeError(
-        `null Interval in IntervalTree: ${interval}`
-      )
+      throw new TypeError(`null Interval in IntervalTree: ${interval}`)
     }
     if (!this.topNode) {
       this.topNode = Node.fromInterval(interval)
@@ -82,9 +79,16 @@ export class IntervalTree {
     return this.add(interval)
   }
 
+  /**
+   * Like removeEnveloped(), but trims back Intervals hanging into the chopped
+   * area so that nothing overlaps.
+   * @param start
+   * @param end
+   */
   public chop(start: number, end: number) {
-    // Like removeEnveloped(), but trims back Intervals hanging into
-    // the chopped area so that nothing overlaps.
+    if (start > end) {
+      throw TypeError('invalid parameters to chop')
+    }
     const insertions = new IntervalSet()
     const startHits = this.search(start).filter(iv => iv.start < start)
     const endHits = this.search(end).filter(iv => iv.end > end)
@@ -109,13 +113,11 @@ export class IntervalTree {
     debug(() => `chop: after=${this.allIntervals.toArray()}`)
   }
 
+  /**
+   * Given an iterable of intervals, add them to the tree.
+   * Completes in O(m*log(n+m)), where m = number of intervals to add.
+   */
   public update(intervals: IntervalSet) {
-    /*
-    Given an iterable of intervals, add them to the tree.
-
-    Completes in O(m*log(n+m), where m = number of intervals to
-    add.
-    */
     intervals.forEach(iv => {
       this.add(iv)
     })
@@ -308,21 +310,20 @@ badInterval=${iv}
     return this.search(start, stop)
   }
 
+  /**
+   * Returns a set of all intervals overlapping the given range.
+   * Or, if strict is true, returns the set of all intervals fully contained in
+   * the range [start, end].
+   * Completes in O(m + k*log n) time, where:
+   *   * n = size of the tree
+   *   * m = number of matches
+   *   * k = size of the search range (this is 1 for a point)
+   **/
   public search(
     start: number,
     end: number | null = null,
     strict = false
   ): IntervalSet {
-    /*
-     Returns a set of all intervals overlapping the given range.
-     Or, if strict is true, returns the set of all intervals fully
-     contained in the range [begin, end].
-     Completes in O(m + k*log n) time, where:
-       * n = size of the tree
-       * m = number of matches
-       * k = size of the search range (this is 1 for a point)
-     :rtype: set of Interval
-    */
     if (!this.topNode) {
       return new IntervalSet()
     }
@@ -378,8 +379,11 @@ badInterval=${iv}
 
     Completes in O(n*log n) time.
     */
-    return new IntervalTree(this.allIntervals.toArray())
-    // PERF: should be possible to use .clone() and pass directly? Faster?
+    const tree = new IntervalTree()
+    tree.topNode = this.topNode.clone()
+    tree.boundaryTable = this.boundaryTable.clone(1)
+    tree.allIntervals = new IntervalSet(this.allIntervals)
+    return tree
   }
 
   public verify() {
