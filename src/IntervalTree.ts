@@ -1,4 +1,3 @@
-import * as SortedMap from 'collections/sorted-map'
 import * as assert from 'assert'
 import * as crypto from 'crypto'
 import * as lodash from 'lodash'
@@ -9,7 +8,6 @@ import { debug } from './debug'
 import { Node } from './Node'
 import { Interval } from './Interval'
 import IntervalSet from './IntervalSet'
-import { SortedSet } from 'collections/sorted-set'
 
 export type SimpleIntervalArray = Array<
   [number, number, any] | [number, number]
@@ -59,7 +57,7 @@ export class IntervalTree {
 
   public add(interval: Interval) {
     // debug('tree/add', interval)
-    if (this.allIntervals.has(interval)) {
+    if (this.allIntervals.contains(interval)) {
       return
     }
     if (interval.isNull()) {
@@ -87,11 +85,11 @@ export class IntervalTree {
    */
   public chop(start: number, end: number) {
     if (start > end) {
-      throw TypeError('invalid parameters to chop')
+      throw TypeError('start is less than or equal to end')
     }
     const insertions = new IntervalSet()
-    const startHits = this.search(start).filter(iv => iv.start < start)
-    const endHits = this.search(end).filter(iv => iv.end > end)
+    const startHits = this.search(start).keys().filter(iv => iv.start < start)
+    const endHits = this.search(end).keys().filter(iv => iv.end > end)
     startHits.forEach(iv => {
       insertions.add(new Interval(iv.start, start, iv.data))
     })
@@ -100,12 +98,12 @@ export class IntervalTree {
     })
     debug(() => ({
       end,
-      endHits: endHits.toArray(),
-      insertions: insertions.toArray(),
+      endHits: endHits.keys(),
+      insertions: insertions.keys(),
       start,
-      startHits: startHits.toArray()
+      startHits: startHits.keys()
     }))
-    debug(() => `chop: before=${this.allIntervals.toArray()}`)
+    debug(() => `chop: before=${this.allIntervals.keys()}`)
     this.removeEnveloped(start, end)
     this.differenceUpdate(startHits)
     this.differenceUpdate(endHits)

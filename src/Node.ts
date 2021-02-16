@@ -1,7 +1,4 @@
 import * as assert from 'assert'
-import { SortedSet } from 'collections/sorted-set'
-
-import { debug } from './debug'
 import { Interval } from './Interval'
 import IntervalSet from './IntervalSet'
 
@@ -70,7 +67,7 @@ export class Node {
     }
     return new Node(
       this.xCenter,
-      this.sCenter.toArray(),
+      this.sCenter.keys(),
       nodeCloner(this.leftNode),
       nodeCloner(this.rightNode),
       false,
@@ -164,8 +161,8 @@ export class Node {
 
     result += this.toString() + '\n'
 
-    if (this.sCenter.length) {
-      logit(`- [${this.sCenter.toArray()}]`)
+    if (this.sCenter.size) {
+      logit(`- [${this.sCenter.keys()}]`)
     }
     if (this.leftNode) {
       logit(`<: ${this.leftNode.printStructure(indent + 1, true)}`)
@@ -189,7 +186,7 @@ export class Node {
     // Returns all intervals that contain point.
     // debug('searchPoint: point=', point, this.toString())
     // debug('searchPoint: result=', result)
-    this.sCenter.forEach(interval => {
+    this.sCenter.forEach(({key: interval}) => {
       // debug('searchPoint: interval=', interval)
       if (interval.start <= point && point < interval.end) {
         // debug('searchPoint interval', interval)
@@ -237,7 +234,7 @@ export class Node {
     */
     // debug(`removeIntervalHelper: ${this.toString()}`)
     if (this.centerHit(interval)) {
-      if (!shouldRaiseError && !this.sCenter.has(interval)) {
+      if (!shouldRaiseError && !this.sCenter.contains(interval)) {
         done.push(1)
         return this
       }
@@ -249,7 +246,7 @@ export class Node {
         this.printStructure()
         throw new TypeError(interval.toString())
       }
-      if (this.sCenter.length) {
+      if (this.sCenter.size) {
         // keep this node
         done.push(1) // no rebalancing necessary
         // debug('removeIntervalHelper: Removed, no rebalancing.')
@@ -341,7 +338,8 @@ export class Node {
         // @ts-ignore
         return Object.compare(key(a), key(b))
       }
-      const ivs = this.sCenter.sorted(compareEndFirst)
+      const ivs = this.sCenter.keys()
+      ivs.sort(compareEndFirst)
       const maxIv = ivs.pop()
       let newXCenter = this.xCenter
       while (ivs.length) {
@@ -353,12 +351,11 @@ export class Node {
       }
       // Create a new node with the largest x_center possible.
       const child = Node.fromIntervals(
-        this.sCenter.filter(iv => iv.containsPoint(newXCenter)).toArray()
+        this.sCenter.keys().filter(iv => iv.containsPoint(newXCenter))
       )
       child.xCenter = newXCenter
       this.sCenter = this.sCenter.difference(child.sCenter)
-
-      if (this.sCenter.length) {
+      if (this.sCenter.size) {
         return [child, this]
       } else {
         return [child, this.getBranch(0)] // Rotate left child up
@@ -372,14 +369,14 @@ export class Node {
       let newSelf = this.rotate()
 
       // Move any overlaps into greatest_child
-      newSelf.sCenter.forEach(iv => {
+      newSelf.sCenter.forEach(({key: iv}) => {
         if (iv.containsPoint(greatestChild.xCenter)) {
           newSelf.sCenter.remove(iv)
           greatestChild.add(iv)
         }
       })
 
-      if (newSelf.sCenter.length) {
+      if (newSelf.sCenter.size) {
         return [greatestChild, newSelf]
       } else {
         newSelf = newSelf.prune()
@@ -405,11 +402,11 @@ export class Node {
     assert(bal === this.balance, 'Error: this.balance not set correctly!')
 
     assert(
-      this.sCenter.length,
+      this.sCenter.size,
       `Error: sCenter is empty!\n${this.printStructure(0, true)}`
     )
 
-    this.sCenter.forEach(iv => {
+    this.sCenter.forEach(({key: iv}) => {
       assert(typeof iv.start === 'number', `start not number: ${iv.start}`)
       assert(typeof iv.end === 'number', `end not number: ${iv.end}`)
       assert(iv.start < iv.end, 'start comes before end')
@@ -441,7 +438,7 @@ export class Node {
   }
 
   private allChildrenHelper(result: IntervalSet): IntervalSet {
-    result.addEach(this.sCenter)
+    this.sCenter.forEach(({key: iv}) => result.add(iv))
     if (this.getBranch(0)) {
       this.getBranch(0).allChildrenHelper(result)
     }
@@ -475,7 +472,7 @@ export class Node {
     // Some intervals may overlap both this.xCenter and save.xCenter
     // Promote those to the new tip of the tree
     const promotees: Interval[] = []
-    save.getBranch(light).sCenter.forEach(iv => {
+    save.getBranch(light).sCenter.forEach(({key: iv}) => {
       if (save.centerHit(iv)) {
         promotees.push(iv)
       }
@@ -485,7 +482,7 @@ export class Node {
       for (const iv of promotees) {
         save.setBranch(light, save.getBranch(light).remove(iv))
       }
-      save.sCenter.addEach(promotees)
+      promotees.forEach(iv => save.sCenter.add(iv))
     }
     save.refreshBalance()
     return save

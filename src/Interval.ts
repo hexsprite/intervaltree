@@ -1,5 +1,4 @@
 import * as assert from 'assert'
-import 'collections/sorted-set' // for Object.* methods
 import * as _ from 'lodash'
 
 export class Interval {
