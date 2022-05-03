@@ -2,7 +2,6 @@ import * as SortedMap from 'collections/sorted-map'
 import * as assert from 'assert'
 import * as crypto from 'crypto'
 import * as lodash from 'lodash'
-import * as range from 'lodash.range'
 
 import { bisectLeft } from './bisect'
 import { debug } from './debug'
@@ -40,11 +39,11 @@ export class IntervalTree {
   }
 
   public initFromSimpleArray(intervals: SimpleIntervalArray) {
-    this.initFromArray(intervals.map(x => new Interval(x[0], x[1], x[2])))
+    this.initFromArray(intervals.map((x) => new Interval(x[0], x[1], x[2])))
   }
 
   public toArray() {
-    return this.allIntervals.map(e => [e.start, e.end, e.data])
+    return this.allIntervals.map((e) => [e.start, e.end, e.data])
   }
 
   public toJSON() {
@@ -90,12 +89,12 @@ export class IntervalTree {
       throw TypeError('invalid parameters to chop')
     }
     const insertions = new IntervalSet()
-    const startHits = this.search(start).filter(iv => iv.start < start)
-    const endHits = this.search(end).filter(iv => iv.end > end)
-    startHits.forEach(iv => {
+    const startHits = this.search(start).filter((iv) => iv.start < start)
+    const endHits = this.search(end).filter((iv) => iv.end > end)
+    startHits.forEach((iv) => {
       insertions.add(new Interval(iv.start, start, iv.data))
     })
-    endHits.forEach(iv => {
+    endHits.forEach((iv) => {
       insertions.add(new Interval(end, iv.end, iv.data))
     })
     debug(() => ({
@@ -103,7 +102,7 @@ export class IntervalTree {
       endHits: endHits.toArray(),
       insertions: insertions.toArray(),
       start,
-      startHits: startHits.toArray()
+      startHits: startHits.toArray(),
     }))
     debug(() => `chop: before=${this.allIntervals.toArray()}`)
     this.removeEnveloped(start, end)
@@ -118,13 +117,13 @@ export class IntervalTree {
    * Completes in O(m*log(n+m)), where m = number of intervals to add.
    */
   public update(intervals: IntervalSet) {
-    intervals.forEach(iv => {
+    intervals.forEach((iv) => {
       this.add(iv)
     })
   }
 
   public differenceUpdate(other: IntervalSet) {
-    other.forEach(iv => {
+    other.forEach((iv) => {
       this.discard(iv)
     })
   }
@@ -169,7 +168,7 @@ export class IntervalTree {
     */
     debug(`removeEnveloped: start=${start} end=${end}`)
     const hitlist = this.search(start, end, true)
-    hitlist.forEach(iv => {
+    hitlist.forEach((iv) => {
       debug('removing', iv)
       try {
         this.remove(iv)
@@ -199,7 +198,7 @@ badInterval=${iv}
   }
 
   public printForTests() {
-    this.allIntervals.toArray().forEach(iv => {
+    this.allIntervals.toArray().forEach((iv) => {
       // tslint:disable-next-line no-console
       console.log(`[${iv.start}, ${iv.end}, ${iv.data}],`)
     })
@@ -214,7 +213,7 @@ badInterval=${iv}
       merged.push(higher)
     }
 
-    this.allIntervals.forEach(higher => {
+    this.allIntervals.forEach((higher) => {
       if (merged.length) {
         // series already begun
         const lower = merged[merged.length - 1]
@@ -341,13 +340,13 @@ badInterval=${iv}
     debug(() => `search: boundStart=${boundStart} boundEnd=${boundEnd}`)
     result.addEach(
       this.topNode.searchOverlap(
-        range(boundStart, boundEnd).map(index => keysArray[index])
+        lodash.range(boundStart, boundEnd).map((index) => keysArray[index])
       )
     )
 
     // TODO: improve strict search to use node info instead of less-efficient filtering
     if (strict) {
-      result = result.filter(iv => iv.start >= start && iv.end <= end)
+      result = result.filter((iv) => iv.start >= start && iv.end <= end)
     }
     debug(() => 'search: result=', result.toArray())
     return result
@@ -356,7 +355,7 @@ badInterval=${iv}
   public searchByLengthStartingAt(length: number, start: number): Interval[] {
     // find all intervals that overlap start
     // adjust nodes to match the start time
-    let intervals: Interval[] = this.search(start, Infinity).map(iv => {
+    let intervals: Interval[] = this.search(start, Infinity).map((iv) => {
       // return a new node with changed start time if necessary
       if (iv.start < start) {
         return new Interval(start, iv.end, iv.data)
@@ -367,7 +366,7 @@ badInterval=${iv}
     // now filter by duration
     // console.log('by duration', intervals.toArray())
     // console.log('desired length', length)
-    intervals = intervals.filter(iv => iv.length >= length)
+    intervals = intervals.filter((iv) => iv.length >= length)
     // console.log('after duration', intervals.toArray())
     return intervals
   }
@@ -403,7 +402,7 @@ allIntervals=${this.allIntervals.toArray()}`
       )
 
       // No null intervals
-      this.allIntervals.forEach(iv => {
+      this.allIntervals.forEach((iv) => {
         assert(
           !iv.isNull(),
           'null Interval objects not allowed in IntervalTree'
@@ -412,7 +411,7 @@ allIntervals=${this.allIntervals.toArray()}`
 
       // Reconstruct boundaryTable
       const boundaryCheck = SortedMap()
-      this.allIntervals.forEach(iv => {
+      this.allIntervals.forEach((iv) => {
         if (boundaryCheck.has(iv.start)) {
           boundaryCheck.set(iv.start, boundaryCheck.get(iv.start) + 1)
         } else {
