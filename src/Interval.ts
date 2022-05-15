@@ -1,5 +1,4 @@
 import * as assert from 'assert'
-import * as _ from 'lodash'
 
 export class Interval {
   public static fromLength(length: number) {
@@ -8,10 +7,10 @@ export class Interval {
 
   public start: number
   public end: number
-  public data: any
+  public data: unknown
   public length: number
 
-  public constructor(start: number, end: number, data?: any) {
+  public constructor(start: number, end: number, data?: unknown) {
     assert.equal(typeof start, 'number', `start not number: ${start}`)
     assert.equal(typeof end, 'number', `end not number: ${end}`)
     assert(!isNaN(start))
@@ -63,21 +62,4 @@ export class Interval {
     }
     return this.containsPoint(start)
   }
-
-  // implement collectionjs interfaces
-  public equals = (b: Interval): boolean =>
-    // @ts-ignore
-    Object.equals(this.start, b.start) &&
-    // @ts-ignore
-    Object.equals(this.end, b.end) &&
-    // @ts-ignore
-    Object.equals(this.data || '', b.data || '')
-
-  public compare = (b: Interval): number =>
-    // @ts-ignore
-    Object.compare(this.start, b.start) ||
-    // @ts-ignore
-    Object.compare(this.end, b.end) ||
-    // @ts-ignore
-    Object.compare(this.data || '', b.data || '')
 }

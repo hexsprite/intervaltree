@@ -1,7 +1,9 @@
 import * as assert from 'assert'
 
 import { Interval } from './Interval'
-import IntervalSet from './IntervalSet'
+import { SortedSet } from '@rimbu/sorted'
+import { IntervalSet } from './IntervalSet'
+import { debug } from './debug'
 
 export class Node {
   public static fromInterval(interval: Interval) {
@@ -22,7 +24,7 @@ export class Node {
       } else if (iv.start > node.xCenter) {
         sRight.push(iv)
       } else {
-        node.sCenter.add(iv)
+        node.sCenter = node.sCenter.add(iv)
       }
     }
     node.leftNode = Node.fromIntervals(sLeft)
@@ -32,34 +34,35 @@ export class Node {
   }
 
   private xCenter: number
-  private sCenter: IntervalSet
-  private leftNode: Node
-  private rightNode: Node
+  private sCenter: SortedSet<Interval>
+  private leftNode?: Node
+  private rightNode?: Node
   private depth: number
   private balance: number
 
   public constructor(
     xCenter: number,
-    sCenter: Interval[] | IntervalSet,
+    sCenter: Interval[] | SortedSet<Interval>,
     leftNode?: Node,
     rightNode?: Node,
-    rotate: boolean = true,
+    rotate = true,
     depth = 0,
     balance = 0
   ) {
     this.xCenter = xCenter
-    this.sCenter = new IntervalSet(sCenter)
+    this.sCenter = SortedSet.from(sCenter)
     this.leftNode = leftNode
     this.rightNode = rightNode
-    this.depth = depth // set when rotated
-    this.balance = balance // ditto
+    // depth & balance are set when rotated
+    this.depth = depth
+    this.balance = balance
     if (rotate) {
       this.rotate()
     }
   }
 
   public clone(): Node {
-    function nodeCloner(node) {
+    function nodeCloner(node: Node) {
       if (node) {
         return node.clone()
       } else {
@@ -116,7 +119,7 @@ export class Node {
     return interval.start > this.xCenter
   }
 
-  public getBranch(branch: boolean | number) {
+  public getBranch(branch: boolean | number): Node {
     if (branch) {
       return this.rightNode
     } else {
@@ -125,6 +128,7 @@ export class Node {
   }
 
   public setBranch(branch: boolean | number, node: Node) {
+    assert(!!node)
     if (branch) {
       this.rightNode = node
     } else {
@@ -136,7 +140,7 @@ export class Node {
     // debug('add', interval)
     if (this.centerHit(interval)) {
       // debug('add: center hit', interval)
-      this.sCenter.add(interval)
+      this.sCenter = this.sCenter.add(interval)
       return this
     } else {
       const direction = this.hitBranch(interval)
@@ -162,7 +166,7 @@ export class Node {
 
     result += this.toString() + '\n'
 
-    if (this.sCenter.length) {
+    if (this.sCenter.size) {
       logit(`- [${this.sCenter.toArray()}]`)
     }
     if (this.leftNode) {
@@ -183,7 +187,10 @@ export class Node {
     return `Node<${this.xCenter}, depth=${this.depth}, balance=${this.balance}>`
   }
 
-  public searchPoint(point: number, result: IntervalSet): IntervalSet {
+  public searchPoint(
+    point: number,
+    result: SortedSet<Interval>
+  ): SortedSet<Interval> {
     // Returns all intervals that contain point.
     // debug('searchPoint: point=', point, this.toString())
     // debug('searchPoint: result=', result)
@@ -191,7 +198,7 @@ export class Node {
       // debug('searchPoint: interval=', interval)
       if (interval.start <= point && point < interval.end) {
         // debug('searchPoint interval', interval)
-        result.add(interval)
+        result = result.add(interval)
       }
     })
     if (point < this.xCenter && this.getBranch(0)) {
@@ -202,10 +209,10 @@ export class Node {
     return result
   }
 
-  public searchOverlap(pointList: number[]): IntervalSet {
-    const result = new IntervalSet()
+  public searchOverlap(pointList: number[]): SortedSet<Interval> {
+    let result = IntervalSet.empty()
     for (const point of pointList) {
-      this.searchPoint(point, result)
+      result = this.searchPoint(point, result)
     }
     return result
   }
@@ -223,7 +230,7 @@ export class Node {
   public removeIntervalHelper(
     interval: Interval,
     done: number[],
-    shouldRaiseError: boolean = false
+    shouldRaiseError = false
   ): Node {
     /*
     Returns self after removing interval and balancing.
@@ -233,8 +240,11 @@ export class Node {
     See Eternally Confuzzled's jsw_remove_r function (lines 1-32)
     in his AVL tree article for reference.
     */
-    // debug(`removeIntervalHelper: ${this.toString()}`)
+    debug(`removeIntervalHelper: ${this.toString()}`)
+    this.printStructure()
+
     if (this.centerHit(interval)) {
+      debug('center hit')
       if (!shouldRaiseError && !this.sCenter.has(interval)) {
         done.push(1)
         return this
@@ -242,25 +252,25 @@ export class Node {
       try {
         // raises error if interval not present - this is
         // desired.
-        this.sCenter.remove(interval)
+        this.sCenter = this.sCenter.remove(interval)
       } catch (e) {
         this.printStructure()
         throw new TypeError(interval.toString())
       }
-      if (this.sCenter.length) {
+      if (this.sCenter.size) {
         // keep this node
         done.push(1) // no rebalancing necessary
-        // debug('removeIntervalHelper: Removed, no rebalancing.')
+        debug('removeIntervalHelper: Removed, no rebalancing.')
         return this
       } else {
         // If we reach here, no intervals are left in self.s_center.
         // So, prune self.
-        // debug('removeIntervalHelper: pruning self')
+        debug('removeIntervalHelper: pruning self')
         return this.prune()
       }
     } else {
       // interval not in sCenter
-      // debug('removeIntervalHelper: not in center')
+      debug('removeIntervalHelper: not in center')
       const direction = this.hitBranch(interval)
       let branch = this.getBranch(direction)
       if (!this.getBranch(direction)) {
@@ -270,12 +280,12 @@ export class Node {
         done.push(1)
         return this
       }
-      // debug(`removeIntervalHelper: Descending to ${direction} branch`)
+      debug(`removeIntervalHelper: Descending to ${direction} branch`)
       branch = branch.removeIntervalHelper(interval, done, shouldRaiseError)
       this.setBranch(direction, branch)
       // Clean up
       if (!done.length) {
-        // debug(`removeIntervalHelper: rotating ${this.xCenter}`)
+        debug(`removeIntervalHelper: rotating ${this.xCenter}`)
         return this.rotate()
       }
       return this
@@ -290,18 +300,20 @@ export class Node {
     const leftBranch = this.getBranch(0)
     const rightBranch = this.getBranch(1)
 
-    if (!leftBranch || !rightBranch) {
+    if (!leftBranch && !rightBranch) {
       // if I have an empty branch
       const direction = !leftBranch // graft the other branch here
-      // debug(`prune: Grafting ${direction ? 'right' : 'left'} branch`)
+      debug(`prune: Grafting ${direction ? 'right' : 'left'} branch`)
       return this.getBranch(direction)
     } else {
       // Replace the root node with the greatest predecessor.
       // tslint:disable-next-line prefer-const
-      let [heir, newBranch] = this.getBranch(0).popGreatestChild()
+      const result = this.getBranch(0).popGreatestChild()
+      const heir = result[0]
+      const newBranch = result[1]
       this.setBranch(0, newBranch)
 
-      // debug(`prune: Replacing ${this} with ${heir}`)
+      debug(`prune: Replacing ${this} with ${heir}`)
 
       // Set up the heir as the new root node
       heir.setBranch(0, this.getBranch(0))
@@ -310,8 +322,7 @@ export class Node {
       // popping the predecessor may have unbalanced this node;
       // fix it
       heir.refreshBalance()
-      heir = heir.rotate()
-      return heir
+      return heir.rotate()
     }
   }
 
@@ -334,12 +345,12 @@ export class Node {
       // a child node containing the smallest possible number of
       // intervals, as close as possible to the maximum bound.
       const compareEndFirst = (a: Interval, b: Interval) => {
-        // FIXME: seems like this compare key should be part of Interval class
         const key = (iv) => `${iv.end},${iv.start},${iv.data}`
-        // @ts-ignore
-        return Object.compare(key(a), key(b))
+        const keyA = key(a)
+        const keyB = key(b)
+        return keyA.localeCompare(keyB)
       }
-      const ivs = this.sCenter.sorted(compareEndFirst)
+      const ivs = this.sCenter.toArray().sort(compareEndFirst)
       const maxIv = ivs.pop()
       let newXCenter = this.xCenter
       while (ivs.length) {
@@ -356,7 +367,7 @@ export class Node {
       child.xCenter = newXCenter
       this.sCenter = this.sCenter.difference(child.sCenter)
 
-      if (this.sCenter.length) {
+      if (this.sCenter.size) {
         return [child, this]
       } else {
         return [child, this.getBranch(0)] // Rotate left child up
@@ -371,12 +382,12 @@ export class Node {
       // Move any overlaps into greatest_child
       newSelf.sCenter.forEach((iv) => {
         if (iv.containsPoint(greatestChild.xCenter)) {
-          newSelf.sCenter.remove(iv)
+          newSelf.sCenter = newSelf.sCenter.remove(iv)
           greatestChild.add(iv)
         }
       })
 
-      if (newSelf.sCenter.length) {
+      if (newSelf.sCenter.size) {
         return [greatestChild, newSelf]
       } else {
         newSelf = newSelf.prune()
@@ -385,11 +396,12 @@ export class Node {
     }
   }
 
-  public verify(parents: SortedSet<number> = new SortedSet()) {
+  public verify(parents: SortedSet<number> = SortedSet.empty<number>()) {
     // Recursively ensures that the invariants of an interval subtree hold.
+    const constructor = this.sCenter.constructor.name
     assert(
-      this.sCenter.constructor.name === 'IntervalSet',
-      `sCenter type is incorrect: ${typeof this.sCenter}`
+      constructor === 'SortedSetLeaf',
+      `sCenter type is incorrect: ${constructor}`
     )
 
     const bal = this.balance
@@ -402,7 +414,7 @@ export class Node {
     assert(bal === this.balance, 'Error: this.balance not set correctly!')
 
     assert(
-      this.sCenter.length,
+      this.sCenter.size,
       `Error: sCenter is empty!\n${this.printStructure(0, true)}`
     )
 
@@ -433,17 +445,17 @@ export class Node {
     }
   }
 
-  public allChildren(): IntervalSet {
-    return this.allChildrenHelper(new IntervalSet([]))
+  public allChildren(): SortedSet<Interval> {
+    return this.allChildrenHelper(IntervalSet.empty())
   }
 
-  private allChildrenHelper(result: IntervalSet): IntervalSet {
-    result.addEach(this.sCenter)
+  private allChildrenHelper(result: SortedSet<Interval>): SortedSet<Interval> {
+    result = result.addAll(this.sCenter)
     if (this.getBranch(0)) {
-      this.getBranch(0).allChildrenHelper(result)
+      result = this.getBranch(0).allChildrenHelper(result)
     }
     if (this.getBranch(1)) {
-      this.getBranch(1).allChildrenHelper(result)
+      result = this.getBranch(1).allChildrenHelper(result)
     }
     return result
   }
@@ -482,7 +494,7 @@ export class Node {
       for (const iv of promotees) {
         save.setBranch(light, save.getBranch(light).remove(iv))
       }
-      save.sCenter.addEach(promotees)
+      save.sCenter = save.sCenter.addAll(promotees)
     }
     save.refreshBalance()
     return save
