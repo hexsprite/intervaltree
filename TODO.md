@@ -12,11 +12,19 @@
     other things
   - https://github.com/facebook/immutable-js/issues/88
   - https://github.com/rongierlach/immutable-sorted-map
+    - 5 years old
   - https://github.com/applitopia/immutable-sorted
   - https://www.npmjs.com/package/@collectable/sorted-set
+    - weird API
+    - not maintained
+  - https://github.com/rimbu-org/rimbu
+    - consistent updates in 2022
 
 - logger should be imported cleanly (get rid of globals.d.ts ref)
 
 - review other data structures for our purposes
+
   - https://github.com/hunt-genes/ncls
   - https://github.com/biocore-ntnu/pyranges
+
+- benchmark 100million

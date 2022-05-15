@@ -1,4 +1,3 @@
-import { SortedSet } from 'collections/sorted-set'
 import { Interval } from './Interval'
 
 export default class IntervalLengthSet extends SortedSet<Interval> {

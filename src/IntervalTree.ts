@@ -1,4 +1,3 @@
-import * as SortedMap from 'collections/sorted-map'
 import * as assert from 'assert'
 import * as crypto from 'crypto'
 import * as lodash from 'lodash'
@@ -8,7 +7,6 @@ import { debug } from './debug'
 import { Node } from './Node'
 import { Interval } from './Interval'
 import IntervalSet from './IntervalSet'
-import { SortedSet } from 'collections/sorted-set'
 
 export type SimpleIntervalArray = Array<
   [number, number, any] | [number, number]

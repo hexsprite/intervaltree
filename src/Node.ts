@@ -1,7 +1,5 @@
 import * as assert from 'assert'
-import { SortedSet } from 'collections/sorted-set'
 
-import { debug } from './debug'
 import { Interval } from './Interval'
 import IntervalSet from './IntervalSet'
 
@@ -189,7 +187,7 @@ export class Node {
     // Returns all intervals that contain point.
     // debug('searchPoint: point=', point, this.toString())
     // debug('searchPoint: result=', result)
-    this.sCenter.forEach(interval => {
+    this.sCenter.forEach((interval) => {
       // debug('searchPoint: interval=', interval)
       if (interval.start <= point && point < interval.end) {
         // debug('searchPoint interval', interval)
@@ -337,7 +335,7 @@ export class Node {
       // intervals, as close as possible to the maximum bound.
       const compareEndFirst = (a: Interval, b: Interval) => {
         // FIXME: seems like this compare key should be part of Interval class
-        const key = iv => `${iv.end},${iv.start},${iv.data}`
+        const key = (iv) => `${iv.end},${iv.start},${iv.data}`
         // @ts-ignore
         return Object.compare(key(a), key(b))
       }
@@ -353,7 +351,7 @@ export class Node {
       }
       // Create a new node with the largest x_center possible.
       const child = Node.fromIntervals(
-        this.sCenter.filter(iv => iv.containsPoint(newXCenter)).toArray()
+        this.sCenter.filter((iv) => iv.containsPoint(newXCenter)).toArray()
       )
       child.xCenter = newXCenter
       this.sCenter = this.sCenter.difference(child.sCenter)
@@ -364,15 +362,14 @@ export class Node {
         return [child, this.getBranch(0)] // Rotate left child up
       }
     } else {
-      const [greatestChild, newRightBranch] = this.getBranch(
-        1
-      ).popGreatestChild()
+      const [greatestChild, newRightBranch] =
+        this.getBranch(1).popGreatestChild()
       this.setBranch(1, newRightBranch)
       this.refreshBalance()
       let newSelf = this.rotate()
 
       // Move any overlaps into greatest_child
-      newSelf.sCenter.forEach(iv => {
+      newSelf.sCenter.forEach((iv) => {
         if (iv.containsPoint(greatestChild.xCenter)) {
           newSelf.sCenter.remove(iv)
           greatestChild.add(iv)
@@ -409,7 +406,7 @@ export class Node {
       `Error: sCenter is empty!\n${this.printStructure(0, true)}`
     )
 
-    this.sCenter.forEach(iv => {
+    this.sCenter.forEach((iv) => {
       assert(typeof iv.start === 'number', `start not number: ${iv.start}`)
       assert(typeof iv.end === 'number', `end not number: ${iv.end}`)
       assert(iv.start < iv.end, 'start comes before end')
@@ -475,7 +472,7 @@ export class Node {
     // Some intervals may overlap both this.xCenter and save.xCenter
     // Promote those to the new tip of the tree
     const promotees: Interval[] = []
-    save.getBranch(light).sCenter.forEach(iv => {
+    save.getBranch(light).sCenter.forEach((iv) => {
       if (save.centerHit(iv)) {
         promotees.push(iv)
       }
