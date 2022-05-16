@@ -67,7 +67,7 @@ describe('IntervalTree', () => {
     expect(tree.last().toString()).toBe('Interval(5, 10)')
   })
 
-  fit('chops tree', () => {
+  it('chops tree', () => {
     tree.addInterval(0, 10)
     tree.chop(3, 7)
     expectTree('IntervalTree([Interval(0, 3),Interval(7, 10)])')

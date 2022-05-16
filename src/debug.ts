@@ -1,4 +1,4 @@
-export let enableDebug = 1
+export let enableDebug = 0
 
 export function debug(...args: any[]) {
   // works like console.log however if the first arg is a function then it is

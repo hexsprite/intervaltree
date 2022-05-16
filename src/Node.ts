@@ -128,7 +128,6 @@ export class Node {
   }
 
   public setBranch(branch: boolean | number, node: Node) {
-    assert(!!node)
     if (branch) {
       this.rightNode = node
     } else {
@@ -241,7 +240,6 @@ export class Node {
     in his AVL tree article for reference.
     */
     debug(`removeIntervalHelper: ${this.toString()}`)
-    this.printStructure()
 
     if (this.centerHit(interval)) {
       debug('center hit')
@@ -263,7 +261,7 @@ export class Node {
         debug('removeIntervalHelper: Removed, no rebalancing.')
         return this
       } else {
-        // If we reach here, no intervals are left in self.s_center.
+        // If we reach here, no intervals are left in this.sCenter
         // So, prune self.
         debug('removeIntervalHelper: pruning self')
         return this.prune()
@@ -294,13 +292,13 @@ export class Node {
 
   public prune(): Node {
     /*
-    On a subtree where the root node's s_center is empty,
-    return a new subtree with no empty s_centers.
+    On a subtree where the root node's sCenter is empty,
+    return a new subtree with no empty sCenters.
     */
     const leftBranch = this.getBranch(0)
     const rightBranch = this.getBranch(1)
 
-    if (!leftBranch && !rightBranch) {
+    if (!leftBranch || !rightBranch) {
       // if I have an empty branch
       const direction = !leftBranch // graft the other branch here
       debug(`prune: Grafting ${direction ? 'right' : 'left'} branch`)

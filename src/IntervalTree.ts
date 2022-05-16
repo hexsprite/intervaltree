@@ -72,7 +72,6 @@ export class IntervalTree {
     } else {
       this.topNode = this.topNode.add(interval)
     }
-    assert(this.topNode)
     this.allIntervals = this.allIntervals.add(interval)
     this.addBoundaries(interval)
   }
@@ -110,11 +109,8 @@ export class IntervalTree {
     }))
     debug(() => `chop: before=${this.allIntervals.toArray()}`)
     this.removeEnveloped(start, end)
-    assert(this.topNode)
     this.differenceUpdate(startHits)
-    assert(this.topNode)
     this.differenceUpdate(endHits)
-    assert(this.topNode)
     this.update(insertions)
     debug(() => `chop: after=${this.allIntervals.toArray()}`)
   }
@@ -160,7 +156,7 @@ export class IntervalTree {
       throw new RangeError(`no such interval: ${interval}`)
     }
     this.topNode = this.topNode.remove(interval)
-    this.allIntervals.remove(interval)
+    this.allIntervals = this.allIntervals.remove(interval)
     this.removeBoundaries(interval)
   }
 
@@ -192,7 +188,6 @@ badInterval=${iv}
         }
       }
     })
-    assert(this.topNode)
   }
 
   public toString() {
@@ -295,13 +290,13 @@ badInterval=${iv}
   public removeBoundaries(interval: Interval) {
     // Removes the boundaries of the interval from the boundary table.
     const updateValue = (key: number) => {
-      let boundaryTable = this.boundaryTable
-      if (boundaryTable.get(key) === 1) {
-        boundaryTable = boundaryTable.removeKey(key)
+      let boundaries = this.boundaryTable
+      if (boundaries.get(key) === 1) {
+        boundaries = boundaries.removeKey(key)
       } else {
-        boundaryTable = boundaryTable.set(key, boundaryTable.get(key) - 1)
+        boundaries = boundaries.set(key, boundaries.get(key) - 1)
       }
-      this.boundaryTable = boundaryTable
+      this.boundaryTable = boundaries
     }
     updateValue(interval.start)
     updateValue(interval.end)
