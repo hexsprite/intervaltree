@@ -344,7 +344,7 @@ badInterval=${iv}
         `search: start=${start} end=${end} strict=${strict} boundaryTable=${keysArray}`
     )
     debug(() => `search: boundStart=${boundStart} boundEnd=${boundEnd}`)
-    result.addAll(
+    result = result.addAll(
       this.topNode.searchOverlap(
         lodash.range(boundStart, boundEnd).map((index) => keysArray[index])
       )
@@ -363,16 +363,12 @@ badInterval=${iv}
     // adjust nodes to match the start time
     const intervals = this.search(start, Infinity)
       .stream()
-      .map((iv) => {
+      .map((iv) =>
         // return a new node with changed start time if necessary
-        if (iv.start < start) {
-          return new Interval(start, iv.end, iv.data)
-        }
-        return iv
-      })
+        iv.start < start ? new Interval(start, iv.end, iv.data) : iv
+      )
       .filter((iv) => iv.length >= length)
       .toArray()
-
     return intervals
   }
 
