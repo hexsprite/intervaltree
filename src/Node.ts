@@ -187,8 +187,8 @@ export class Node {
 
   public searchPoint(
     point: number,
-    result: SortedSet<Interval>
-  ): SortedSet<Interval> {
+    resultBuilder: SortedSet.Builder<Interval>
+  ) {
     // Returns all intervals that contain point.
     // debug('searchPoint: point=', point, this.toString())
     // debug('searchPoint: result=', result)
@@ -196,23 +196,23 @@ export class Node {
       // debug('searchPoint: interval=', interval)
       if (interval.start <= point && point < interval.end) {
         // debug('searchPoint interval', interval)
-        result = result.add(interval)
+        resultBuilder.add(interval)
       }
     })
     if (point < this.xCenter && this.getBranch(0)) {
-      return this.getBranch(0).searchPoint(point, result)
+      this.getBranch(0).searchPoint(point, resultBuilder)
     } else if (point > this.xCenter && this.getBranch(1)) {
-      return this.getBranch(1).searchPoint(point, result)
+      this.getBranch(1).searchPoint(point, resultBuilder)
     }
-    return result
+    return resultBuilder
   }
 
   public searchOverlap(pointList: number[]): SortedSet<Interval> {
-    let result = IntervalSet.empty()
+    const resultBuilder = IntervalSet.empty().toBuilder()
     for (const point of pointList) {
-      result = this.searchPoint(point, result)
+      this.searchPoint(point, resultBuilder)
     }
-    return result
+    return resultBuilder.build()
   }
 
   public remove(interval: Interval): Node {

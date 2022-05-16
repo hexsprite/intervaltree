@@ -91,20 +91,21 @@ export class IntervalTree {
     if (start > end) {
       throw TypeError('invalid parameters to chop')
     }
-    let insertions = IntervalSet.empty()
+    const insertionsBuilder = IntervalSet.builder()
     const startHits = this.search(start).filter((iv) => iv.start < start)
     const endHits = this.search(end).filter((iv) => iv.end > end)
     startHits.forEach((iv) => {
-      insertions = insertions.add(new Interval(iv.start, start, iv.data))
+      insertionsBuilder.add(new Interval(iv.start, start, iv.data))
     })
     endHits.forEach((iv) => {
-      insertions = insertions.add(new Interval(end, iv.end, iv.data))
+      insertionsBuilder.add(new Interval(end, iv.end, iv.data))
     })
+    const insertions = insertionsBuilder.build()
     debug(() => ({
+      insertions,
+      start,
       end,
       endHits: endHits.toArray(),
-      insertions: insertions.toArray(),
-      start,
       startHits: startHits.toArray(),
     }))
     debug(() => `chop: before=${this.allIntervals.toArray()}`)
@@ -113,6 +114,37 @@ export class IntervalTree {
     this.differenceUpdate(endHits)
     this.update(insertions)
     debug(() => `chop: after=${this.allIntervals.toArray()}`)
+  }
+
+  chopAll(intervals: [number, number][]) {
+    intervals.forEach(([start, end]) => {
+      if (start > end) {
+        throw TypeError('invalid parameters to chop')
+      }
+      const insertionsBuilder = IntervalSet.builder()
+      const startHits = this.search(start).filter((iv) => iv.start < start)
+      const endHits = this.search(end).filter((iv) => iv.end > end)
+      startHits.forEach((iv) => {
+        insertionsBuilder.add(new Interval(iv.start, start, iv.data))
+      })
+      endHits.forEach((iv) => {
+        insertionsBuilder.add(new Interval(end, iv.end, iv.data))
+      })
+      const insertions = insertionsBuilder.build()
+      debug(() => ({
+        insertions,
+        start,
+        end,
+        endHits: endHits.toArray(),
+        startHits: startHits.toArray(),
+      }))
+      debug(() => `chop: before=${this.allIntervals.toArray()}`)
+      this.removeEnveloped(start, end)
+      this.differenceUpdate(startHits)
+      this.differenceUpdate(endHits)
+      this.update(insertions)
+      debug(() => `chop: after=${this.allIntervals.toArray()}`)
+    })
   }
 
   /**
@@ -337,9 +369,11 @@ badInterval=${iv}
       return IntervalSet.empty()
     }
     if (end === undefined) {
-      return this.topNode.searchPoint(start, IntervalSet.empty())
+      const resultBuilder = IntervalSet.empty().toBuilder()
+      return this.topNode.searchPoint(start, resultBuilder).build()
     }
-    let result = this.topNode.searchPoint(start, IntervalSet.empty())
+    const resultBuilder = IntervalSet.empty().toBuilder()
+    let result = this.topNode.searchPoint(start, resultBuilder).build()
     const keysArray = this.boundaryTable.streamKeys().toArray()
     const boundStart = bisectLeft(keysArray, start)
     const boundEnd = bisectLeft(keysArray, end) // exclude final end bound

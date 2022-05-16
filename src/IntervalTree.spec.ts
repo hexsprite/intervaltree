@@ -73,6 +73,17 @@ describe('IntervalTree', () => {
     expectTree('IntervalTree([Interval(0, 3),Interval(7, 10)])')
   })
 
+  it('chopAll chops multiple', () => {
+    tree.addInterval(0, 100)
+    tree.chopAll([
+      [3, 7],
+      [50, 60],
+    ])
+    expectTree(
+      'IntervalTree([Interval(0, 3),Interval(7, 50),Interval(60, 100)])'
+    )
+  })
+
   it('chops bigger things', () => {
     const allIntervals: Array<[number, number]> = [
       [1481157540000, 1481158800000],
