@@ -145,6 +145,10 @@ describe('IntervalTree', () => {
     )
   })
 
+  it('clone empty', () => {
+    expect(tree.clone().toString()).toBe(tree.toString())
+  })
+
   it('clone', () => {
     tree.addInterval(0, 1)
     tree.addInterval(2, 4)

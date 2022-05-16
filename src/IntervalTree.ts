@@ -418,9 +418,9 @@ badInterval=${iv}
     Completes in O(n*log n) time.
     */
     const tree = new IntervalTree()
-    tree.topNode = this.topNode.clone()
-    tree.boundaryTable = this.boundaryTable //.clone(1)
-    tree.allIntervals = this.allIntervals //new IntervalSet(this.allIntervals)
+    tree.topNode = this.topNode?.clone()
+    tree.boundaryTable = this.boundaryTable
+    tree.allIntervals = this.allIntervals
     return tree
   }
 

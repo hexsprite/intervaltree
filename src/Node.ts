@@ -63,15 +63,11 @@ export class Node {
 
   public clone(): Node {
     function nodeCloner(node: Node) {
-      if (node) {
-        return node.clone()
-      } else {
-        return node
-      }
+      return node ? node.clone() : node
     }
     return new Node(
       this.xCenter,
-      this.sCenter.toArray(),
+      this.sCenter,
       nodeCloner(this.leftNode!),
       nodeCloner(this.rightNode!),
       false,
