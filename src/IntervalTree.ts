@@ -15,7 +15,7 @@ export type SimpleIntervalArray = Array<
 
 export class IntervalTree {
   public static fromJSON(nodes: string | Interval[]) {
-    const intervals = []
+    const intervals: Interval[] = []
     if (typeof nodes === 'string') {
       nodes = JSON.parse(nodes) as Interval[]
     }
@@ -45,7 +45,7 @@ export class IntervalTree {
     return this.allIntervals
       .stream()
       .map((e) => [e.start, e.end, e.data])
-      .toArray()
+      .toArray() as [number, number, unknown]
   }
   a
 
@@ -76,9 +76,9 @@ export class IntervalTree {
     this.addBoundaries(interval)
   }
 
-  public addInterval(start: number, end: number, data?: unknown) {
+  public addInterval(start: number, end: number, data?: unknown): void {
     const interval = new Interval(start, end, data)
-    return this.add(interval)
+    this.add(interval)
   }
 
   /**
@@ -87,7 +87,7 @@ export class IntervalTree {
    * @param start
    * @param end
    */
-  public chop(start: number, end: number) {
+  public chop(start: number, end: number): void {
     if (start > end) {
       throw TypeError('invalid parameters to chop')
     }
@@ -241,33 +241,19 @@ badInterval=${iv}
   }
 
   public end() {
-    if (!this.boundaryTable.size) {
-      return 0
-    }
-    const iloc = this.boundaryTable.streamKeys().toArray() // FIXME: slow?
-    return iloc[iloc.length - 1]
+    return this.boundaryTable.getValueAtIndex(-1)
   }
 
   public start() {
-    if (!this.boundaryTable.size) {
-      return 0
-    }
-    const iloc = this.boundaryTable.streamKeys().toArray() // FIXME: slow?
-    return iloc[0]
+    return this.boundaryTable.getValueAtIndex(0, 0)
   }
 
   public first() {
-    if (!this.boundaryTable.size) {
-      return null
-    }
     return this.allIntervals.getAtIndex(0)
   }
 
   public last() {
-    if (!this.allIntervals.size) {
-      return null
-    }
-    return this.allIntervals.getAtIndex(this.allIntervals.size - 1)
+    return this.allIntervals.getAtIndex(-1)
   }
 
   public addBoundaries(interval: Interval) {
@@ -276,7 +262,7 @@ badInterval=${iv}
       if (this.boundaryTable.hasKey(point)) {
         this.boundaryTable = this.boundaryTable.set(
           point,
-          this.boundaryTable.get(point) + 1
+          this.boundaryTable.get(point)! + 1
         )
       } else {
         this.boundaryTable = this.boundaryTable.set(point, 1)
@@ -286,6 +272,25 @@ badInterval=${iv}
     addBoundary(end)
   }
 
+  private addBoundariesAll(intervals: Interval[]) {
+    const boundaries = this.boundaryTable.toBuilder()
+
+    // Adds the boundaries of all intervals in the list to the boundary table.
+    intervals.forEach((iv) => {
+      const { start, end } = iv
+      const addBoundary = (point: number) => {
+        if (boundaries.hasKey(point)) {
+          boundaries.set(point, boundaries.get(point)! + 1)
+        } else {
+          boundaries.set(point, 1)
+        }
+      }
+      addBoundary(start)
+      addBoundary(end)
+    })
+    this.boundaryTable = boundaries.build()
+  }
+
   public removeBoundaries(interval: Interval) {
     // Removes the boundaries of the interval from the boundary table.
     const updateValue = (key: number) => {
@@ -293,7 +298,7 @@ badInterval=${iv}
       if (boundaries.get(key) === 1) {
         boundaries = boundaries.removeKey(key)
       } else {
-        boundaries = boundaries.set(key, boundaries.get(key) - 1)
+        boundaries = boundaries.set(key, boundaries.get(key)! - 1)
       }
       this.boundaryTable = boundaries
     }
@@ -301,14 +306,14 @@ badInterval=${iv}
     updateValue(interval.end)
   }
 
-  public slice(start: number | null, stop: number | null): SortedSet<Interval> {
-    if (start === null) {
+  public slice(start?: number, stop?: number): SortedSet<Interval> {
+    if (start === undefined) {
       start = this.start()
-      if (stop === null) {
+      if (stop === undefined) {
         return this.allIntervals
       }
     }
-    if (stop === null) {
+    if (stop === undefined) {
       stop = this.end()
     }
     return this.search(start, stop)
@@ -325,13 +330,13 @@ badInterval=${iv}
    **/
   public search(
     start: number,
-    end: number | null = null,
+    end?: number,
     strict = false
   ): SortedSet<Interval> {
     if (!this.topNode) {
       return IntervalSet.empty()
     }
-    if (end === null) {
+    if (end === undefined) {
       return this.topNode.searchPoint(start, IntervalSet.empty())
     }
     let result = this.topNode.searchPoint(start, IntervalSet.empty())
@@ -418,13 +423,16 @@ badInterval=${iv}
       if (boundaryCheck.hasKey(iv.start)) {
         boundaryCheck = boundaryCheck.set(
           iv.start,
-          boundaryCheck.get(iv.start) + 1
+          boundaryCheck.get(iv.start)! + 1
         )
       } else {
         boundaryCheck = boundaryCheck.set(iv.start, 1)
       }
       if (boundaryCheck.hasKey(iv.end)) {
-        boundaryCheck = boundaryCheck.set(iv.end, boundaryCheck.get(iv.end) + 1)
+        boundaryCheck = boundaryCheck.set(
+          iv.end,
+          boundaryCheck.get(iv.end)! + 1
+        )
       } else {
         boundaryCheck = boundaryCheck.set(iv.end, 1)
       }
@@ -442,10 +450,8 @@ badInterval=${iv}
 
   private __init(intervals: any) {
     this.allIntervals = IntervalSet.from(intervals)
-    this.topNode = Node.fromIntervals(intervals)
+    this.topNode = Node.fromIntervals(intervals)!
     this.boundaryTable = SortedMap.empty()
-    for (const iv of intervals) {
-      this.addBoundaries(iv)
-    }
+    this.addBoundariesAll(intervals)
   }
 }

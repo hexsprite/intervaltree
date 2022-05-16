@@ -1,5 +1,4 @@
 {
-  "compileOnSave": true,
   "compilerOptions": {
     "moduleResolution": "node",
     "module": "commonjs",
@@ -7,7 +6,7 @@
     "sourceMap": true,
     "removeComments": true,
     "outDir": "dist/",
-    "typeRoots": ["node_modules/@types"]
+    "strictNullChecks": true
   },
   "include": ["src/**/*"],
   "exclude": ["**/*.spec.ts"]

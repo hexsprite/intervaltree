@@ -10,7 +10,7 @@ export class Node {
     return new Node(interval.start, [interval])
   }
 
-  public static fromIntervals(intervals: Interval[]): Node {
+  public static fromIntervals(intervals: Interval[]): Node | null {
     if (!intervals || intervals.length < 1) {
       return null
     }
@@ -27,8 +27,8 @@ export class Node {
         node.sCenter = node.sCenter.add(iv)
       }
     }
-    node.leftNode = Node.fromIntervals(sLeft)
-    node.rightNode = Node.fromIntervals(sRight)
+    node.leftNode = Node.fromIntervals(sLeft)!
+    node.rightNode = Node.fromIntervals(sRight)!
 
     return node.rotate()
   }
@@ -72,8 +72,8 @@ export class Node {
     return new Node(
       this.xCenter,
       this.sCenter.toArray(),
-      nodeCloner(this.leftNode),
-      nodeCloner(this.rightNode),
+      nodeCloner(this.leftNode!),
+      nodeCloner(this.rightNode!),
       false,
       this.depth,
       this.balance
@@ -121,9 +121,9 @@ export class Node {
 
   public getBranch(branch: boolean | number): Node {
     if (branch) {
-      return this.rightNode
+      return this.rightNode!
     } else {
-      return this.leftNode
+      return this.leftNode!
     }
   }
 
@@ -157,7 +157,7 @@ export class Node {
     }
   }
 
-  public printStructure(indent = 0, tostring = false): string | null {
+  public printStructure(indent = 0, tostring = false): string | undefined {
     const spaces = '   '.repeat(indent)
     let result = ''
 
@@ -347,10 +347,10 @@ export class Node {
         return keyA.localeCompare(keyB)
       }
       const ivs = this.sCenter.toArray().sort(compareEndFirst)
-      const maxIv = ivs.pop()
+      const maxIv = ivs.pop()!
       let newXCenter = this.xCenter
       while (ivs.length) {
-        const nextMaxIv = ivs.pop()
+        const nextMaxIv = ivs.pop()!
         if (nextMaxIv.end === maxIv.end) {
           continue
         }
@@ -359,7 +359,7 @@ export class Node {
       // Create a new node with the largest x_center possible.
       const child = Node.fromIntervals(
         this.sCenter.filter((iv) => iv.containsPoint(newXCenter)).toArray()
-      )
+      )!
       child.xCenter = newXCenter
       this.sCenter = this.sCenter.difference(child.sCenter)
 

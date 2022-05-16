@@ -1,3 +1,4 @@
+// eslint-disable-next-line prefer-const
 export let enableDebug = 0
 
 export function debug(...args: any[]) {
@@ -9,7 +10,8 @@ export function debug(...args: any[]) {
     if (args.length === 1 && typeof args[0] === 'function') {
       consoleArgs = [args[0]()]
     }
-    if (typeof logger !== 'undefined') {
+    if ('logger' in globalThis) {
+      // @ts-ignore
       logger.debug(...consoleArgs)
     } else {
       console.log(...consoleArgs)

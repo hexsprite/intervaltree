@@ -63,8 +63,8 @@ describe('IntervalTree', () => {
   it('get first and last interval', () => {
     tree.addInterval(5, 10)
     tree.addInterval(0, 4)
-    expect(tree.first().toString()).toBe('Interval(0, 4)')
-    expect(tree.last().toString()).toBe('Interval(5, 10)')
+    expect(tree.first()!.toString()).toBe('Interval(0, 4)')
+    expect(tree.last()!.toString()).toBe('Interval(5, 10)')
   })
 
   it('chops tree', () => {
@@ -116,7 +116,7 @@ describe('IntervalTree', () => {
     ]
     tree.initFromSimpleArray(allIntervals)
     tree.chop(0, 227923200000)
-    expect(tree.first().start).toBe(227923200000)
+    expect(tree.first()!.start).toBe(227923200000)
   })
 
   it('find intervals of minimum length', () => {

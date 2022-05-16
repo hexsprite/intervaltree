@@ -5,9 +5,9 @@ export const IntervalSet = SortedSet.createContext<Interval>({
   comp: {
     compare: (a, b) => {
       return (
-        compare(a.start, b.start) ||
-        compare(a.end, b.end) ||
-        compare((a.data as string) || '', (b.data as string) || '')
+        a.start - b.start ||
+        a.end - b.end ||
+        compareString((a.data as string) ?? '', (b.data as string) ?? '')
       )
     },
     isComparable(obj): obj is Interval {
@@ -16,11 +16,6 @@ export const IntervalSet = SortedSet.createContext<Interval>({
   },
 })
 
-function compare(a: string | number, b: string | number) {
-  if (typeof a === 'number' && typeof b === 'number') {
-    return a - b
-  }
-  if (typeof a === 'string' && typeof b === 'string') {
-    return a.localeCompare(b)
-  }
+function compareString(a: string, b: string) {
+  return a < b ? -1 : a > b ? 1 : 0
 }

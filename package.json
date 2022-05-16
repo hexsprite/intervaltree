@@ -6,7 +6,6 @@
   "license": "MIT",
   "main": "dist/main.js",
   "types": "dist/main.d.ts",
-  "type": "module",
   "scripts": {
     "install": "tsc --declaration || true",
     "build": "tsc --declaration || true",
@@ -39,10 +38,10 @@
     "@typescript-eslint/eslint-plugin": "^5.23.0",
     "@typescript-eslint/parser": "^5.23.0",
     "eslint": "^8.15.0",
+    "eslint-config-standard": "^17.0.0",
     "jest": "^28.1.0",
     "jest-junit": "^13.2.0",
     "rimraf": "^3.0.2",
-    "standard-version": "^9.5.0",
     "ts-jest": "^28.0.2",
     "typescript": "^4.6.4"
   },
@@ -51,7 +50,8 @@
     "@types/lodash": "^4.14.182",
     "assert": "^2.0.0",
     "debug": "^4.3.4",
-    "lodash": "^4.17.21"
+    "lodash": "^4.17.21",
+    "ts-node": "^10.7.0"
   },
   "jest": {
     "collectCoverageFrom": [
