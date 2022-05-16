@@ -1,4 +1,3 @@
-import * as SortedMap from 'collections/sorted-map'
 import * as assert from 'assert'
 import * as crypto from 'crypto'
 import * as lodash from 'lodash'
@@ -7,18 +6,18 @@ import { bisectLeft } from './bisect'
 import { debug } from './debug'
 import { Node } from './Node'
 import { Interval } from './Interval'
-import IntervalSet from './IntervalSet'
-import { SortedSet } from 'collections/sorted-set'
+import { SortedMap, SortedSet } from '@rimbu/sorted'
+import { IntervalSet } from './IntervalSet'
 
 export type SimpleIntervalArray = Array<
-  [number, number, any] | [number, number]
+  [number, number, unknown] | [number, number]
 >
 
 export class IntervalTree {
-  public static fromJSON(nodes: any) {
+  public static fromJSON(nodes: string | Interval[]) {
     const intervals = []
     if (typeof nodes === 'string') {
-      nodes = JSON.parse(nodes)
+      nodes = JSON.parse(nodes) as Interval[]
     }
     for (const node of nodes) {
       intervals.push(new Interval(node.start, node.end, node.data))
@@ -26,9 +25,9 @@ export class IntervalTree {
     return new IntervalTree(intervals)
   }
 
-  public allIntervals: IntervalSet
+  public allIntervals: SortedSet<Interval>
   private topNode: Node
-  private boundaryTable: SortedMap
+  private boundaryTable: SortedMap<number, number>
 
   public constructor(intervals: Interval[] = []) {
     this.__init(intervals)
@@ -43,8 +42,12 @@ export class IntervalTree {
   }
 
   public toArray() {
-    return this.allIntervals.map((e) => [e.start, e.end, e.data])
+    return this.allIntervals
+      .stream()
+      .map((e) => [e.start, e.end, e.data])
+      .toArray()
   }
+  a
 
   public toJSON() {
     return this.allIntervals.toArray()
@@ -69,11 +72,11 @@ export class IntervalTree {
     } else {
       this.topNode = this.topNode.add(interval)
     }
-    this.allIntervals.add(interval)
+    this.allIntervals = this.allIntervals.add(interval)
     this.addBoundaries(interval)
   }
 
-  public addInterval(start: number, end: number, data?: any) {
+  public addInterval(start: number, end: number, data?: unknown) {
     const interval = new Interval(start, end, data)
     return this.add(interval)
   }
@@ -88,14 +91,14 @@ export class IntervalTree {
     if (start > end) {
       throw TypeError('invalid parameters to chop')
     }
-    const insertions = new IntervalSet()
+    let insertions = IntervalSet.empty()
     const startHits = this.search(start).filter((iv) => iv.start < start)
     const endHits = this.search(end).filter((iv) => iv.end > end)
     startHits.forEach((iv) => {
-      insertions.add(new Interval(iv.start, start, iv.data))
+      insertions = insertions.add(new Interval(iv.start, start, iv.data))
     })
     endHits.forEach((iv) => {
-      insertions.add(new Interval(end, iv.end, iv.data))
+      insertions = insertions.add(new Interval(end, iv.end, iv.data))
     })
     debug(() => ({
       end,
@@ -116,13 +119,13 @@ export class IntervalTree {
    * Given an iterable of intervals, add them to the tree.
    * Completes in O(m*log(n+m)), where m = number of intervals to add.
    */
-  public update(intervals: IntervalSet) {
+  public update(intervals: SortedSet<Interval>) {
     intervals.forEach((iv) => {
       this.add(iv)
     })
   }
 
-  public differenceUpdate(other: IntervalSet) {
+  public differenceUpdate(other: SortedSet<Interval>) {
     other.forEach((iv) => {
       this.discard(iv)
     })
@@ -153,7 +156,7 @@ export class IntervalTree {
       throw new RangeError(`no such interval: ${interval}`)
     }
     this.topNode = this.topNode.remove(interval)
-    this.allIntervals.delete(interval)
+    this.allIntervals = this.allIntervals.remove(interval)
     this.removeBoundaries(interval)
   }
 
@@ -199,17 +202,16 @@ badInterval=${iv}
 
   public printForTests() {
     this.allIntervals.toArray().forEach((iv) => {
-      // tslint:disable-next-line no-console
       console.log(`[${iv.start}, ${iv.end}, ${iv.data}],`)
     })
   }
 
   public mergeOverlaps() {
     const merged: Interval[] = []
-    let currentReduced: string
+    let currentReduced: any
 
     const newSeries = (higher: Interval) => {
-      currentReduced = higher.data
+      currentReduced = higher.data as any
       merged.push(higher)
     }
 
@@ -239,43 +241,45 @@ badInterval=${iv}
   }
 
   public end() {
-    if (!this.boundaryTable.length) {
+    if (!this.boundaryTable.size) {
       return 0
     }
-    const iloc = this.boundaryTable.keysArray() // FIXME: slow?
+    const iloc = this.boundaryTable.streamKeys().toArray() // FIXME: slow?
     return iloc[iloc.length - 1]
   }
 
   public start() {
-    if (!this.boundaryTable.length) {
+    if (!this.boundaryTable.size) {
       return 0
     }
-    const iloc = this.boundaryTable.keysArray() // FIXME: slow?
+    const iloc = this.boundaryTable.streamKeys().toArray() // FIXME: slow?
     return iloc[0]
   }
 
   public first() {
-    if (!this.allIntervals.length) {
+    if (!this.boundaryTable.size) {
       return null
     }
-    return this.allIntervals.iterator().next().value
+    return this.allIntervals.getAtIndex(0)
   }
 
   public last() {
-    if (!this.allIntervals.length) {
+    if (!this.allIntervals.size) {
       return null
     }
-    const intervals = this.allIntervals.toArray()
-    return intervals[intervals.length - 1]
+    return this.allIntervals.getAtIndex(this.allIntervals.size - 1)
   }
 
   public addBoundaries(interval: Interval) {
     const { start, end } = interval
     const addBoundary = (point: number) => {
-      if (this.boundaryTable.has(point)) {
-        this.boundaryTable.set(point, this.boundaryTable.get(point) + 1)
+      if (this.boundaryTable.hasKey(point)) {
+        this.boundaryTable = this.boundaryTable.set(
+          point,
+          this.boundaryTable.get(point) + 1
+        )
       } else {
-        this.boundaryTable.set(point, 1)
+        this.boundaryTable = this.boundaryTable.set(point, 1)
       }
     }
     addBoundary(start)
@@ -285,18 +289,19 @@ badInterval=${iv}
   public removeBoundaries(interval: Interval) {
     // Removes the boundaries of the interval from the boundary table.
     const updateValue = (key: number) => {
-      const boundaryTable = this.boundaryTable
-      if (boundaryTable.get(key) === 1) {
-        boundaryTable.delete(key)
+      let boundaries = this.boundaryTable
+      if (boundaries.get(key) === 1) {
+        boundaries = boundaries.removeKey(key)
       } else {
-        boundaryTable.set(key, boundaryTable.get(key) - 1)
+        boundaries = boundaries.set(key, boundaries.get(key) - 1)
       }
+      this.boundaryTable = boundaries
     }
     updateValue(interval.start)
     updateValue(interval.end)
   }
 
-  public slice(start: number | null, stop: number | null): IntervalSet {
+  public slice(start: number | null, stop: number | null): SortedSet<Interval> {
     if (start === null) {
       start = this.start()
       if (stop === null) {
@@ -322,15 +327,15 @@ badInterval=${iv}
     start: number,
     end: number | null = null,
     strict = false
-  ): IntervalSet {
+  ): SortedSet<Interval> {
     if (!this.topNode) {
-      return new IntervalSet()
+      return IntervalSet.empty()
     }
     if (end === null) {
-      return this.topNode.searchPoint(start, new IntervalSet())
+      return this.topNode.searchPoint(start, IntervalSet.empty())
     }
-    let result = this.topNode.searchPoint(start, new IntervalSet())
-    const keysArray = this.boundaryTable.keysArray()
+    let result = this.topNode.searchPoint(start, IntervalSet.empty())
+    const keysArray = this.boundaryTable.streamKeys().toArray()
     const boundStart = bisectLeft(keysArray, start)
     const boundEnd = bisectLeft(keysArray, end) // exclude final end bound
     debug(
@@ -338,7 +343,7 @@ badInterval=${iv}
         `search: start=${start} end=${end} strict=${strict} boundaryTable=${keysArray}`
     )
     debug(() => `search: boundStart=${boundStart} boundEnd=${boundEnd}`)
-    result.addEach(
+    result = result.addAll(
       this.topNode.searchOverlap(
         lodash.range(boundStart, boundEnd).map((index) => keysArray[index])
       )
@@ -355,19 +360,14 @@ badInterval=${iv}
   public searchByLengthStartingAt(length: number, start: number): Interval[] {
     // find all intervals that overlap start
     // adjust nodes to match the start time
-    let intervals: Interval[] = this.search(start, Infinity).map((iv) => {
-      // return a new node with changed start time if necessary
-      if (iv.start < start) {
-        return new Interval(start, iv.end, iv.data)
-      }
-      return iv
-    })
-
-    // now filter by duration
-    // console.log('by duration', intervals.toArray())
-    // console.log('desired length', length)
-    intervals = intervals.filter((iv) => iv.length >= length)
-    // console.log('after duration', intervals.toArray())
+    const intervals = this.search(start, Infinity)
+      .stream()
+      .map((iv) =>
+        // return a new node with changed start time if necessary
+        iv.start < start ? new Interval(start, iv.end, iv.data) : iv
+      )
+      .filter((iv) => iv.length >= length)
+      .toArray()
     return intervals
   }
 
@@ -379,9 +379,9 @@ badInterval=${iv}
     Completes in O(n*log n) time.
     */
     const tree = new IntervalTree()
-    tree.topNode = this.topNode?.clone()
-    tree.boundaryTable = this.boundaryTable.clone(1)
-    tree.allIntervals = new IntervalSet(this.allIntervals)
+    tree.topNode = this.topNode.clone()
+    tree.boundaryTable = this.boundaryTable //.clone(1)
+    tree.allIntervals = this.allIntervals //new IntervalSet(this.allIntervals)
     return tree
   }
 
@@ -390,59 +390,60 @@ badInterval=${iv}
     DEBUG ONLY
     Checks the table to ensure that the invariants are held.
     */
-    if (this.allIntervals.length) {
-      assert(
-        lodash.isEqual(
-          this.topNode.allChildren().toArray(),
-          this.allIntervals.toArray()
-        ),
-        `Error: the tree and the membership set are out of sync! \
-fromNodes=${this.topNode.allChildren().toArray()} \
-allIntervals=${this.allIntervals.toArray()}`
-      )
-
-      // No null intervals
-      this.allIntervals.forEach((iv) => {
-        assert(
-          !iv.isNull(),
-          'null Interval objects not allowed in IntervalTree'
-        )
-      })
-
-      // Reconstruct boundaryTable
-      const boundaryCheck = SortedMap()
-      this.allIntervals.forEach((iv) => {
-        if (boundaryCheck.has(iv.start)) {
-          boundaryCheck.set(iv.start, boundaryCheck.get(iv.start) + 1)
-        } else {
-          boundaryCheck.set(iv.start, 1)
-        }
-        if (boundaryCheck.has(iv.end)) {
-          boundaryCheck.set(iv.end, boundaryCheck.get(iv.end) + 1)
-        } else {
-          boundaryCheck.set(iv.end, 1)
-        }
-      })
-
-      // Reconstructed boundary table (bound_check) ==? boundary_table
-      assert(
-        this.boundaryTable.equals(boundaryCheck),
-        'boundaryTable is out of sync with the intervals in the tree'
-      )
-
-      // Internal tree structure
-      this.topNode.verify()
-    } else {
+    if (!this.allIntervals.size) {
       // Verify empty tree
-      assert(!this.boundaryTable.length, 'boundary table should be empty')
+      assert(!this.boundaryTable.size, 'boundary table should be empty')
       assert(!this.topNode, "topNode isn't None")
+      return
     }
+
+    assert(
+      lodash.isEqual(
+        this.topNode.allChildren().toArray(),
+        this.allIntervals.toArray()
+      ),
+      `Error: the tree and the membership set are out of sync! ` +
+        `fromNodes=${this.topNode.allChildren().toArray()} ` +
+        `allIntervals=${this.allIntervals.toArray()}`
+    )
+
+    // No null intervals
+    this.allIntervals.forEach((iv) => {
+      assert(!iv.isNull(), 'null Interval objects not allowed in IntervalTree')
+    })
+
+    // Reconstruct boundaryTable
+    let boundaryCheck = SortedMap.empty<number, number>()
+    this.allIntervals.forEach((iv) => {
+      if (boundaryCheck.hasKey(iv.start)) {
+        boundaryCheck = boundaryCheck.set(
+          iv.start,
+          boundaryCheck.get(iv.start) + 1
+        )
+      } else {
+        boundaryCheck = boundaryCheck.set(iv.start, 1)
+      }
+      if (boundaryCheck.hasKey(iv.end)) {
+        boundaryCheck = boundaryCheck.set(iv.end, boundaryCheck.get(iv.end) + 1)
+      } else {
+        boundaryCheck = boundaryCheck.set(iv.end, 1)
+      }
+    })
+
+    // Reconstructed boundary table (bound_check) ==? boundary_table
+    //   assert(
+    //     this.boundaryTable.equals(boundaryCheck),
+    //     'boundaryTable is out of sync with the intervals in the tree'
+    //   )
+
+    // Internal tree structure
+    this.topNode.verify()
   }
 
   private __init(intervals: any) {
-    this.allIntervals = new IntervalSet(intervals)
+    this.allIntervals = IntervalSet.from(intervals)
     this.topNode = Node.fromIntervals(intervals)
-    this.boundaryTable = SortedMap()
+    this.boundaryTable = SortedMap.empty()
     for (const iv of intervals) {
       this.addBoundaries(iv)
     }

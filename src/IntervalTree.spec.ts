@@ -34,7 +34,7 @@ describe('IntervalTree', () => {
     tree.addInterval(0, 3)
     tree.addInterval(0, 3, 'a')
     tree.addInterval(0, 3, 'b')
-    expect(tree.allIntervals.length).toBe(3)
+    expect(tree.allIntervals.size).toBe(3)
   })
 
   it('merges overlapping intervals', () => {
@@ -94,7 +94,7 @@ describe('IntervalTree', () => {
       [1482080400000, 1482109200000],
       [1482166800000, 1482195600000],
       [1482253200000, 1482282000000],
-      [1482253200000, 1483344000000]
+      [1482253200000, 1483344000000],
     ]
     tree.initFromSimpleArray(allIntervals)
     tree.chop(1482220800000, 1482253200000)
@@ -112,7 +112,7 @@ describe('IntervalTree', () => {
       [228589200000, 228618000000],
       [228675600000, 228704400000],
       [228762000000, 228790800000],
-      [229021200000, 229050000000]
+      [229021200000, 229050000000],
     ]
     tree.initFromSimpleArray(allIntervals)
     tree.chop(0, 227923200000)
@@ -196,7 +196,7 @@ describe('IntervalTree', () => {
       [1484263800000, 1484269200000, 'MbSdt5N4XMTJ88uGt'],
       [1484326800000, 1484344800000, 'ib7YL6tSt5ZWPd8rL'],
       [1484350200000, 1484355600000, 'jCNZXuX8hrNnWvZpS'],
-      [1484413200000, 1484442000000, 'null']
+      [1484413200000, 1484442000000, 'null'],
     ])
     expect(
       tree.searchByLengthStartingAt(3600000, 1483315556345).toString()
@@ -218,7 +218,7 @@ describe('IntervalTree', () => {
       [1407168000000, 1407196800000],
       [1407254400000, 1407283200000],
       [1407340800000, 1407369600000],
-      [1407427200000, 1407456000000]
+      [1407427200000, 1407456000000],
     ])
     tree.chop(1406271600000, 1406304000000)
     tree.chop(1406332800000, 1406358000000)
@@ -244,7 +244,7 @@ describe('IntervalTree', () => {
   it('FOC-209 removeEnveloped RangeError', () => {
     tree.initFromSimpleArray([
       [1496948100000, 1496948400000, 'PfcyAB6iRmDxbfGSF'],
-      [1496948100000, 1496948400000]
+      [1496948100000, 1496948400000],
     ])
     tree.removeEnveloped(0, 1496948400000)
   })
@@ -257,7 +257,7 @@ describe('IntervalTree', () => {
     tree.initFromSimpleArray([
       [1, 2],
       [3, 4],
-      [5, 6]
+      [5, 6],
     ])
     tree.verify()
   })
@@ -267,7 +267,7 @@ describe('IntervalTree', () => {
     tree.addInterval(3, 4)
     const json = JSON.stringify(tree)
     const tree2 = IntervalTree.fromJSON(json)
-    expect(tree.allIntervals.equals(tree2.allIntervals)).toBe(true)
+    expect(tree.allIntervals.toArray()).toEqual(tree2.allIntervals.toArray())
   })
 
   it('hashing', () => {
@@ -345,7 +345,7 @@ describe('IntervalTree', () => {
       [1563802200000, 1563817200000, 'F6gFijr7nkRXjiSQ2'],
       [1563807600000, 1563808500000, 'GoQyaMQxy5uAMkicC'],
       [1563814800000, 1563822000000, 'Rrzck9MrM4ScLkJBx'],
-      [1563827400000, 1563831000000, 'NdYgZdgfttitwFDz3']
+      [1563827400000, 1563831000000, 'NdYgZdgfttitwFDz3'],
     ]) {
       tree.addInterval(start as number, end as number, data)
     }

@@ -1,6 +1,4 @@
 import * as assert from 'assert'
-import 'collections/sorted-set' // for Object.* methods
-import * as _ from 'lodash'
 
 export class Interval {
   public static fromLength(length: number) {
@@ -9,7 +7,7 @@ export class Interval {
 
   public start: number
   public end: number
-  public data: any
+  public data: unknown
   public length: number
 
   public constructor(start: number, end: number, data?: any) {
@@ -33,10 +31,6 @@ export class Interval {
   public isNull() {
     return this.start >= this.end
   }
-
-  // public length() {
-  //   return this.end - this.start
-  // }
 
   public containsPoint(point: number): boolean {
     /*
@@ -64,21 +58,4 @@ export class Interval {
     }
     return this.containsPoint(start)
   }
-
-  // implement collectionjs interfaces
-  public equals = (b: Interval): boolean =>
-    // @ts-ignore
-    Object.equals(this.start, b.start) &&
-    // @ts-ignore
-    Object.equals(this.end, b.end) &&
-    // @ts-ignore
-    Object.equals(this.data || '', b.data || '')
-
-  public compare = (b: Interval): number =>
-    // @ts-ignore
-    Object.compare(this.start, b.start) ||
-    // @ts-ignore
-    Object.compare(this.end, b.end) ||
-    // @ts-ignore
-    Object.compare(this.data || '', b.data || '')
 }

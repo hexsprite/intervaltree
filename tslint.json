@@ -1,9 +1,0 @@
-{
-  "extends": "tslint:recommended",
-  "rules": {
-    "arrow-parens": false,
-    "semicolon": [true, "never"],
-    "quotemark": [true, "single", "avoid-escape"],
-    "trailing-comma": false
-  }
-}
