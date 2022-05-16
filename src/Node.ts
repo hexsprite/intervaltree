@@ -177,7 +177,6 @@ export class Node {
     if (tostring) {
       return result
     } else {
-      // tslint:disable-next-line no-console
       console.log(result)
     }
   }
@@ -305,7 +304,6 @@ export class Node {
       return this.getBranch(direction)
     } else {
       // Replace the root node with the greatest predecessor.
-      // tslint:disable-next-line prefer-const
       const result = this.getBranch(0).popGreatestChild()
       const heir = result[0]
       const newBranch = result[1]

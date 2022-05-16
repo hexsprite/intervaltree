@@ -202,7 +202,6 @@ badInterval=${iv}
 
   public printForTests() {
     this.allIntervals.toArray().forEach((iv) => {
-      // tslint:disable-next-line no-console
       console.log(`[${iv.start}, ${iv.end}, ${iv.data}],`)
     })
   }

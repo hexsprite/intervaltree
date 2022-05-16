@@ -10,7 +10,7 @@ export class Interval {
   public data: unknown
   public length: number
 
-  public constructor(start: number, end: number, data?: unknown) {
+  public constructor(start: number, end: number, data?: any) {
     assert.equal(typeof start, 'number', `start not number: ${start}`)
     assert.equal(typeof end, 'number', `end not number: ${end}`)
     assert(!isNaN(start))
@@ -31,10 +31,6 @@ export class Interval {
   public isNull() {
     return this.start >= this.end
   }
-
-  // public length() {
-  //   return this.end - this.start
-  // }
 
   public containsPoint(point: number): boolean {
     /*

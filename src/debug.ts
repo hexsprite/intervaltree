@@ -12,7 +12,6 @@ export function debug(...args: any[]) {
     if (typeof logger !== 'undefined') {
       logger.debug(...consoleArgs)
     } else {
-      // tslint:disable-next-line no-console
       console.log(...consoleArgs)
     }
   }
