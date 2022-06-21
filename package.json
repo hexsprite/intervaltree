@@ -45,7 +45,7 @@
     "@types/collections": "^5.1.2",
     "@types/lodash": "^4.14.182",
     "assert": "^2.0.0",
-    "collections": "https://github.com/Cornally/collections.git",
+    "collections": "github:Cornally/collections",
     "debug": "^4.3.4",
     "lodash": "^4.17.21",
     "typescript": "^4.6.4"
