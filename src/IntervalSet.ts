@@ -1,4 +1,4 @@
-import { SortedSet } from '@rimbu/sorted'
+import { SortedSet } from '@rimbu/sorted/set'
 import { Interval } from './Interval'
 
 export const IntervalSet = SortedSet.createContext<Interval>({

@@ -39,7 +39,7 @@ export class Interval {
     return this.start <= point && point < this.end
   }
 
-  public overlaps(start: number | Interval, end?: number): boolean {
+  public overlaps(start: number, end?: number): boolean {
     /*
     Whether the interval overlaps the given point, range or Interval.
     :param begin: beginning point of the range, or the point, or an Interval
@@ -52,9 +52,6 @@ export class Interval {
         (this.start <= start && start < this.end) ||
         (this.start < end && end <= this.end)
       )
-    }
-    if (start instanceof Interval) {
-      return this.overlaps(start.start, start.end)
     }
     return this.containsPoint(start)
   }

@@ -6,7 +6,8 @@ import { bisectLeft } from './bisect'
 import { debug } from './debug'
 import { Node } from './Node'
 import { Interval } from './Interval'
-import { SortedMap, SortedSet } from '@rimbu/sorted'
+import { SortedMap } from '@rimbu/sorted/map'
+import { SortedSet} from '@rimbu/sorted/set'
 import { IntervalSet } from './IntervalSet'
 
 export type SimpleIntervalArray = Array<
@@ -248,22 +249,22 @@ badInterval=${iv}
     }
 
     this.allIntervals.forEach((higher) => {
-      if (merged.length) {
-        // series already begun
-        const lower = merged[merged.length - 1]
-        assert(higher.start)
-        if (higher.start <= lower.end) {
-          // should merge
-          const upperBound = Math.max(lower.end, higher.end)
-          currentReduced = null
-          merged[merged.length - 1] = new Interval(
-            lower.start,
-            upperBound,
-            currentReduced
-          )
-        } else {
-          newSeries(higher)
-        }
+      if (!merged.length) {
+        newSeries(higher)
+        return
+      }
+      // series already begun
+      const lower = merged[merged.length - 1]
+      assert(higher.start)
+      if (higher.start <= lower.end) {
+        // should merge
+        const upperBound = Math.max(lower.end, higher.end)
+        currentReduced = null
+        merged[merged.length - 1] = new Interval(
+          lower.start,
+          upperBound,
+          currentReduced
+        )
       } else {
         newSeries(higher)
       }
