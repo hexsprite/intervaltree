@@ -1,6 +1,6 @@
 {
   "name": "intervaltree",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Interval tree for JavaScript",
   "author": "Jordan Baker",
   "license": "MIT",
