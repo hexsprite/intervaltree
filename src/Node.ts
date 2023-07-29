@@ -50,7 +50,7 @@ export class Node {
     balance = 0
   ) {
     this.xCenter = xCenter
-    this.sCenter = SortedSet.from(sCenter)
+    this.sCenter =  Array.isArray(sCenter) ? IntervalSet.from(sCenter) : sCenter
     this.leftNode = leftNode
     this.rightNode = rightNode
     // depth & balance are set when rotated

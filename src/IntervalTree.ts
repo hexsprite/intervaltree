@@ -89,9 +89,7 @@ export class IntervalTree {
    * @param end
    */
   public chop(start: number, end: number): void {
-    if (start > end) {
-      throw TypeError('invalid parameters to chop')
-    }
+    assertStartIsBeforeEnd(start, end)
     const insertionsBuilder = IntervalSet.builder()
     const startHits = this.search(start).filter((iv) => iv.start < start)
     const endHits = this.search(end).filter((iv) => iv.end > end)
@@ -119,9 +117,7 @@ export class IntervalTree {
 
   chopAll(intervals: [number, number][]) {
     intervals.forEach(([start, end]) => {
-      if (start > end) {
-        throw TypeError('invalid parameters to chop')
-      }
+      assertStartIsBeforeEnd(start, end)
       const insertionsBuilder = IntervalSet.builder()
       const startHits = this.search(start).filter((iv) => iv.start < start)
       const endHits = this.search(end).filter((iv) => iv.end > end)
@@ -241,10 +237,10 @@ badInterval=${iv}
 
   public mergeOverlaps() {
     const merged: Interval[] = []
-    let currentReduced: any
+    let currentReduced: unknown
 
     const newSeries = (higher: Interval) => {
-      currentReduced = higher.data as any
+      currentReduced = higher.data
       merged.push(higher)
     }
 
@@ -483,10 +479,23 @@ badInterval=${iv}
     this.topNode.verify()
   }
 
-  private __init(intervals: any) {
+  private __init(intervals: Interval[]) {
     this.allIntervals = IntervalSet.from(intervals)
     this.topNode = Node.fromIntervals(intervals)!
-    this.boundaryTable = SortedMap.empty()
+    this.boundaryTable = BoundaryTableMap.empty()
     this.addBoundariesAll(intervals)
   }
 }
+
+const assertStartIsBeforeEnd = (start: number, end: number) => {
+  if (start > end) {
+    throw new TypeError('start must be <= end')
+  }
+}
+
+const BoundaryTableMap = SortedMap.createContext<number, number>({
+  comp: {
+    compare: (a, b) => a - b,
+    isComparable: (obj): obj is number => typeof obj === 'number',
+  },
+})
