@@ -303,7 +303,7 @@ describe('IntervalTree', () => {
     tree.addInterval(1, 2)
     tree.addInterval(1, 2)
     tree.addInterval(1, 2)
-    expect(tree.toArray()).toEqual([[1, 2, null]])
+    expect(tree.toArray()).toEqual([[1, 2, undefined]])
   })
 
   it('null data compares properly with undefined', () => {

@@ -10,14 +10,14 @@ export class Interval {
   public data: unknown
   public length: number
 
-  public constructor(start: number, end: number, data?: any) {
+  public constructor(start: number, end: number, data?: unknown) {
     assert.equal(typeof start, 'number', `start not number: ${start}`)
     assert.equal(typeof end, 'number', `end not number: ${end}`)
     assert(!isNaN(start))
     assert(!isNaN(end))
     this.start = start
     this.end = end
-    this.data = data || null // cast undefined to null
+    this.data = data
     this.length = this.end - this.start
   }
 
