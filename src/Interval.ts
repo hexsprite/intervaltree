@@ -1,4 +1,4 @@
-import * as assert from 'assert'
+import assert from 'assert'
 
 export class Interval {
   public static fromLength(length: number) {

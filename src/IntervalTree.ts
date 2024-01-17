@@ -1,4 +1,4 @@
-import * as assert from 'assert'
+import assert from 'assert'
 import * as crypto from 'crypto'
 import * as lodash from 'lodash'
 
@@ -7,7 +7,7 @@ import { debug } from './debug'
 import { Node } from './Node'
 import { Interval } from './Interval'
 import { SortedMap } from '@rimbu/sorted/map'
-import { SortedSet} from '@rimbu/sorted/set'
+import { SortedSet } from '@rimbu/sorted/set'
 import { IntervalSet } from './IntervalSet'
 
 export type SimpleIntervalArray = Array<

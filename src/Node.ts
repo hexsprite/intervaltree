@@ -1,4 +1,4 @@
-import * as assert from 'assert'
+import assert from 'assert'
 
 import { Interval } from './Interval'
 import { SortedSet } from '@rimbu/sorted/set'
@@ -50,7 +50,7 @@ export class Node {
     balance = 0
   ) {
     this.xCenter = xCenter
-    this.sCenter =  Array.isArray(sCenter) ? IntervalSet.from(sCenter) : sCenter
+    this.sCenter = Array.isArray(sCenter) ? IntervalSet.from(sCenter) : sCenter
     this.leftNode = leftNode
     this.rightNode = rightNode
     // depth & balance are set when rotated
