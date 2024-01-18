@@ -6,8 +6,7 @@ import { bisectLeft } from './bisect'
 import { debug } from './debug'
 import { Node } from './Node'
 import { Interval } from './Interval'
-import { SortedMap } from '@rimbu/sorted/map'
-import { SortedSet } from '@rimbu/sorted/set'
+import { SortedMap, SortedSet } from '@rimbu/core'
 import { IntervalSet } from './IntervalSet'
 
 export type SimpleIntervalArray = Array<
