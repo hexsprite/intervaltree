@@ -1,10 +1,10 @@
 import fs from 'fs'
 import { Interval } from '../src/Interval'
-import { IntervalTree } from '../src/IntervalTree'
+import { IntervalTree } from './src/IntervalTree'
 
 const tree = new IntervalTree()
 
-const numIntervals = 100_000
+const numIntervals = 1000
 const intervalRangeSize = 1_000_000
 
 let allIntervals: Interval[] = []
@@ -39,37 +39,45 @@ function searchArrayIntervals() {
   }
 }
 
+let count = 0
 function benchmarkIntervals() {
-  console.time('generate')
-  generateRandomIntervals(numIntervals)
-  try {
-    tree.initFromArray(allIntervals)
-  } catch (e) {
-    console.error(e)
-    console.log('INVALID INTERVALS')
-    writeFailure('gen', allIntervals)
-    return
+  while (true) {
+    // console.time('generate')
+    generateRandomIntervals(numIntervals)
+    try {
+      tree.initFromArray(allIntervals)
+    } catch (e) {
+      console.error(e)
+      console.log('INVALID INTERVALS')
+      writeFailure('gen', allIntervals)
+      break
+    }
+    // console.log(allIntervals)
+    // console.timeEnd('generate')
+
+    // tree.printStructure()
+    try {
+      tree.verify()
+    } catch (e) {
+      // exit if the tree is invalid
+      console.error(e)
+      console.log('INVALID TREE')
+      writeFailure('verify', allIntervals)
+      break
+    }
+    count++
+    if (count % 1000 === 0) process.stdout.write('.')
+    // tree.printStructure()
+    // break
+    // console.log('searching')
+    // console.time('search')
+    // searchIntervals()
+    // console.timeEnd('search')
+
+    // console.time('arraySearch')
+    // searchArrayIntervals()
+    // console.timeEnd('arraySearch')
   }
-  console.timeEnd('generate')
-
-  try {
-    tree.verify()
-  } catch (e) {
-    // exit if the tree is invalid
-    console.error(e)
-    console.log('INVALID TREE')
-    writeFailure('verify', allIntervals)
-    return
-  }
-
-  console.log('searching')
-  console.time('search')
-  searchIntervals()
-  console.timeEnd('search')
-
-  console.time('arraySearch')
-  searchArrayIntervals()
-  console.timeEnd('arraySearch')
 }
 
 function writeFailure(type: string, allIntervals: Interval[]) {

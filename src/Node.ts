@@ -102,11 +102,14 @@ export class Node {
     const myHeavy = this.balance > 0
     const childHeavy = this.getBranch(myHeavy).balance > 0
     // debug(`rotate: myHeavy=${myHeavy} childHeavy=${childHeavy} this.balance=${this.balance}`)
+    let result
     if (myHeavy === childHeavy || this.getBranch(myHeavy).balance === 0) {
-      return this.singleRotate()
+      result = this.singleRotate()
     } else {
-      return this.doubleRotate()
+      result = this.doubleRotate()
     }
+    result.verify()
+    return result
   }
 
   public hitBranch(interval: Interval) {
@@ -297,15 +300,20 @@ export class Node {
       // if I have an empty branch
       const direction = !leftBranch // graft the other branch here
       debug(`prune: Grafting ${direction ? 'right' : 'left'} branch`)
-      return this.getBranch(direction)
+      const result = this.getBranch(direction)
+      result?.verify()
+      return result
     } else {
       // Replace the root node with the greatest predecessor.
       const result = this.getBranch(0).popGreatestChild()
-      const heir = result[0]
+      let heir = result[0]
       const newBranch = result[1]
       this.setBranch(0, newBranch)
 
       debug(`prune: Replacing ${this} with ${heir}`)
+
+      this.leftNode?.verify()
+      this.rightNode?.verify()
 
       // Set up the heir as the new root node
       heir.setBranch(0, this.getBranch(0))
@@ -314,7 +322,9 @@ export class Node {
       // popping the predecessor may have unbalanced this node;
       // fix it
       heir.refreshBalance()
-      return heir.rotate()
+      heir = heir.rotate()
+      heir.verify()
+      return heir
     }
   }
 
@@ -360,9 +370,12 @@ export class Node {
       this.sCenter = this.sCenter.difference(child.sCenter)
 
       if (this.sCenter.size) {
+        this.verify()
         return [child, this]
       } else {
-        return [child, this.getBranch(0)] // Rotate left child up
+        this.leftNode?.verify()
+        // Rotate left child up
+        return [child, this.getBranch(0)]
       }
     } else {
       const [greatestChild, newRightBranch] =
@@ -380,9 +393,14 @@ export class Node {
       })
 
       if (newSelf.sCenter.size) {
+        this.verify()
+        this.refreshBalance()
+        newSelf = newSelf.rotate()
+        newSelf.verify()
         return [greatestChild, newSelf]
       } else {
         newSelf = newSelf.prune()
+        newSelf?.verify()
         return [greatestChild, newSelf]
       }
     }
@@ -390,11 +408,13 @@ export class Node {
 
   public verify(parents: SortedSet<number> = SortedSet.empty<number>()) {
     // Recursively ensures that the invariants of an interval subtree hold.
-    const constructor = this.sCenter.constructor.name
-    assert(
-      constructor === 'SortedSetLeaf',
-      `sCenter type is incorrect: ${constructor}`
-    )
+
+    // constructor varies between Node and bun
+    // const constructor = this.sCenter.constructor.name
+    // assert(
+    //   constructor === 'SortedSetLeaf',
+    //   `sCenter type is incorrect: ${constructor}`
+    // )
 
     const bal = this.balance
     assert(
