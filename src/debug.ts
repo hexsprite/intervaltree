@@ -1,5 +1,5 @@
 // eslint-disable-next-line prefer-const
-export let enableDebug = 0
+export let enableDebug = process.env.IT_DEBUG === '1'
 
 export function debug(...args: any[]) {
   // works like console.log however if the first arg is a function then it is
