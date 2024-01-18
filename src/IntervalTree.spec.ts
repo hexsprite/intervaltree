@@ -375,8 +375,9 @@ describe('IntervalTree', () => {
     expect(result.toArray().toString()).toEqual('Interval(4, 6),Interval(5, 9)')
   })
 
-  it.only('rotation failure from spec', () => {
+  it('rotation failure from spec', () => {
     // load from _fixtures/failure_verify_1705602775577.json
+    // containing a tree that failed to verify after load before the fix
     const dataBuf = fs.readFileSync(
       path.join(__dirname, '_fixtures/failure_verify_1705602775577.json')
     )

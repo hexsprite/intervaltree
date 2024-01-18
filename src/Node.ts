@@ -87,10 +87,10 @@ export class Node {
     const rightDepth = this.rightNode ? this.rightNode.depth : 0
     this.depth = 1 + Math.max(leftDepth, rightDepth)
     this.balance = rightDepth - leftDepth
-    debug(
-      `refreshBalance: leftDepth=${leftDepth} rightDepth=${rightDepth} balance=${this.balance}`,
-      this
-    )
+    // debug(
+    //   `refreshBalance: leftDepth=${leftDepth} rightDepth=${rightDepth} balance=${this.balance}`,
+    //   this.toString()
+    // )
   }
 
   /**
@@ -102,18 +102,65 @@ export class Node {
     if (Math.abs(this.balance) < 2) {
       return this
     }
+    // balance > 0 is the heavy side
     const myHeavy = this.balance > 0
     const childHeavy = this.getBranch(myHeavy).balance > 0
     debug(
-      `rotate: myHeavy=${myHeavy} childHeavy=${childHeavy} this.balance=${this.balance}`
+      `rotate: myHeavy=${branchStr(myHeavy)} childHeavy=${branchStr(
+        childHeavy
+      )} this.balance=${this.balance}`
     )
-    let result
+    // const struct = this.printStructure(0, true)
+    let result: Node
     if (myHeavy === childHeavy || this.getBranch(myHeavy).balance === 0) {
+      /**
+       * There are two cases to consider based on the balance of the heavy side:
+       *
+       * Case 1: Heavy sides are the same
+       * Before Rotation:
+       *       self
+       *      /    \
+       *    save   ...
+       *    /
+       *   1
+       *
+       * After Rotation:
+       *      save
+       *     /    \
+       *    1     self
+       *            \
+       *            ...
+       *
+       * Case 2: Heavy side is balanced
+       * Before Rotation:
+       *       self
+       *      /    \
+       *    save   ...
+       *    /  \
+       *   1    2
+       *
+       * After Rotation:
+       *      save
+       *     /    \
+       *    1     self.rot()
+       *           /    \
+       *          2    ...
+       */
+      debug('rotate: doing singleRotate')
       result = this.singleRotate()
+      debug('rotate: done singleRotate', result.toString())
     } else {
+      debug('rotate: doing doubleRotate')
       result = this.doubleRotate()
+      debug('rotate: done doubleRotate', result.toString())
+      debug(() => result.printStructure(0, true))
     }
+    // try {
     result.verify()
+    // } catch (e) {
+    //   debug(struct)
+    //   throw e
+    // }
     return result
   }
 
@@ -125,7 +172,7 @@ export class Node {
 
   public getBranch(branch: boolean | number): Node {
     if (branch) {
-      return this.rightNode!
+      return this.rightNode! // FIXME: type safety
     } else {
       return this.leftNode!
     }
@@ -195,7 +242,7 @@ export class Node {
   ) {
     // Returns all intervals that contain point.
     debug('searchPoint: point=', point, this.toString())
-    debug('searchPoint: result=', result)
+    debug('searchPoint: result=', resultBuilder.toString())
     this.sCenter.forEach((interval) => {
       debug('searchPoint: interval=', interval)
       if (interval.start <= point && point < interval.end) {
@@ -245,7 +292,7 @@ export class Node {
     debug(`removeIntervalHelper: ${this.toString()}`)
 
     if (this.centerHit(interval)) {
-      debug('center hit')
+      debug('removeIntervalHelper: center hit')
       if (!shouldRaiseError && !this.sCenter.has(interval)) {
         done.push(1)
         return this
@@ -255,7 +302,7 @@ export class Node {
         // desired.
         this.sCenter = this.sCenter.remove(interval)
       } catch (e) {
-        this.printStructure()
+        debug(() => this.printStructure(0, true))
         throw new TypeError(interval.toString())
       }
       if (this.sCenter.size) {
@@ -477,43 +524,51 @@ export class Node {
     return result
   }
 
-  private doubleRotate() {
-    // First rotation
-    const myHeavy = this.balance > 0
-    this.setBranch(myHeavy, this.getBranch(myHeavy).singleRotate())
-    this.refreshBalance()
-    // Second rotation
-    return this.singleRotate()
-  }
-
   private singleRotate() {
     // Single rotation. Assumes that balance is +-2.
     assert(this.balance !== 0)
     const heavy = this.balance > 0
     const light = !heavy
-    const save = this.getBranch(heavy)
+    const rotatedNode = this.getBranch(heavy)
     // this.verify(new IntervalSet([]))
-    debug('singleRotate', this, 'bal=', this.balance, save.balance)
+    debug(
+      'singleRotate',
+      this.toString(),
+      `balance=${this.balance}, ${rotatedNode.balance}`,
+      `heavy=${heavy ? 'right' : 'left'}`
+    )
     // assert(save.getBranch(light))
-    this.setBranch(heavy, save.getBranch(light))
-    save.setBranch(light, this.rotate()) // Needed to ensure the 2 and 3 are balanced under new subnode
+    this.setBranch(heavy, rotatedNode.getBranch(light))
+    rotatedNode.setBranch(light, this.rotate()) // Needed to ensure the 2 and 3 are balanced under new subnode
+    debug(() => this.printStructure(0, true))
 
     // Some intervals may overlap both this.xCenter and save.xCenter
     // Promote those to the new tip of the tree
-    const promotees: Interval[] = []
-    save.getBranch(light).sCenter.forEach((iv) => {
-      if (save.centerHit(iv)) {
-        promotees.push(iv)
-      }
-    })
-    if (promotees.length) {
-      debug('have promotees', promotees)
+    const promotees = rotatedNode
+      .getBranch(light)
+      .sCenter.filter((iv) => rotatedNode.centerHit(iv))
+    if (promotees.size) {
+      debug('have promotees', promotees.toString())
       for (const iv of promotees) {
-        save.setBranch(light, save.getBranch(light).remove(iv))
+        rotatedNode.setBranch(light, rotatedNode.getBranch(light).remove(iv))
       }
-      save.sCenter = save.sCenter.addAll(promotees)
+      rotatedNode.sCenter = rotatedNode.sCenter.addAll(promotees)
     }
-    save.refreshBalance()
-    return save
+    rotatedNode.refreshBalance()
+    // not sure why this is needed? required for the Node json tests.
+    return rotatedNode.rotate()
+  }
+
+  private doubleRotate() {
+    // First rotation
+    const myHeavy = this.balance > 0
+    this.setBranch(myHeavy, this.getBranch(myHeavy).singleRotate())
+    this.refreshBalance()
+    debug('doubleRotate: after first rotate')
+    debug(() => this.printStructure(0, true))
+    // Second rotation
+    return this.singleRotate()
   }
 }
+
+const branchStr = (branch: boolean | number) => (branch ? 'right' : 'left')
