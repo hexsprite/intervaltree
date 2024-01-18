@@ -1,5 +1,5 @@
 import fs from 'fs'
-import { Interval } from './src/Interval'
+import { Interval } from '../src/Interval'
 import { IntervalTree } from './src/IntervalTree'
 
 const tree = new IntervalTree()
