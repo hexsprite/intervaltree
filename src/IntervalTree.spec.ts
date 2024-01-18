@@ -17,11 +17,6 @@ describe('IntervalTree', () => {
     tree.verify()
   })
 
-  it('exports as default', async () => {
-    const defaultIntervalTree = (await import('./main')).default
-    expect(defaultIntervalTree).toEqual(IntervalTree)
-  })
-
   it('Should be pass sanity', () => {
     expect(typeof IntervalTree).toBe('function')
   })

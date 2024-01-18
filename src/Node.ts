@@ -337,10 +337,10 @@ export class Node {
       // a child node containing the smallest possible number of
       // intervals, as close as possible to the maximum bound.
       const compareEndFirst = (a: Interval, b: Interval) => {
-        const key = (iv) => `${iv.end},${iv.start},${iv.data}`
-        const keyA = key(a)
-        const keyB = key(b)
-        return keyA.localeCompare(keyB)
+        if (a.end !== b.end) {
+          return a.end - b.end
+        }
+        return a.start - b.start
       }
       const ivs = this.sCenter.toArray().sort(compareEndFirst)
       const maxIv = ivs.pop()!

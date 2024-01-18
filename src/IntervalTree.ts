@@ -492,7 +492,7 @@ const assertStartIsBeforeEnd = (start: number, end: number) => {
   }
 }
 
-const BoundaryTableMap = SortedMap.createContext<number, number>({
+const BoundaryTableMap = SortedMap.createContext<number>({
   comp: {
     compare: (a, b) => a - b,
     isComparable: (obj): obj is number => typeof obj === 'number',
