@@ -87,7 +87,10 @@ export class Node {
     const rightDepth = this.rightNode ? this.rightNode.depth : 0
     this.depth = 1 + Math.max(leftDepth, rightDepth)
     this.balance = rightDepth - leftDepth
-    // debug(`refreshBalance: leftDepth=${leftDepth} rightDepth=${rightDepth} balance=${this.balance}`, this)
+    debug(
+      `refreshBalance: leftDepth=${leftDepth} rightDepth=${rightDepth} balance=${this.balance}`,
+      this
+    )
   }
 
   /**
@@ -101,7 +104,9 @@ export class Node {
     }
     const myHeavy = this.balance > 0
     const childHeavy = this.getBranch(myHeavy).balance > 0
-    // debug(`rotate: myHeavy=${myHeavy} childHeavy=${childHeavy} this.balance=${this.balance}`)
+    debug(
+      `rotate: myHeavy=${myHeavy} childHeavy=${childHeavy} this.balance=${this.balance}`
+    )
     let result
     if (myHeavy === childHeavy || this.getBranch(myHeavy).balance === 0) {
       result = this.singleRotate()
@@ -135,22 +140,22 @@ export class Node {
   }
 
   public add(interval: Interval) {
-    // debug('add', interval)
+    debug('add', interval)
     if (this.centerHit(interval)) {
-      // debug('add: center hit', interval)
+      debug('add: center hit', interval)
       this.sCenter = this.sCenter.add(interval)
       return this
     } else {
       const direction = this.hitBranch(interval)
       const branchNode = this.getBranch(direction)
-      // debug('add: on branch', interval, direction)
+      debug('add: on branch', interval, direction)
       if (!this.getBranch(direction)) {
         this.setBranch(direction, Node.fromInterval(interval))
         this.refreshBalance()
         return this
       } else {
         this.setBranch(direction, branchNode.add(interval))
-        // debug('existing branch, rotating')
+        debug('existing branch, rotating')
         return this.rotate()
       }
     }
@@ -189,12 +194,12 @@ export class Node {
     resultBuilder: SortedSet.Builder<Interval>
   ) {
     // Returns all intervals that contain point.
-    // debug('searchPoint: point=', point, this.toString())
-    // debug('searchPoint: result=', result)
+    debug('searchPoint: point=', point, this.toString())
+    debug('searchPoint: result=', result)
     this.sCenter.forEach((interval) => {
-      // debug('searchPoint: interval=', interval)
+      debug('searchPoint: interval=', interval)
       if (interval.start <= point && point < interval.end) {
-        // debug('searchPoint interval', interval)
+        debug('searchPoint interval', interval)
         resultBuilder.add(interval)
       }
     })
@@ -488,7 +493,7 @@ export class Node {
     const light = !heavy
     const save = this.getBranch(heavy)
     // this.verify(new IntervalSet([]))
-    // debug('singleRotate', this, 'bal=', this.balance, save.balance)
+    debug('singleRotate', this, 'bal=', this.balance, save.balance)
     // assert(save.getBranch(light))
     this.setBranch(heavy, save.getBranch(light))
     save.setBranch(light, this.rotate()) // Needed to ensure the 2 and 3 are balanced under new subnode
@@ -502,7 +507,7 @@ export class Node {
       }
     })
     if (promotees.length) {
-      // debug('have promotees', promotees)
+      debug('have promotees', promotees)
       for (const iv of promotees) {
         save.setBranch(light, save.getBranch(light).remove(iv))
       }

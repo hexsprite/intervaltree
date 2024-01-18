@@ -63,7 +63,7 @@ export class IntervalTree {
   }
 
   public add(interval: Interval) {
-    // debug('tree/add', interval)
+    debug('tree/add', interval)
     if (this.allIntervals.has(interval)) {
       return
     }
@@ -179,7 +179,7 @@ export class IntervalTree {
 
     Completes in O(log n) time.
     */
-    // debug('remove', interval)
+    debug('remove', interval)
     if (!this.allIntervals.has(interval)) {
       if (ignoreMissing) {
         return
