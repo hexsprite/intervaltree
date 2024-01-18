@@ -1,7 +1,7 @@
 import assert from 'assert'
 
 import { Interval } from './Interval'
-import { HashSet, SortedSet } from '@rimbu/core'
+import { SortedSet } from '@rimbu/core'
 import { IntervalSet } from './IntervalSet'
 import { debug } from './debug'
 

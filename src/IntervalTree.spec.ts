@@ -374,4 +374,19 @@ describe('IntervalTree', () => {
     const result = tree.search(5, 6)
     expect(result.toArray().toString()).toEqual('Interval(4, 6),Interval(5, 9)')
   })
+
+  it('rotation failure from spec', () => {
+    // load from _fixtures/failure_verify_1705602775577.json
+    const dataBuf = fs.readFileSync(
+      path.join(__dirname, '_fixtures/failure_verify_1705602775577.json')
+    )
+    const data = JSON.parse(dataBuf.toString()).map(
+      (d) => new Interval(d.start, d.end)
+    )
+    tree.initFromArray(data)
+    tree.verify()
+  })
 })
+
+import fs from 'fs'
+import path from 'path'

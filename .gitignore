@@ -15,4 +15,4 @@ yarn.lock
 !.npmignore
 src/*.js
 *.log
-*.json
+/*.json

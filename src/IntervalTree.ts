@@ -33,6 +33,9 @@ export class IntervalTree {
     this.__init(intervals)
   }
 
+  /**
+   * @param intervals Array of Intervals, sorted by start, then end
+   */
   public initFromArray(intervals: Interval[]) {
     this.__init(intervals)
   }
