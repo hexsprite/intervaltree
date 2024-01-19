@@ -17,8 +17,19 @@
       "env": {
         "NODE_ENV": "development"
       },
-      "sourceMaps": true,
-      "outDir": "${workspaceRoot}/dist"
+      "sourceMaps": true
+    },
+    {
+      "name": "Benchmark",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceRoot}/scripts/bench.ts",
+      "runtimeArgs": ["--inspect-brk", "-r", "ts-node/register"],
+      "cwd": "${workspaceRoot}",
+      "env": {
+        "NODE_ENV": "development"
+      },
+      "sourceMaps": true
     }
   ]
 }
