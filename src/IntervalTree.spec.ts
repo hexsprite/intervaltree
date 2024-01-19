@@ -370,7 +370,7 @@ describe('IntervalTree', () => {
     tree.addInterval(4, 6)
     tree.addInterval(5, 9)
     const result = tree.search(5, 6)
-    expect(result.toArray().toSorted(compareIntervals).toString()).toEqual(
+    expect(result.toArray().sort(compareIntervals).toString()).toEqual(
       'Interval(4, 6),Interval(5, 9)'
     )
   })
