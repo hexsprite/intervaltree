@@ -132,11 +132,11 @@ describe('IntervalTree', () => {
     tree.addInterval(9, 13)
     tree.addInterval(14, 19)
     expect(
-      tree.searchByLengthStartingAt(3, 0).toSorted(compareIntervals).toString()
+      tree.searchByLengthStartingAt(3, 0).sort(compareIntervals).toString()
     ).toBe('Interval(5, 8),Interval(9, 13),Interval(14, 19)')
 
     expect(
-      tree.searchByLengthStartingAt(3, 9).toSorted(compareIntervals).toString()
+      tree.searchByLengthStartingAt(3, 9).sort(compareIntervals).toString()
     ).toBe('Interval(9, 13),Interval(14, 19)')
   })
 
@@ -211,7 +211,7 @@ describe('IntervalTree', () => {
     expect(
       tree
         .searchByLengthStartingAt(3600000, 1483315556345)
-        .toSorted(compareIntervals)
+        .sort(compareIntervals)
         .toString()
     ).toBe(
       'Interval(1483387200000, 1483394400000),Interval(1483399800000, 1483405200000, 56NL2yqQJMhZ4w4dD),Interval(1483462800000, 1483480800000, fK3PPyXJss2g4LKWi),Interval(1483486200000, 1483491600000, qXnxZZa5yjeEPtT4z),Interval(1483549200000, 1483567200000, FMrcgBLxHSnvdsxao),Interval(1483572600000, 1483578000000, p8SFaNDiYZDfweknu),Interval(1483635600000, 1483653600000, sTijSr5vv8547KopH),Interval(1483659000000, 1483664400000, o2BiALLdKb56getkD),Interval(1483722000000, 1483740000000, BQxTPexLBK9S7e5JQ),Interval(1483745400000, 1483750800000, BsnAJnyLqCx8MzNqe),Interval(1483808400000, 1483837200000, PauxpTjuhZYpWfpu4),Interval(1483894800000, 1483923600000, v9jid69q9jjneSmFW),Interval(1483981200000, 1483999200000, M8G8wBXzqzCxX8yFh),Interval(1484004600000, 1484010000000, KD5Cb3Cu2ZBGJ9r6g),Interval(1484067600000, 1484085600000, bRyNQepujF78AAFCF),Interval(1484091000000, 1484096400000, 4uAJHFrSfQDoeJEZH),Interval(1484154000000, 1484172000000, ZNNrQEdmsdEnJe6zc),Interval(1484177400000, 1484182800000, CaaugipzJX3sXB4wP),Interval(1484240400000, 1484258400000, Zb9z5vKiGZ6BSC5pX),Interval(1484263800000, 1484269200000, MbSdt5N4XMTJ88uGt),Interval(1484326800000, 1484344800000, ib7YL6tSt5ZWPd8rL),Interval(1484350200000, 1484355600000, jCNZXuX8hrNnWvZpS),Interval(1484413200000, 1484442000000, null)'

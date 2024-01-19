@@ -14,7 +14,8 @@ export class Node {
     if (intervals.length < 1) {
       return null
     }
-    return this.fromSortedIntervals(intervals.toSorted(compareIntervals))
+    const sortedIntervals = [...intervals].sort(compareIntervals)
+    return this.fromSortedIntervals(sortedIntervals)
   }
 
   public static fromSortedIntervals(intervals: Interval[]): Node | null {
