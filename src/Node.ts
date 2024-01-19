@@ -1,7 +1,7 @@
 import assert from 'assert'
 
 import { Interval } from './Interval'
-import { compareIntervals } from './IntervalSet'
+import { IntervalHashSet, compareIntervals } from './IntervalSet'
 import { HashSet } from '@rimbu/core'
 import { debug } from './debug'
 
@@ -23,7 +23,9 @@ export class Node {
     balance = 0
   ) {
     this.xCenter = xCenter
-    this.sCenter = Array.isArray(sCenter) ? HashSet.from(sCenter) : sCenter
+    this.sCenter = Array.isArray(sCenter)
+      ? IntervalHashSet.from(sCenter)
+      : sCenter
     this.leftNode = leftNode ?? null
     this.rightNode = rightNode ?? null
     // depth & balance are set when rotated
@@ -246,15 +248,11 @@ export class Node {
 
   public searchPoint(point: number, resultBuilder: HashSet.Builder<Interval>) {
     // Returns all intervals that contain point.
-    // debug('searchPoint: point=', point, this.toString())
-    // debug('searchPoint: result=', resultBuilder.toString())
-    this.sCenter.forEach((interval) => {
-      // debug('searchPoint: interval=', interval)
-      if (interval.start <= point && point < interval.end) {
-        // debug('searchPoint interval', interval)
-        resultBuilder.add(interval)
-      }
-    })
+    resultBuilder.addAll(
+      this.sCenter.filter(
+        (interval) => interval.start <= point && point < interval.end
+      )
+    )
     if (point < this.xCenter && this.getBranch(0)) {
       this.getBranch(0).searchPoint(point, resultBuilder)
     } else if (point > this.xCenter && this.getBranch(1)) {
@@ -264,7 +262,7 @@ export class Node {
   }
 
   public searchOverlap(pointList: number[]): HashSet<Interval> {
-    const resultBuilder = HashSet.builder<Interval>()
+    const resultBuilder = IntervalHashSet.builder<Interval>()
     for (const point of pointList) {
       this.searchPoint(point, resultBuilder)
     }
@@ -515,7 +513,7 @@ export class Node {
   }
 
   public allChildren(): HashSet<Interval> {
-    return this.allChildrenHelper(HashSet.empty())
+    return this.allChildrenHelper(IntervalHashSet.empty())
   }
 
   private allChildrenHelper(result: HashSet<Interval>): HashSet<Interval> {

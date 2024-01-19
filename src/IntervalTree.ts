@@ -7,8 +7,9 @@ import { debug } from './debug'
 import { Node } from './Node'
 import { Interval } from './Interval'
 import { SortedMap, HashSet } from '@rimbu/core'
-import { IntervalSet } from './IntervalSet'
+import { IntervalSortedSet } from './IntervalSet'
 import { IntervalTuples } from './types'
+import { IntervalHashSet } from './IntervalSet'
 
 export class IntervalTree {
   public allIntervals: HashSet<Interval>
@@ -88,7 +89,7 @@ export class IntervalTree {
    */
   public chop(start: number, end: number): void {
     assert(start < end, 'start must be <= end')
-    const insertionsBuilder = HashSet.builder<Interval>()
+    const insertionsBuilder = IntervalHashSet.builder<Interval>()
     const startHits = this.search(start).filter((iv) => iv.start < start)
     const endHits = this.search(end).filter((iv) => iv.end > end)
     startHits.forEach((iv) => {
@@ -115,7 +116,7 @@ export class IntervalTree {
 
   chopAll(intervals: [number, number][]) {
     intervals.forEach(([start, end]) => {
-      const insertionsBuilder = HashSet.builder<Interval>()
+      const insertionsBuilder = IntervalHashSet.builder<Interval>()
       const startHits = this.search(start).filter((iv) => iv.start < start)
       const endHits = this.search(end).filter((iv) => iv.end > end)
       startHits.forEach((iv) => {
@@ -217,7 +218,7 @@ badInterval=${iv}
   }
 
   public toString() {
-    const sortedIntervals = IntervalSet.from(this.allIntervals)
+    const sortedIntervals = IntervalSortedSet.from(this.allIntervals)
     return `IntervalTree([ ${sortedIntervals.toArray().join(', ')} ])`
   }
 
@@ -236,7 +237,7 @@ badInterval=${iv}
       merged.push(higher)
     }
 
-    const sortedIntervals = IntervalSet.from(this.allIntervals)
+    const sortedIntervals = IntervalSortedSet.from(this.allIntervals)
     sortedIntervals.forEach((higher) => {
       if (!merged.length) {
         newSeries(higher)
@@ -277,9 +278,9 @@ badInterval=${iv}
     strict = false
   ): HashSet<Interval> {
     if (!this.topNode) {
-      return HashSet.empty()
+      return IntervalHashSet.empty()
     }
-    const resultBuilder = HashSet.builder<Interval>()
+    const resultBuilder = IntervalHashSet.builder<Interval>()
     if (end === undefined) {
       return this.topNode.searchPoint(start, resultBuilder).build()
     }
@@ -402,7 +403,7 @@ badInterval=${iv}
   }
 
   private initialize(intervals: Interval[] = []) {
-    this.allIntervals = HashSet.from(intervals)
+    this.allIntervals = IntervalHashSet.from(intervals)
     this.topNode = Node.fromIntervals(intervals)!
     this.boundaryTable = SortedMap.empty()
     this.addBoundariesAll(intervals)

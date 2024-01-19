@@ -1,5 +1,12 @@
-import { SortedSet } from '@rimbu/core'
+import { HashSet, Hasher, SortedSet } from '@rimbu/core'
 import { Interval } from './Interval'
+
+/**
+ * A HashSet of Intervals.
+ */
+export const IntervalHashSet = HashSet.createContext<Interval>({
+  hasher: Hasher.anyDeepHasher(), // deep so it should also hash the data part
+})
 
 export const compareIntervals = (a: Interval, b: Interval) => {
   return (
@@ -12,7 +19,7 @@ export const compareIntervals = (a: Interval, b: Interval) => {
 /**
  * A SortedSet of Intervals.
  */
-export const IntervalSet = SortedSet.createContext<Interval>({
+export const IntervalSortedSet = SortedSet.createContext<Interval>({
   comp: {
     compare: compareIntervals,
     isComparable(obj): obj is Interval {
