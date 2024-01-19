@@ -1,10 +1,6 @@
 import assert from 'assert'
 
 export class Interval {
-  public static fromLength(length: number) {
-    return new Interval(0, length)
-  }
-
   public start: number
   public end: number
   public data: unknown
@@ -13,8 +9,12 @@ export class Interval {
   public constructor(start: number, end: number, data?: unknown) {
     assert.equal(typeof start, 'number', `start not number: ${start}`)
     assert.equal(typeof end, 'number', `end not number: ${end}`)
-    assert(!isNaN(start))
-    assert(!isNaN(end))
+    assert(!isNaN(start), 'start is NaN')
+    assert(!isNaN(end), 'end is NaN')
+    assert(
+      start <= end,
+      `start (${start}) must be less than or equal to end (${end})`
+    )
     this.start = start
     this.end = end
     this.data = data
@@ -22,14 +22,10 @@ export class Interval {
   }
 
   public toString() {
-    if (this.data) {
-      return `Interval(${this.start}, ${this.end}, ${this.data})`
-    }
-    return `Interval(${this.start}, ${this.end})`
-  }
-
-  public isNull() {
-    return this.start >= this.end
+    return (
+      `Interval(${this.start}, ${this.end}` +
+      (this.data ? `, ${this.data})` : ')')
+    )
   }
 
   public containsPoint(point: number): boolean {
@@ -46,12 +42,7 @@ export class Interval {
     :param end: end point of the range. Optional if not testing ranges.
     */
     if (end !== undefined) {
-      return (
-        (start <= this.start && this.start < end) ||
-        (start < this.end && this.end <= end) ||
-        (this.start <= start && start < this.end) ||
-        (this.start < end && end <= this.end)
-      )
+      return start < this.end && this.start < end
     }
     return this.containsPoint(start)
   }

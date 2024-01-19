@@ -1,8 +1,8 @@
 import assert from 'assert'
 
 import { Interval } from './Interval'
-import { SortedSet } from '@rimbu/core'
-import { IntervalSet } from './IntervalSet'
+import { compareIntervals } from './IntervalSet'
+import { HashSet } from '@rimbu/core'
 import { debug } from './debug'
 
 export class Node {
@@ -11,7 +11,14 @@ export class Node {
   }
 
   public static fromIntervals(intervals: Interval[]): Node | null {
-    if (!intervals || intervals.length < 1) {
+    if (intervals.length < 1) {
+      return null
+    }
+    return this.fromSortedIntervals(intervals.toSorted(compareIntervals))
+  }
+
+  public static fromSortedIntervals(intervals: Interval[]): Node | null {
+    if (intervals.length < 1) {
       return null
     }
     const centerIv = intervals[Math.floor(intervals.length / 2)]
@@ -27,22 +34,22 @@ export class Node {
         node.sCenter = node.sCenter.add(iv)
       }
     }
-    node.leftNode = Node.fromIntervals(sLeft)!
-    node.rightNode = Node.fromIntervals(sRight)!
+    node.leftNode = Node.fromSortedIntervals(sLeft)
+    node.rightNode = Node.fromSortedIntervals(sRight)
 
     return node.rotate()
   }
 
   private xCenter: number
-  private sCenter: SortedSet<Interval>
-  private leftNode?: Node
-  private rightNode?: Node
+  private sCenter: HashSet<Interval>
+  private leftNode: Node | null = null
+  private rightNode: Node | null = null
   private depth: number
   private balance: number
 
   public constructor(
     xCenter: number,
-    sCenter: Interval[] | SortedSet<Interval>,
+    sCenter: Interval[] | HashSet<Interval>,
     leftNode?: Node,
     rightNode?: Node,
     rotate = true,
@@ -50,9 +57,9 @@ export class Node {
     balance = 0
   ) {
     this.xCenter = xCenter
-    this.sCenter = Array.isArray(sCenter) ? IntervalSet.from(sCenter) : sCenter
-    this.leftNode = leftNode
-    this.rightNode = rightNode
+    this.sCenter = Array.isArray(sCenter) ? HashSet.from(sCenter) : sCenter
+    this.leftNode = leftNode ?? null
+    this.rightNode = rightNode ?? null
     // depth & balance are set when rotated
     this.depth = depth
     this.balance = balance
@@ -62,14 +69,14 @@ export class Node {
   }
 
   public clone(): Node {
-    function nodeCloner(node: Node) {
+    function nodeCloner(node: Node | null) {
       return node ? node.clone() : node
     }
     return new Node(
       this.xCenter,
       this.sCenter,
-      nodeCloner(this.leftNode!),
-      nodeCloner(this.rightNode!),
+      nodeCloner(this.leftNode),
+      nodeCloner(this.rightNode),
       false,
       this.depth,
       this.balance
@@ -236,17 +243,14 @@ export class Node {
     return `Node<${this.xCenter}, depth=${this.depth}, balance=${this.balance}>`
   }
 
-  public searchPoint(
-    point: number,
-    resultBuilder: SortedSet.Builder<Interval>
-  ) {
+  public searchPoint(point: number, resultBuilder: HashSet.Builder<Interval>) {
     // Returns all intervals that contain point.
-    debug('searchPoint: point=', point, this.toString())
-    debug('searchPoint: result=', resultBuilder.toString())
+    // debug('searchPoint: point=', point, this.toString())
+    // debug('searchPoint: result=', resultBuilder.toString())
     this.sCenter.forEach((interval) => {
-      debug('searchPoint: interval=', interval)
+      // debug('searchPoint: interval=', interval)
       if (interval.start <= point && point < interval.end) {
-        debug('searchPoint interval', interval)
+        // debug('searchPoint interval', interval)
         resultBuilder.add(interval)
       }
     })
@@ -258,8 +262,8 @@ export class Node {
     return resultBuilder
   }
 
-  public searchOverlap(pointList: number[]): SortedSet<Interval> {
-    const resultBuilder = IntervalSet.empty().toBuilder()
+  public searchOverlap(pointList: number[]): HashSet<Interval> {
+    const resultBuilder = HashSet.builder<Interval>()
     for (const point of pointList) {
       this.searchPoint(point, resultBuilder)
     }
@@ -458,7 +462,7 @@ export class Node {
     }
   }
 
-  public verify(parents: SortedSet<number> = SortedSet.empty<number>()) {
+  public verify(parents: HashSet<number> = HashSet.empty<number>()) {
     // Recursively ensures that the invariants of an interval subtree hold.
 
     // constructor varies between Node and bun
@@ -509,11 +513,11 @@ export class Node {
     }
   }
 
-  public allChildren(): SortedSet<Interval> {
-    return this.allChildrenHelper(IntervalSet.empty())
+  public allChildren(): HashSet<Interval> {
+    return this.allChildrenHelper(HashSet.empty())
   }
 
-  private allChildrenHelper(result: SortedSet<Interval>): SortedSet<Interval> {
+  private allChildrenHelper(result: HashSet<Interval>): HashSet<Interval> {
     result = result.addAll(this.sCenter)
     if (this.getBranch(0)) {
       result = this.getBranch(0).allChildrenHelper(result)
@@ -555,7 +559,7 @@ export class Node {
       rotatedNode.sCenter = rotatedNode.sCenter.addAll(promotees)
     }
     rotatedNode.refreshBalance()
-    // not sure why this is needed? required for the Node json tests.
+    // FIXME: rotate again should not be required, but tests fail if removed
     return rotatedNode.rotate()
   }
 
