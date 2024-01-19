@@ -135,9 +135,9 @@ describe('IntervalTree', () => {
       tree.searchByLengthStartingAt(3, 0).toSorted(compareIntervals).toString()
     ).toBe('Interval(5, 8),Interval(9, 13),Interval(14, 19)')
 
-    expect(tree.searchByLengthStartingAt(3, 9).toString()).toBe(
-      'Interval(9, 13),Interval(14, 19)'
-    )
+    expect(
+      tree.searchByLengthStartingAt(3, 9).toSorted(compareIntervals).toString()
+    ).toBe('Interval(9, 13),Interval(14, 19)')
   })
 
   it('clone empty', () => {
