@@ -8,12 +8,25 @@ import { Node } from './Node'
 import { Interval } from './Interval'
 import { SortedMap, HashSet } from '@rimbu/core'
 import { IntervalSet } from './IntervalSet'
-
-export type SimpleIntervalArray = Array<
-  [number, number, unknown] | [number, number]
->
+import { IntervalTuples } from './types'
 
 export class IntervalTree {
+  public allIntervals: HashSet<Interval>
+  private topNode: Node
+  private boundaryTable: SortedMap<number, number>
+
+  public constructor(intervals: Interval[] = []) {
+    this.initialize(intervals)
+  }
+
+  public get end() {
+    return this.boundaryTable.getKeyAtIndex(-1)
+  }
+
+  public get start() {
+    return this.boundaryTable.getKeyAtIndex(0, 0)
+  }
+
   public static fromJSON(nodes: string | Interval[]) {
     const intervals: Interval[] = []
     if (typeof nodes === 'string') {
@@ -25,23 +38,10 @@ export class IntervalTree {
     return new IntervalTree(intervals)
   }
 
-  public allIntervals: HashSet<Interval>
-  private topNode: Node
-  private boundaryTable: SortedMap<number, number>
-
-  public constructor(intervals: Interval[] = []) {
-    this.__init(intervals)
-  }
-
-  /**
-   * @param intervals Array of Intervals, sorted by start, then end
-   */
-  public initFromArray(intervals: Interval[]) {
-    this.__init(intervals)
-  }
-
-  public initFromSimpleArray(intervals: SimpleIntervalArray) {
-    this.initFromArray(intervals.map((x) => new Interval(x[0], x[1], x[2])))
+  public fromTuples(intervals: IntervalTuples) {
+    return new IntervalTree(
+      intervals.map((x) => new Interval(x[0], x[1], x[2]))
+    )
   }
 
   public toArray() {
@@ -50,7 +50,6 @@ export class IntervalTree {
       .map((e) => [e.start, e.end, e.data])
       .toArray() as [number, number, unknown]
   }
-  a
 
   public toJSON() {
     return this.allIntervals.toArray()
@@ -88,7 +87,7 @@ export class IntervalTree {
    * @param end
    */
   public chop(start: number, end: number): void {
-    assertStartIsBeforeEnd(start, end)
+    assert(start < end, 'start must be <= end')
     const insertionsBuilder = HashSet.builder<Interval>()
     const startHits = this.search(start).filter((iv) => iv.start < start)
     const endHits = this.search(end).filter((iv) => iv.end > end)
@@ -116,7 +115,6 @@ export class IntervalTree {
 
   chopAll(intervals: [number, number][]) {
     intervals.forEach(([start, end]) => {
-      assertStartIsBeforeEnd(start, end)
       const insertionsBuilder = HashSet.builder<Interval>()
       const startHits = this.search(start).filter((iv) => iv.start < start)
       const endHits = this.search(end).filter((iv) => iv.end > end)
@@ -204,7 +202,7 @@ export class IntervalTree {
       try {
         this.remove(iv)
       } catch (err) {
-        if (err.constructor === RangeError) {
+        if (err instanceof RangeError) {
           err.message += `
 removeEnveloped(${start}, ${end})
 allIntervals=${this.allIntervals.toArray()}
@@ -220,7 +218,7 @@ badInterval=${iv}
 
   public toString() {
     const sortedIntervals = IntervalSet.from(this.allIntervals)
-    return `IntervalTree([${sortedIntervals.toArray().toString()}])`
+    return `IntervalTree([ ${sortedIntervals.toArray().join(', ')} ])`
   }
 
   public printStructure() {
@@ -261,65 +259,7 @@ badInterval=${iv}
       }
     })
 
-    this.__init(merged)
-  }
-
-  public get end() {
-    return this.boundaryTable.getKeyAtIndex(-1)
-  }
-
-  public get start() {
-    return this.boundaryTable.getKeyAtIndex(0, 0)
-  }
-
-  public addBoundaries(interval: Interval) {
-    const { start, end } = interval
-    const addBoundary = (point: number) => {
-      if (this.boundaryTable.hasKey(point)) {
-        this.boundaryTable = this.boundaryTable.set(
-          point,
-          this.boundaryTable.get(point)! + 1
-        )
-      } else {
-        this.boundaryTable = this.boundaryTable.set(point, 1)
-      }
-    }
-    addBoundary(start)
-    addBoundary(end)
-  }
-
-  private addBoundariesAll(intervals: Interval[]) {
-    const boundaries = this.boundaryTable.toBuilder()
-
-    // Adds the boundaries of all intervals in the list to the boundary table.
-    intervals.forEach((iv) => {
-      const { start, end } = iv
-      const addBoundary = (point: number) => {
-        if (boundaries.hasKey(point)) {
-          boundaries.set(point, boundaries.get(point)! + 1)
-        } else {
-          boundaries.set(point, 1)
-        }
-      }
-      addBoundary(start)
-      addBoundary(end)
-    })
-    this.boundaryTable = boundaries.build()
-  }
-
-  public removeBoundaries(interval: Interval) {
-    // Removes the boundaries of the interval from the boundary table.
-    const updateValue = (key: number) => {
-      let boundaries = this.boundaryTable
-      if (boundaries.get(key) === 1) {
-        boundaries = boundaries.removeKey(key)
-      } else {
-        boundaries = boundaries.set(key, boundaries.get(key)! - 1)
-      }
-      this.boundaryTable = boundaries
-    }
-    updateValue(interval.start)
-    updateValue(interval.end)
+    this.initialize(merged)
   }
 
   /**
@@ -382,11 +322,11 @@ badInterval=${iv}
 
   public clone(): IntervalTree {
     /*
-    Construct a new IntervalTree using shallow copies of the
-    intervals in the source tree.
-
-    Completes in O(n*log n) time.
-    */
+      Construct a new IntervalTree using shallow copies of the
+      intervals in the source tree.
+  
+      Completes in O(n*log n) time.
+      */
     const tree = new IntervalTree()
     tree.topNode = this.topNode?.clone()
     tree.boundaryTable = this.boundaryTable
@@ -396,9 +336,9 @@ badInterval=${iv}
 
   public verify() {
     /*
-    DEBUG ONLY
-    Checks the table to ensure that the invariants are held.
-    */
+      DEBUG ONLY
+      Checks the table to ensure that the invariants are held.
+      */
     if (!this.allIntervals.size) {
       // Verify empty tree
       assert(!this.boundaryTable.size, 'boundary table should be empty')
@@ -445,23 +385,60 @@ badInterval=${iv}
     this.topNode.verify()
   }
 
-  private __init(intervals: Interval[]) {
+  private addBoundaries(interval: Interval) {
+    const { start, end } = interval
+    const addBoundary = (point: number) => {
+      if (this.boundaryTable.hasKey(point)) {
+        this.boundaryTable = this.boundaryTable.set(
+          point,
+          this.boundaryTable.get(point)! + 1
+        )
+      } else {
+        this.boundaryTable = this.boundaryTable.set(point, 1)
+      }
+    }
+    addBoundary(start)
+    addBoundary(end)
+  }
+
+  private initialize(intervals: Interval[] = []) {
     this.allIntervals = HashSet.from(intervals)
     this.topNode = Node.fromIntervals(intervals)!
-    this.boundaryTable = BoundaryTableMap.empty()
+    this.boundaryTable = SortedMap.empty()
     this.addBoundariesAll(intervals)
   }
-}
 
-const assertStartIsBeforeEnd = (start: number, end: number) => {
-  if (start > end) {
-    throw new TypeError('start must be <= end')
+  private addBoundariesAll(intervals: Interval[]) {
+    const boundaries = this.boundaryTable.toBuilder()
+
+    // Adds the boundaries of all intervals in the list to the boundary table.
+    intervals.forEach((iv) => {
+      const { start, end } = iv
+      const addBoundary = (point: number) => {
+        if (boundaries.hasKey(point)) {
+          boundaries.set(point, boundaries.get(point)! + 1)
+        } else {
+          boundaries.set(point, 1)
+        }
+      }
+      addBoundary(start)
+      addBoundary(end)
+    })
+    this.boundaryTable = boundaries.build()
+  }
+
+  private removeBoundaries(interval: Interval) {
+    // Removes the boundaries of the interval from the boundary table.
+    const updateValue = (key: number) => {
+      let boundaries = this.boundaryTable
+      if (boundaries.get(key) === 1) {
+        boundaries = boundaries.removeKey(key)
+      } else {
+        boundaries = boundaries.set(key, boundaries.get(key)! - 1)
+      }
+      this.boundaryTable = boundaries
+    }
+    updateValue(interval.start)
+    updateValue(interval.end)
   }
 }
-
-const BoundaryTableMap = SortedMap.createContext<number>({
-  comp: {
-    compare: (a, b) => a - b,
-    isComparable: (obj): obj is number => typeof obj === 'number',
-  },
-})

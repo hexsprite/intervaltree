@@ -29,7 +29,7 @@ describe('IntervalTree', () => {
 
   it('inserts interval', () => {
     tree.addInterval(1, 5)
-    expectTree('IntervalTree([Interval(1, 5)])')
+    expectTree('IntervalTree([ Interval(1, 5) ])')
   })
 
   it('inserts unique datapoints', () => {
@@ -45,7 +45,7 @@ describe('IntervalTree', () => {
     tree.addInterval(15, 19)
     tree.addInterval(19, 25)
     tree.mergeOverlaps()
-    expectTree('IntervalTree([Interval(1, 9),Interval(15, 25)])')
+    expectTree('IntervalTree([ Interval(1, 9), Interval(15, 25) ])')
   })
 
   it('merges overlapping intervals with data', () => {
@@ -54,7 +54,7 @@ describe('IntervalTree', () => {
     tree.addInterval(15, 19)
     tree.addInterval(19, 25, 'i')
     tree.mergeOverlaps()
-    expectTree('IntervalTree([Interval(1, 9),Interval(15, 25)])')
+    expectTree('IntervalTree([ Interval(1, 9), Interval(15, 25) ])')
   })
 
   it('can be an array', () => {
@@ -65,7 +65,7 @@ describe('IntervalTree', () => {
   it('chops tree', () => {
     tree.addInterval(0, 10)
     tree.chop(3, 7)
-    expectTree('IntervalTree([Interval(0, 3),Interval(7, 10)])')
+    expectTree('IntervalTree([ Interval(0, 3), Interval(7, 10) ])')
   })
 
   it('chopAll chops multiple', () => {
@@ -75,7 +75,7 @@ describe('IntervalTree', () => {
       [50, 60],
     ])
     expectTree(
-      'IntervalTree([Interval(0, 3),Interval(7, 50),Interval(60, 100)])'
+      'IntervalTree([ Interval(0, 3), Interval(7, 50), Interval(60, 100) ])'
     )
   })
 
@@ -102,7 +102,7 @@ describe('IntervalTree', () => {
       [1482253200000, 1482282000000],
       [1482253200000, 1483344000000],
     ]
-    tree.initFromSimpleArray(allIntervals)
+    tree = tree.fromTuples(allIntervals)
     tree.chop(1482220800000, 1482253200000)
   })
 
@@ -120,7 +120,7 @@ describe('IntervalTree', () => {
       [228762000000, 228790800000],
       [229021200000, 229050000000],
     ]
-    tree.initFromSimpleArray(allIntervals)
+    tree = tree.fromTuples(allIntervals)
     tree.chop(0, 227923200000)
     expect(tree.start).toBe(227923200000)
   })
@@ -182,7 +182,7 @@ describe('IntervalTree', () => {
   // })
 
   it('search bugs', () => {
-    tree.initFromSimpleArray([
+    tree = tree.fromTuples([
       [1483315500000, 1483318800000, 'hb3u3ztHuvPttf7dD'],
       [1483387200000, 1483394400000, null],
       [1483399800000, 1483405200000, '56NL2yqQJMhZ4w4dD'],
@@ -219,7 +219,7 @@ describe('IntervalTree', () => {
   })
 
   it('chop bugs', () => {
-    tree.initFromSimpleArray([
+    tree = tree.fromTuples([
       [1406304000000, 1406332800000],
       [1406324425000, 1406328025000],
       [1406328025000, 1406335225000],
@@ -255,7 +255,7 @@ describe('IntervalTree', () => {
   })
 
   it('FOC-209 removeEnveloped RangeError', () => {
-    tree.initFromSimpleArray([
+    tree = tree.fromTuples([
       [1496948100000, 1496948400000, 'PfcyAB6iRmDxbfGSF'],
       [1496948100000, 1496948400000],
     ])
@@ -267,7 +267,7 @@ describe('IntervalTree', () => {
   })
 
   it('verifies with content', () => {
-    tree.initFromSimpleArray([
+    tree = tree.fromTuples([
       [1, 2],
       [3, 4],
       [5, 6],
@@ -300,7 +300,7 @@ describe('IntervalTree', () => {
   })
 
   it('null data compares properly with undefined', () => {
-    tree.initFromSimpleArray([[1562351400000, 1562354700000, null]])
+    tree = tree.fromTuples([[1562351400000, 1562354700000, null]])
     tree.addInterval(1562351400000, 1562354700000) // this triggerred an exception
     expect(
       tree.allIntervals.has(new Interval(1562351400000, 1562354700000))
@@ -384,7 +384,7 @@ describe('IntervalTree', () => {
     const data = JSON.parse(dataBuf.toString()).map(
       (d) => new Interval(d.start, d.end)
     )
-    tree.initFromArray(data)
+    tree = new IntervalTree(data)
     tree.verify()
   })
 })

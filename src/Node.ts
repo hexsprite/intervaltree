@@ -6,6 +6,34 @@ import { HashSet } from '@rimbu/core'
 import { debug } from './debug'
 
 export class Node {
+  private xCenter: number
+  private sCenter: HashSet<Interval>
+  private leftNode: Node | null = null
+  private rightNode: Node | null = null
+  private depth: number
+  private balance: number
+
+  public constructor(
+    xCenter: number,
+    sCenter: Interval[] | HashSet<Interval>,
+    leftNode: Node | null = null,
+    rightNode: Node | null = null,
+    rotate = true,
+    depth = 0,
+    balance = 0
+  ) {
+    this.xCenter = xCenter
+    this.sCenter = Array.isArray(sCenter) ? HashSet.from(sCenter) : sCenter
+    this.leftNode = leftNode ?? null
+    this.rightNode = rightNode ?? null
+    // depth & balance are set when rotated
+    this.depth = depth
+    this.balance = balance
+    if (rotate) {
+      this.rotate()
+    }
+  }
+
   public static fromInterval(interval: Interval) {
     return new Node(interval.start, [interval])
   }
@@ -39,34 +67,6 @@ export class Node {
     node.rightNode = Node.fromSortedIntervals(sRight)
 
     return node.rotate()
-  }
-
-  private xCenter: number
-  private sCenter: HashSet<Interval>
-  private leftNode: Node | null = null
-  private rightNode: Node | null = null
-  private depth: number
-  private balance: number
-
-  public constructor(
-    xCenter: number,
-    sCenter: Interval[] | HashSet<Interval>,
-    leftNode: Node | null = null,
-    rightNode: Node | null = null,
-    rotate = true,
-    depth = 0,
-    balance = 0
-  ) {
-    this.xCenter = xCenter
-    this.sCenter = Array.isArray(sCenter) ? HashSet.from(sCenter) : sCenter
-    this.leftNode = leftNode ?? null
-    this.rightNode = rightNode ?? null
-    // depth & balance are set when rotated
-    this.depth = depth
-    this.balance = balance
-    if (rotate) {
-      this.rotate()
-    }
   }
 
   public clone(): Node {

@@ -1,4 +1,5 @@
 import assert from 'assert'
+import { IntervalTuple } from './types'
 
 /**
  * Represents an interval with a start and end point.
@@ -51,8 +52,20 @@ export class Interval {
   public toString() {
     return (
       `Interval(${this.start}, ${this.end}` +
-      (this.data ? `, ${this.data})` : ')')
+      (this.data ? `, ${JSON.stringify(this.data)})` : ')')
     )
+  }
+
+  /**
+   * Converts the interval to a tuple representation.
+   * If the interval has associated data, the tuple will include the start, end, and data.
+   * If the interval does not have associated data, the tuple will include only the start and end.
+   * @returns The tuple representation of the interval.
+   */
+  public toTuple(): IntervalTuple {
+    return this.data
+      ? [this.start, this.end, this.data]
+      : [this.start, this.end]
   }
 
   /**
