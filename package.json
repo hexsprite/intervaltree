@@ -59,6 +59,11 @@
       "!src/**/*.d.ts"
     ],
     "coverageDirectory": "coverage",
+    "coverageReporters": [
+      "text",
+      "cobertura",
+      "lcov"
+    ],
     "moduleFileExtensions": [
       "ts",
       "tsx",
