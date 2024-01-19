@@ -20,18 +20,13 @@ A mutable, self-balancing interval tree ported from the [Python `intervaltree` p
 
 ## Future improvements
 
-See the [issue tracker][] on GitHub.
+See the issue tracker on GitHub.
 
 ## Based on
 
 - [Python intervaltree package][python intervaltree package]
 - Eternally Confuzzled's [AVL tree][confuzzled avl tree]
 - Wikipedia's [Interval Tree][wiki intervaltree]
-- Heavily modified from Tyler Kahn's [Interval Tree implementation in Python][kahn intervaltree] ([GitHub project][kahn intervaltree gh])
-- Incorporates contributions from:
-  - [konstantint/Konstantin Tretyakov][konstantin intervaltree] of the University of Tartu (Estonia)
-  - [siniG/Avi Gabay][sinig intervaltree]
-  - [lmcarril/Luis M. Carril][lmcarril intervaltree] of the Karlsruhe Institute for Technology (Germany)
 
 ## Copyright
 
