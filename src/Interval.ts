@@ -1,11 +1,28 @@
 import assert from 'assert'
 
+/**
+ * Represents an interval with a start and end point.
+ */
 export class Interval {
+  /**
+   * The start point of the interval.
+   */
   public start: number
+  /**
+   * The end point of the interval.
+   */
   public end: number
+  /**
+   * Additional data associated with the interval.
+   */
   public data: unknown
-  public length: number
 
+  /**
+   * Creates a new Interval instance.
+   * @param start - The start point of the interval.
+   * @param end - The end point of the interval.
+   * @param data - Additional data associated with the interval.
+   */
   public constructor(start: number, end: number, data?: unknown) {
     assert.equal(typeof start, 'number', `start not number: ${start}`)
     assert.equal(typeof end, 'number', `end not number: ${end}`)
@@ -18,9 +35,19 @@ export class Interval {
     this.start = start
     this.end = end
     this.data = data
-    this.length = this.end - this.start
   }
 
+  /**
+   * The length of the interval (end - start).
+   */
+  public get length() {
+    return this.end - this.start
+  }
+
+  /**
+   * Returns a string representation of the interval.
+   * @returns A string representation of the interval.
+   */
   public toString() {
     return (
       `Interval(${this.start}, ${this.end}` +
@@ -28,19 +55,22 @@ export class Interval {
     )
   }
 
+  /**
+   * Checks if the interval contains a given point.
+   * @param point - The point to check.
+   * @returns True if the interval contains the point, false otherwise.
+   */
   public containsPoint(point: number): boolean {
-    /*
-      Whether the Interval contains point.
-    */
     return this.start <= point && point < this.end
   }
 
+  /**
+   * Checks if the interval overlaps with a given range or interval.
+   * @param start - The beginning point of the range, or the point, or an Interval.
+   * @param end - The end point of the range. Optional if not testing ranges.
+   * @returns True if the interval overlaps with the range or interval, false otherwise.
+   */
   public overlaps(start: number, end?: number): boolean {
-    /*
-    Whether the interval overlaps the given point, range or Interval.
-    :param begin: beginning point of the range, or the point, or an Interval
-    :param end: end point of the range. Optional if not testing ranges.
-    */
     if (end !== undefined) {
       return start < this.end && this.start < end
     }

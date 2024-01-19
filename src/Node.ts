@@ -50,8 +50,8 @@ export class Node {
   public constructor(
     xCenter: number,
     sCenter: Interval[] | HashSet<Interval>,
-    leftNode?: Node,
-    rightNode?: Node,
+    leftNode: Node | null = null,
+    rightNode: Node | null = null,
     rotate = true,
     depth = 0,
     balance = 0
