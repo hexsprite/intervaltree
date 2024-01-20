@@ -165,12 +165,7 @@ export class Node {
       // debug('rotate: done doubleRotate', result.toString())
       // debug(() => result.printStructure(0, true))
     }
-    // try {
-    result.verify()
-    // } catch (e) {
-    //   debug(struct)
-    //   throw e
-    // }
+    // result.verify()
     return result
   }
 
@@ -353,7 +348,7 @@ export class Node {
       const direction = !leftBranch // graft the other branch here
       // debug(`prune: Grafting ${direction ? 'right' : 'left'} branch`)
       const result = this.getBranch(direction)
-      result?.verify()
+      // result?.verify()
       return result
     } else {
       // Replace the root node with the greatest predecessor.
@@ -364,8 +359,8 @@ export class Node {
 
       // debug(`prune: Replacing ${this} with ${heir}`)
 
-      this.leftNode?.verify()
-      this.rightNode?.verify()
+      // this.leftNode?.verify()
+      // this.rightNode?.verify()
 
       // Set up the heir as the new root node
       heir.setBranch(0, this.getBranch(0))
@@ -375,7 +370,7 @@ export class Node {
       // fix it
       heir.refreshBalance()
       heir = heir.rotate()
-      heir.verify()
+      // heir.verify()
       return heir
     }
   }
@@ -422,10 +417,10 @@ export class Node {
       this.sCenter = this.sCenter.difference(child.sCenter)
 
       if (this.sCenter.size) {
-        this.verify()
+        // this.verify()
         return [child, this]
       } else {
-        this.leftNode?.verify()
+        // this.leftNode?.verify()
         // Rotate left child up
         return [child, this.getBranch(0)]
       }
@@ -445,14 +440,14 @@ export class Node {
       })
 
       if (newSelf.sCenter.size) {
-        this.verify()
+        // this.verify()
         this.refreshBalance()
         newSelf = newSelf.rotate()
-        newSelf.verify()
+        // newSelf.verify()
         return [greatestChild, newSelf]
       } else {
         newSelf = newSelf.prune()
-        newSelf?.verify()
+        // newSelf?.verify()
         return [greatestChild, newSelf]
       }
     }

@@ -11,7 +11,7 @@ import { IntervalTuples } from './types'
 import { IntervalHashSet } from './IntervalHashSet'
 
 export class IntervalTree {
-  public allIntervals: HashSet<Interval>
+  public allIntervals: IntervalHashSet
   private topNode: Node
   private boundaryTable: SortedMap<number, number>
 
@@ -45,10 +45,7 @@ export class IntervalTree {
   }
 
   public toArray() {
-    return this.allIntervals
-      .stream()
-      .map((e) => [e.start, e.end, e.data])
-      .toArray() as [number, number, unknown]
+    return this.allIntervals.toArray().map((e) => [e.start, e.end, e.data])
   }
 
   public toJSON() {
@@ -70,7 +67,7 @@ export class IntervalTree {
     } else {
       this.topNode = this.topNode.add(interval)
     }
-    this.allIntervals = this.allIntervals.add(interval)
+    this.allIntervals.add(interval)
     this.addBoundaries(interval)
   }
 
@@ -150,7 +147,7 @@ export class IntervalTree {
       throw new RangeError(`no such interval: ${interval}`)
     }
     this.topNode = this.topNode.remove(interval)
-    this.allIntervals = this.allIntervals.remove(interval)
+    this.allIntervals.remove(interval)
     this.removeBoundaries(interval)
   }
 
@@ -183,7 +180,7 @@ badInterval=${iv}
   }
 
   public toString() {
-    const sortedIntervals = IntervalSortedSet.from(this.allIntervals)
+    const sortedIntervals = IntervalSortedSet.from(this.allIntervals.toArray())
     return `IntervalTree([ ${sortedIntervals.toArray().join(', ')} ])`
   }
 
@@ -202,7 +199,7 @@ badInterval=${iv}
       merged.push(higher)
     }
 
-    const sortedIntervals = IntervalSortedSet.from(this.allIntervals)
+    const sortedIntervals = IntervalSortedSet.from(this.allIntervals.toArray())
     sortedIntervals.forEach((higher) => {
       if (!merged.length) {
         newSeries(higher)
@@ -308,7 +305,7 @@ badInterval=${iv}
 
     const allChildren = this.topNode.allChildren()
     assert(
-      HashSet.from(allChildren.toArray()).difference(this.allIntervals).isEmpty,
+      allChildren.difference(this.allIntervals).size === 0,
       `Error: the tree and the membership set are out of sync! ` +
         `fromNodes=${this.topNode.allChildren()} ` +
         `allIntervals=${this.allIntervals}`
@@ -362,7 +359,7 @@ badInterval=${iv}
   }
 
   private initialize(intervals: Interval[] = []) {
-    this.allIntervals = HashSet.from(intervals)
+    this.allIntervals = new IntervalHashSet(intervals)
     this.topNode = Node.fromIntervals(intervals)!
     this.boundaryTable = SortedMap.empty()
     this.addBoundariesAll(intervals)

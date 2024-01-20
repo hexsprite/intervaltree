@@ -65,7 +65,7 @@ export class IntervalHashSet {
     return this
   }
 
-  toArray() {
+  toArray(): Interval[] {
     return [...this.intervalsMap.values()]
   }
 
