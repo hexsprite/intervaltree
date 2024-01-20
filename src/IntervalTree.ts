@@ -9,6 +9,7 @@ import { SortedMap, HashSet } from '@rimbu/core'
 import { IntervalSortedSet } from './IntervalSortedSet'
 import { IntervalTuples } from './types'
 import { IntervalHashSet } from './IntervalHashSet'
+import { debug } from './debug'
 
 export class IntervalTree {
   public allIntervals: IntervalHashSet
@@ -238,11 +239,14 @@ badInterval=${iv}
     if (!this.topNode) {
       return new IntervalHashSet([])
     }
-    const resultBuilder = []
+
+    let result: Interval[] = []
     if (end === undefined) {
-      return new IntervalHashSet(this.topNode.searchPoint(start, resultBuilder))
+      this.topNode.searchPoint(start, result)
+      return new IntervalHashSet(result)
     }
-    let result = this.topNode.searchPoint(start, resultBuilder)
+
+    this.topNode.searchPoint(start, result)
     const keysArray = this.boundaryTable.streamKeys().toArray()
     const boundStart = bisectLeft(keysArray, start)
     const boundEnd = bisectLeft(keysArray, end) // exclude final end bound
@@ -251,11 +255,10 @@ badInterval=${iv}
     //     `search: start=${start} end=${end} strict=${strict} boundaryTable=${keysArray}`
     // )
     // debug(() => `search: boundStart=${boundStart} boundEnd=${boundEnd}`)
-    result = result.concat(
-      this.topNode.searchOverlap(
-        lodash.range(boundStart, boundEnd).map((index) => keysArray[index])
-      )
+    const overlaps = this.topNode.searchOverlap(
+      lodash.range(boundStart, boundEnd).map((index) => keysArray[index])
     )
+    result = result.concat(overlaps)
 
     // TODO: improve strict search to use node info instead of less-efficient filtering
     if (strict) {
@@ -267,14 +270,15 @@ badInterval=${iv}
   public searchByLengthStartingAt(length: number, start: number): Interval[] {
     // find all intervals that overlap start
     // adjust nodes to match the start time
-    const intervals = this.search(start, Infinity)
-      .toArray()
-      .map((iv) =>
-        // return a new node with changed start time if necessary
-        iv.start < start ? new Interval(start, iv.end, iv.data) : iv
-      )
-      .filter((iv) => iv.length >= length)
-    return intervals
+    // const intervals = this.search(start, Infinity)
+    //   .toArray()
+    //   .map((iv) =>
+    //     // return a new node with changed start time if necessary
+    //     iv.start < start ? new Interval(start, iv.end, iv.data) : iv
+    //   )
+    //   .filter((iv) => iv.length >= length)
+    debug(() => `searchByLengthStartingAt: length=${length} start=${start}`)
+    return this.topNode.searchByLengthStartingAt(length, start, [])
   }
 
   public clone(): IntervalTree {

@@ -42,6 +42,14 @@ export class IntervalHashSet {
     return result
   }
 
+  map<T>(fn: (interval: Interval) => T) {
+    const result: T[] = []
+    for (const interval of this.intervalsMap.values()) {
+      result.push(fn(interval))
+    }
+    return result
+  }
+
   forEach(fn: (interval: Interval) => void) {
     for (const interval of this.intervalsMap.values()) {
       fn(interval)
@@ -67,6 +75,10 @@ export class IntervalHashSet {
 
   toArray(): Interval[] {
     return [...this.intervalsMap.values()]
+  }
+
+  toSorted(sortFn: (a: Interval, b: Interval) => number) {
+    return this.toArray().sort(sortFn)
   }
 
   toString() {

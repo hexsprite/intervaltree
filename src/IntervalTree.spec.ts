@@ -2,7 +2,8 @@ import 'jest'
 import { Interval } from './Interval'
 import { IntervalTree } from './IntervalTree'
 
-const compareIntervals = (a, b) => a.start - b.start || a.end - b.end
+const compareIntervals = (a: Interval, b: Interval) =>
+  a.start - b.start || a.end - b.end
 
 describe('IntervalTree', () => {
   let tree: IntervalTree
@@ -131,6 +132,7 @@ describe('IntervalTree', () => {
     tree.addInterval(5, 8)
     tree.addInterval(9, 13)
     tree.addInterval(14, 19)
+
     expect(
       tree.searchByLengthStartingAt(3, 0).sort(compareIntervals).toString()
     ).toBe('Interval(5, 8),Interval(9, 13),Interval(14, 19)')
@@ -138,6 +140,18 @@ describe('IntervalTree', () => {
     expect(
       tree.searchByLengthStartingAt(3, 9).sort(compareIntervals).toString()
     ).toBe('Interval(9, 13),Interval(14, 19)')
+
+    // should match intervals that start before startingAt if they are long enough
+    tree.addInterval(11, 17)
+    tree.printStructure()
+
+    expect(
+      tree.searchByLengthStartingAt(3, 12).sort(compareIntervals).toString()
+    ).toBe('Interval(12, 17),Interval(14, 19)')
+
+    expect(
+      tree.topNode.findFirstIntervalByLengthStartingAt(3, 12)?.toString()
+    ).toBe('Interval(12, 17)')
   })
 
   it('clone empty', () => {
@@ -362,9 +376,12 @@ describe('IntervalTree', () => {
     const dataBuf = fs.readFileSync(
       path.join(__dirname, '_fixtures/failure_verify_1705602775577.json')
     )
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
     const data = JSON.parse(dataBuf.toString()).map(
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access
       (d) => new Interval(d.start, d.end)
     )
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
     tree = new IntervalTree(data)
     tree.verify()
   })

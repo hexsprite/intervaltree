@@ -4,14 +4,19 @@ import { Interval } from './Interval'
 import { compareIntervals } from './IntervalSortedSet'
 import { HashSet } from '@rimbu/core'
 import { IntervalHashSet } from './IntervalHashSet'
+import { debug } from './debug'
+import _ from 'lodash'
 
 export class Node {
+  public maxLength = 0
+  public maxStart = 0
   private xCenter: number
   private sCenter: IntervalHashSet
   private leftNode: Node | null = null
   private rightNode: Node | null = null
   private depth: number
   private balance: number
+  /** Maximum length of Intervals in this Node */
 
   public constructor(
     xCenter: number,
@@ -34,6 +39,8 @@ export class Node {
     if (rotate) {
       this.rotate()
     }
+    this.updateMaxLength()
+    this.updateMaxStart()
   }
 
   public static fromInterval(interval: Interval) {
@@ -67,6 +74,8 @@ export class Node {
     }
     node.leftNode = Node.fromSortedIntervals(sLeft)
     node.rightNode = Node.fromSortedIntervals(sRight)
+    node.updateMaxLength()
+    node.updateMaxStart()
 
     return node.rotate()
   }
@@ -166,6 +175,8 @@ export class Node {
       // debug(() => result.printStructure(0, true))
     }
     // result.verify()
+    result.updateMaxLength()
+    result.updateMaxStart()
     return result
   }
 
@@ -192,10 +203,10 @@ export class Node {
   }
 
   public add(interval: Interval) {
+    // eslint-disable-next-line @typescript-eslint/no-this-alias
+    let result: Node = this
     if (this.centerHit(interval)) {
-      // debug('add: center hit', interval)
       this.sCenter.add(interval)
-      return this
     } else {
       const direction = this.hitBranch(interval)
       const branchNode = this.getBranch(direction)
@@ -203,13 +214,15 @@ export class Node {
       if (!this.getBranch(direction)) {
         this.setBranch(direction, Node.fromInterval(interval))
         this.refreshBalance()
-        return this
       } else {
         this.setBranch(direction, branchNode.add(interval))
         // debug('existing branch, rotating')
-        return this.rotate()
+        result = this.rotate()
       }
     }
+    result.updateMaxLength()
+    result.updateMaxStart()
+    return result
   }
 
   public printStructure(indent = 0, tostring = false): string | undefined {
@@ -237,11 +250,12 @@ export class Node {
   }
 
   public toString() {
-    return `Node<${this.xCenter}, depth=${this.depth}, balance=${this.balance}>`
+    return `Node<${this.xCenter}, depth=${this.depth}, balance=${this.balance}, maxLength=${this.maxLength} maxStart=${this.maxStart}>`
   }
 
   public searchPoint(point: number, result: Interval[]) {
     // Returns all intervals that contain point.
+    debug(`${this.toString()} searchPoint: searching ${point}`)
     this.sCenter
       .filter((interval) => interval.start <= point && point < interval.end)
       .forEach((interval) => result.push(interval))
@@ -251,6 +265,120 @@ export class Node {
       this.getBranch(1).searchPoint(point, result)
     }
     return result
+  }
+
+  public searchByLengthStartingAt(
+    minLength: number,
+    startingAt: number,
+    result: Interval[]
+  ) {
+    // Skip this branch if it cannot contain a qualifying interval
+    debug(
+      `${this.toString()} searchPoint: searching minLength=${minLength} startingAt=${startingAt} maxLen=${
+        this.maxLength
+      }`
+    )
+    const adjustedMinStart =
+      startingAt + Math.max(0, minLength - this.maxLength)
+    if (this.maxStart < adjustedMinStart) {
+      debug(
+        `${this.toString()} searchPoint: maxStart skipping subtree (maxStart=${
+          this.maxStart
+        } adjustedMinStart=${adjustedMinStart})`
+      )
+      return result // Skip this subtree
+    } else if (this.maxLength < minLength) {
+      debug(`${this.toString()} searchPoint: maxLength skipping subtree`)
+      return result // Skip this subtree
+    }
+    // search intervals that start at startingAt
+    debug(
+      `${this.toString()} searchPoint: searching startingAt=${startingAt} xCenter=${
+        this.xCenter
+      }`
+    )
+    this.sCenter.forEach((interval) => {
+      // FIXME: use adjusted start and length
+      const adjustedStart =
+        interval.start + Math.max(0, interval.length - minLength)
+      const adjustedLength =
+        interval.length - Math.max(0, startingAt - adjustedMinStart)
+      debug(
+        `comparing ${interval}, aStart=${adjustedStart} >= startingAt=${startingAt}, aLength=${adjustedLength} >= minLength=${minLength}`
+      )
+      if (adjustedStart >= startingAt && adjustedLength >= minLength) {
+        if (interval.start < startingAt) {
+          debug(`adjusted start from ${interval.start} to ${startingAt}`)
+          interval = new Interval(startingAt, interval.end)
+        }
+        result.push(interval)
+      }
+    })
+
+    this.getBranch(0)?.searchByLengthStartingAt(minLength, startingAt, result)
+    this.getBranch(1)?.searchByLengthStartingAt(minLength, startingAt, result)
+    return result
+  }
+
+  findFirstIntervalByLengthStartingAt(
+    minLength: number,
+    startingAt: number
+  ): Interval | undefined {
+    // Skip this branch if it cannot contain a qualifying interval
+    debug(
+      `${this.toString()} searchPoint: searching minLength=${minLength} startingAt=${startingAt} maxLen=${
+        this.maxLength
+      }`
+    )
+    const adjustedMinStart =
+      startingAt + Math.max(0, minLength - this.maxLength)
+    if (this.maxStart < adjustedMinStart) {
+      debug(
+        `${this.toString()} searchPoint: maxStart skipping subtree (maxStart=${
+          this.maxStart
+        } adjustedMinStart=${adjustedMinStart})`
+      )
+      return // Skip this subtree
+    } else if (this.maxLength < minLength) {
+      debug(`${this.toString()} searchPoint: maxLength skipping subtree`)
+      return // Skip this subtree
+    }
+    // search intervals that start at startingAt
+    debug(
+      `${this.toString()} searchPoint: searching startingAt=${startingAt} xCenter=${
+        this.xCenter
+      }`
+    )
+
+    let found = this.sCenter.toSorted(compareIntervals).find((interval) => {
+      // FIXME: use adjusted start and length
+      const adjustedStart =
+        interval.start + Math.max(0, interval.length - minLength)
+      const adjustedLength =
+        interval.length - Math.max(0, startingAt - adjustedMinStart)
+      debug(
+        `comparing ${interval}, aStart=${adjustedStart} >= startingAt=${startingAt}, aLength=${adjustedLength} >= minLength=${minLength}`
+      )
+      return adjustedStart >= startingAt && adjustedLength >= minLength
+    })
+    if (found && found.start < startingAt) {
+      debug(`adjusted start from ${found.start} to ${startingAt}`)
+      found = new Interval(startingAt, found.end)
+    }
+
+    // check other branches, and return the earliest interval found
+    const left = this.getBranch(0)?.findFirstIntervalByLengthStartingAt(
+      minLength,
+      startingAt
+    )
+    const right = this.getBranch(1)?.findFirstIntervalByLengthStartingAt(
+      minLength,
+      startingAt
+    )
+    return _.minBy(
+      [found, left, right],
+      (interval) => interval?.start ?? Infinity
+    )
   }
 
   public searchOverlap(pointList: number[]): Interval[] {
@@ -268,7 +396,11 @@ export class Node {
     */
     // since this is a list, called methods can set this to [1],
     // making it true
-    return this.removeIntervalHelper(interval, [], true)
+    const result = this.removeIntervalHelper(interval, [], true)
+    // result may be null if the node was pruned
+    result?.updateMaxLength()
+    result?.updateMaxStart()
+    return result
   }
 
   public removeIntervalHelper(
@@ -412,7 +544,10 @@ export class Node {
       // Create a new node with the largest x_center possible.
       const child = Node.fromIntervals(
         this.sCenter.filter((iv) => iv.containsPoint(newXCenter))
-      )!
+      )
+      if (!child) {
+        throw new TypeError('child should not be null')
+      }
       child.xCenter = newXCenter
       this.sCenter = this.sCenter.difference(child.sCenter)
 
@@ -519,6 +654,34 @@ export class Node {
     return result
   }
 
+  private updateMaxLength() {
+    let maxLen = 0
+    this.sCenter.forEach((iv) => {
+      maxLen = Math.max(maxLen, iv.length)
+    })
+    if (this.leftNode) {
+      maxLen = Math.max(maxLen, this.leftNode.maxLength)
+    }
+    if (this.rightNode) {
+      maxLen = Math.max(maxLen, this.rightNode.maxLength)
+    }
+    this.maxLength = maxLen
+  }
+
+  private updateMaxStart() {
+    let maxStart =
+      this.sCenter.size > 0
+        ? Math.max(...this.sCenter.map((iv) => iv.start))
+        : 0
+    if (this.leftNode) {
+      maxStart = Math.max(maxStart, this.leftNode.maxStart)
+    }
+    if (this.rightNode) {
+      maxStart = Math.max(maxStart, this.rightNode.maxStart)
+    }
+    this.maxStart = maxStart
+  }
+
   private singleRotate() {
     // Single rotation. Assumes that balance is +-2.
     assert(this.balance !== 0)
@@ -550,6 +713,8 @@ export class Node {
       rotatedNode.sCenter = rotatedNode.sCenter.addAll(promotees)
     }
     rotatedNode.refreshBalance()
+    this.updateMaxLength()
+    this.updateMaxStart()
     // FIXME: rotate again should not be required, but tests fail if removed
     return rotatedNode.rotate()
   }
