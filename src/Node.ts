@@ -1,13 +1,14 @@
 import assert from 'assert'
 
 import { Interval } from './Interval'
-import { IntervalHashSet, compareIntervals } from './IntervalSet'
+import { compareIntervals } from './IntervalSortedSet'
 import { HashSet } from '@rimbu/core'
 import { debug } from './debug'
+import { IntervalHashSet } from './IntervalHashSet'
 
 export class Node {
   private xCenter: number
-  private sCenter: HashSet<Interval>
+  private sCenter: IntervalHashSet
   private leftNode: Node | null = null
   private rightNode: Node | null = null
   private depth: number
@@ -15,7 +16,7 @@ export class Node {
 
   public constructor(
     xCenter: number,
-    sCenter: Interval[] | HashSet<Interval>,
+    sCenter: Interval[] | IntervalHashSet,
     leftNode: Node | null = null,
     rightNode: Node | null = null,
     rotate = true,
@@ -24,7 +25,7 @@ export class Node {
   ) {
     this.xCenter = xCenter
     this.sCenter = Array.isArray(sCenter)
-      ? IntervalHashSet.from(sCenter)
+      ? new IntervalHashSet(sCenter)
       : sCenter
     this.leftNode = leftNode ?? null
     this.rightNode = rightNode ?? null
@@ -62,7 +63,7 @@ export class Node {
       } else if (iv.start > node.xCenter) {
         sRight.push(iv)
       } else {
-        node.sCenter = node.sCenter.add(iv)
+        node.sCenter.add(iv)
       }
     }
     node.leftNode = Node.fromSortedIntervals(sLeft)
@@ -200,7 +201,7 @@ export class Node {
     debug('add', interval)
     if (this.centerHit(interval)) {
       debug('add: center hit', interval)
-      this.sCenter = this.sCenter.add(interval)
+      this.sCenter.add(interval)
       return this
     } else {
       const direction = this.hitBranch(interval)
@@ -246,27 +247,26 @@ export class Node {
     return `Node<${this.xCenter}, depth=${this.depth}, balance=${this.balance}>`
   }
 
-  public searchPoint(point: number, resultBuilder: HashSet.Builder<Interval>) {
+  public searchPoint(point: number, result: Interval[]) {
     // Returns all intervals that contain point.
-    resultBuilder.addAll(
-      this.sCenter.filter(
-        (interval) => interval.start <= point && point < interval.end
-      )
-    )
+    debug('searchPoint', point)
+    this.sCenter
+      .filter((interval) => interval.start <= point && point < interval.end)
+      .forEach((interval) => result.push(interval))
     if (point < this.xCenter && this.getBranch(0)) {
-      this.getBranch(0).searchPoint(point, resultBuilder)
+      this.getBranch(0).searchPoint(point, result)
     } else if (point > this.xCenter && this.getBranch(1)) {
-      this.getBranch(1).searchPoint(point, resultBuilder)
+      this.getBranch(1).searchPoint(point, result)
     }
-    return resultBuilder
+    return result
   }
 
-  public searchOverlap(pointList: number[]): HashSet<Interval> {
-    const resultBuilder = IntervalHashSet.builder<Interval>()
+  public searchOverlap(pointList: number[]): Interval[] {
+    const result = []
     for (const point of pointList) {
-      this.searchPoint(point, resultBuilder)
+      this.searchPoint(point, result)
     }
-    return resultBuilder.build()
+    return result
   }
 
   public remove(interval: Interval): Node {
@@ -419,7 +419,7 @@ export class Node {
       }
       // Create a new node with the largest x_center possible.
       const child = Node.fromIntervals(
-        this.sCenter.filter((iv) => iv.containsPoint(newXCenter)).toArray()
+        this.sCenter.filter((iv) => iv.containsPoint(newXCenter))
       )!
       child.xCenter = newXCenter
       this.sCenter = this.sCenter.difference(child.sCenter)
@@ -512,17 +512,17 @@ export class Node {
     }
   }
 
-  public allChildren(): HashSet<Interval> {
-    return this.allChildrenHelper(IntervalHashSet.empty())
+  public allChildren(): IntervalHashSet {
+    return this.allChildrenHelper(new IntervalHashSet([]))
   }
 
-  private allChildrenHelper(result: HashSet<Interval>): HashSet<Interval> {
-    result = result.addAll(this.sCenter)
+  private allChildrenHelper(result: IntervalHashSet): IntervalHashSet {
+    result.addAll(this.sCenter.toArray())
     if (this.getBranch(0)) {
-      result = this.getBranch(0).allChildrenHelper(result)
+      this.getBranch(0).allChildrenHelper(result)
     }
     if (this.getBranch(1)) {
-      result = this.getBranch(1).allChildrenHelper(result)
+      this.getBranch(1).allChildrenHelper(result)
     }
     return result
   }
@@ -550,7 +550,7 @@ export class Node {
     const promotees = rotatedNode
       .getBranch(light)
       .sCenter.filter((iv) => rotatedNode.centerHit(iv))
-    if (promotees.size) {
+    if (promotees.length) {
       debug('have promotees', promotees.toString())
       for (const iv of promotees) {
         rotatedNode.setBranch(light, rotatedNode.getBranch(light).remove(iv))

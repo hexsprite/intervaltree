@@ -7,9 +7,9 @@ import { debug } from './debug'
 import { Node } from './Node'
 import { Interval } from './Interval'
 import { SortedMap, HashSet } from '@rimbu/core'
-import { IntervalSortedSet } from './IntervalSet'
+import { IntervalSortedSet } from './IntervalSortedSet'
 import { IntervalTuples } from './types'
-import { IntervalHashSet } from './IntervalSet'
+import { IntervalHashSet } from './IntervalHashSet'
 
 export class IntervalTree {
   public allIntervals: HashSet<Interval>
@@ -89,56 +89,33 @@ export class IntervalTree {
    */
   public chop(start: number, end: number): void {
     assert(start < end, 'start must be <= end')
-    const insertionsBuilder = IntervalHashSet.builder<Interval>()
+    const insertions = new IntervalHashSet([])
     const startHits = this.search(start).filter((iv) => iv.start < start)
     const endHits = this.search(end).filter((iv) => iv.end > end)
     startHits.forEach((iv) => {
-      insertionsBuilder.add(new Interval(iv.start, start, iv.data))
+      insertions.add(new Interval(iv.start, start, iv.data))
     })
     endHits.forEach((iv) => {
-      insertionsBuilder.add(new Interval(end, iv.end, iv.data))
+      insertions.add(new Interval(end, iv.end, iv.data))
     })
-    const insertions = insertionsBuilder.build()
     debug(() => ({
-      insertions,
+      insertions: insertions.toString(),
       start,
       end,
-      endHits: endHits.toArray(),
-      startHits: startHits.toArray(),
+      endHits: endHits,
+      startHits: startHits,
     }))
     debug(() => `chop: before=${this.allIntervals.toArray()}`)
     this.removeEnveloped(start, end)
     this.differenceUpdate(startHits)
     this.differenceUpdate(endHits)
-    this.update(insertions)
+    this.update(insertions.toArray())
     debug(() => `chop: after=${this.allIntervals.toArray()}`)
   }
 
   chopAll(intervals: [number, number][]) {
     intervals.forEach(([start, end]) => {
-      const insertionsBuilder = IntervalHashSet.builder<Interval>()
-      const startHits = this.search(start).filter((iv) => iv.start < start)
-      const endHits = this.search(end).filter((iv) => iv.end > end)
-      startHits.forEach((iv) => {
-        insertionsBuilder.add(new Interval(iv.start, start, iv.data))
-      })
-      endHits.forEach((iv) => {
-        insertionsBuilder.add(new Interval(end, iv.end, iv.data))
-      })
-      const insertions = insertionsBuilder.build()
-      debug(() => ({
-        insertions,
-        start,
-        end,
-        endHits: endHits.toArray(),
-        startHits: startHits.toArray(),
-      }))
-      debug(() => `chop: before=${this.allIntervals.toArray()}`)
-      this.removeEnveloped(start, end)
-      this.differenceUpdate(startHits)
-      this.differenceUpdate(endHits)
-      this.update(insertions)
-      debug(() => `chop: after=${this.allIntervals.toArray()}`)
+      this.chop(start, end)
     })
   }
 
@@ -146,13 +123,16 @@ export class IntervalTree {
    * Given an iterable of intervals, add them to the tree.
    * Completes in O(m*log(n+m)), where m = number of intervals to add.
    */
-  public update(intervals: HashSet<Interval>) {
-    intervals.forEach((iv) => {
+  public update(intervals: HashSet<Interval> | Interval[] | IntervalHashSet) {
+    intervals.forEach((iv: Interval) => {
+      debug('update', iv)
       this.add(iv)
     })
   }
 
-  public differenceUpdate(other: HashSet<Interval>) {
+  public differenceUpdate(
+    other: HashSet<Interval> | Interval[] | IntervalHashSet
+  ) {
     other.forEach((iv) => {
       this.discard(iv)
     })
@@ -207,7 +187,7 @@ export class IntervalTree {
           err.message += `
 removeEnveloped(${start}, ${end})
 allIntervals=${this.allIntervals.toArray()}
-hitlist=${hitlist.toArray()}
+hitlist=${hitlist}
 badInterval=${iv}
 `
           // rethrow error now that we added more debug info
@@ -272,28 +252,24 @@ badInterval=${iv}
    *   * m = number of matches
    *   * k = size of the search range (this is 1 for a point)
    **/
-  public search(
-    start: number,
-    end?: number,
-    strict = false
-  ): HashSet<Interval> {
+  public search(start: number, end?: number, strict = false): IntervalHashSet {
     if (!this.topNode) {
-      return IntervalHashSet.empty()
+      return new IntervalHashSet([])
     }
-    const resultBuilder = IntervalHashSet.builder<Interval>()
+    const resultBuilder = []
     if (end === undefined) {
-      return this.topNode.searchPoint(start, resultBuilder).build()
+      return new IntervalHashSet(this.topNode.searchPoint(start, resultBuilder))
     }
-    let result = this.topNode.searchPoint(start, resultBuilder).build()
+    let result = this.topNode.searchPoint(start, resultBuilder)
     const keysArray = this.boundaryTable.streamKeys().toArray()
     const boundStart = bisectLeft(keysArray, start)
     const boundEnd = bisectLeft(keysArray, end) // exclude final end bound
-    // debug(
-    //   () =>
-    //     `search: start=${start} end=${end} strict=${strict} boundaryTable=${keysArray}`
-    // )
-    // debug(() => `search: boundStart=${boundStart} boundEnd=${boundEnd}`)
-    result = result.addAll(
+    debug(
+      () =>
+        `search: start=${start} end=${end} strict=${strict} boundaryTable=${keysArray}`
+    )
+    debug(() => `search: boundStart=${boundStart} boundEnd=${boundEnd}`)
+    result = result.concat(
       this.topNode.searchOverlap(
         lodash.range(boundStart, boundEnd).map((index) => keysArray[index])
       )
@@ -303,21 +279,20 @@ badInterval=${iv}
     if (strict) {
       result = result.filter((iv) => iv.start >= start && iv.end <= end)
     }
-    // debug(() => 'search: result=', result.toArray())
-    return result
+    debug('search: result=', result)
+    return new IntervalHashSet(result)
   }
 
   public searchByLengthStartingAt(length: number, start: number): Interval[] {
     // find all intervals that overlap start
     // adjust nodes to match the start time
     const intervals = this.search(start, Infinity)
-      .stream()
+      .toArray()
       .map((iv) =>
         // return a new node with changed start time if necessary
         iv.start < start ? new Interval(start, iv.end, iv.data) : iv
       )
       .filter((iv) => iv.length >= length)
-      .toArray()
     return intervals
   }
 
@@ -349,7 +324,7 @@ badInterval=${iv}
 
     const allChildren = this.topNode.allChildren()
     assert(
-      allChildren.difference(this.allIntervals).isEmpty,
+      HashSet.from(allChildren.toArray()).difference(this.allIntervals).isEmpty,
       `Error: the tree and the membership set are out of sync! ` +
         `fromNodes=${this.topNode.allChildren()} ` +
         `allIntervals=${this.allIntervals}`
@@ -403,7 +378,7 @@ badInterval=${iv}
   }
 
   private initialize(intervals: Interval[] = []) {
-    this.allIntervals = IntervalHashSet.from(intervals)
+    this.allIntervals = HashSet.from(intervals)
     this.topNode = Node.fromIntervals(intervals)!
     this.boundaryTable = SortedMap.empty()
     this.addBoundariesAll(intervals)
