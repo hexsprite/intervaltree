@@ -3,7 +3,6 @@ import assert from 'assert'
 import { Interval } from './Interval'
 import { compareIntervals } from './IntervalSortedSet'
 import { HashSet } from '@rimbu/core'
-import { debug } from './debug'
 import { IntervalHashSet } from './IntervalHashSet'
 
 export class Node {
@@ -116,11 +115,11 @@ export class Node {
     // balance > 0 is the heavy side
     const myHeavy = this.balance > 0
     const childHeavy = this.getBranch(myHeavy).balance > 0
-    debug(
-      `rotate: myHeavy=${branchStr(myHeavy)} childHeavy=${branchStr(
-        childHeavy
-      )} this.balance=${this.balance}`
-    )
+    // debug(
+    //   `rotate: myHeavy=${branchStr(myHeavy)} childHeavy=${branchStr(
+    //     childHeavy
+    //   )} this.balance=${this.balance}`
+    // )
     // const struct = this.printStructure(0, true)
     let result: Node
     if (myHeavy === childHeavy || this.getBranch(myHeavy).balance === 0) {
@@ -157,14 +156,14 @@ export class Node {
        *           /    \
        *          2    ...
        */
-      debug('rotate: doing singleRotate')
+      // debug('rotate: doing singleRotate')
       result = this.singleRotate()
-      debug('rotate: done singleRotate', result.toString())
+      // debug('rotate: done singleRotate', result.toString())
     } else {
-      debug('rotate: doing doubleRotate')
+      // debug('rotate: doing doubleRotate')
       result = this.doubleRotate()
-      debug('rotate: done doubleRotate', result.toString())
-      debug(() => result.printStructure(0, true))
+      // debug('rotate: done doubleRotate', result.toString())
+      // debug(() => result.printStructure(0, true))
     }
     // try {
     result.verify()
@@ -198,22 +197,21 @@ export class Node {
   }
 
   public add(interval: Interval) {
-    debug('add', interval)
     if (this.centerHit(interval)) {
-      debug('add: center hit', interval)
+      // debug('add: center hit', interval)
       this.sCenter.add(interval)
       return this
     } else {
       const direction = this.hitBranch(interval)
       const branchNode = this.getBranch(direction)
-      debug('add: on branch', interval, direction)
+      // debug('add: on branch', interval, direction)
       if (!this.getBranch(direction)) {
         this.setBranch(direction, Node.fromInterval(interval))
         this.refreshBalance()
         return this
       } else {
         this.setBranch(direction, branchNode.add(interval))
-        debug('existing branch, rotating')
+        // debug('existing branch, rotating')
         return this.rotate()
       }
     }
@@ -249,7 +247,6 @@ export class Node {
 
   public searchPoint(point: number, result: Interval[]) {
     // Returns all intervals that contain point.
-    debug('searchPoint', point)
     this.sCenter
       .filter((interval) => interval.start <= point && point < interval.end)
       .forEach((interval) => result.push(interval))
@@ -292,10 +289,10 @@ export class Node {
     See Eternally Confuzzled's jsw_remove_r function (lines 1-32)
     in his AVL tree article for reference.
     */
-    debug(`removeIntervalHelper: ${this.toString()}`)
+    // debug(`removeIntervalHelper: ${this.toString()}`)
 
     if (this.centerHit(interval)) {
-      debug('removeIntervalHelper: center hit')
+      // debug('removeIntervalHelper: center hit')
       if (!shouldRaiseError && !this.sCenter.has(interval)) {
         done.push(1)
         return this
@@ -305,23 +302,23 @@ export class Node {
         // desired.
         this.sCenter = this.sCenter.remove(interval)
       } catch (e) {
-        debug(() => this.printStructure(0, true))
+        // debug(() => this.printStructure(0, true))
         throw new TypeError(interval.toString())
       }
       if (this.sCenter.size) {
         // keep this node
         done.push(1) // no rebalancing necessary
-        debug('removeIntervalHelper: Removed, no rebalancing.')
+        // debug('removeIntervalHelper: Removed, no rebalancing.')
         return this
       } else {
         // If we reach here, no intervals are left in this.sCenter
         // So, prune self.
-        debug('removeIntervalHelper: pruning self')
+        // debug('removeIntervalHelper: pruning self')
         return this.prune()
       }
     } else {
       // interval not in sCenter
-      debug('removeIntervalHelper: not in center')
+      // debug('removeIntervalHelper: not in center')
       const direction = this.hitBranch(interval)
       let branch = this.getBranch(direction)
       if (!this.getBranch(direction)) {
@@ -331,12 +328,12 @@ export class Node {
         done.push(1)
         return this
       }
-      debug(`removeIntervalHelper: Descending to ${direction} branch`)
+      // debug(`removeIntervalHelper: Descending to ${direction} branch`)
       branch = branch.removeIntervalHelper(interval, done, shouldRaiseError)
       this.setBranch(direction, branch)
       // Clean up
       if (!done.length) {
-        debug(`removeIntervalHelper: rotating ${this.xCenter}`)
+        // debug(`removeIntervalHelper: rotating ${this.xCenter}`)
         return this.rotate()
       }
       return this
@@ -354,7 +351,7 @@ export class Node {
     if (!leftBranch || !rightBranch) {
       // if I have an empty branch
       const direction = !leftBranch // graft the other branch here
-      debug(`prune: Grafting ${direction ? 'right' : 'left'} branch`)
+      // debug(`prune: Grafting ${direction ? 'right' : 'left'} branch`)
       const result = this.getBranch(direction)
       result?.verify()
       return result
@@ -365,7 +362,7 @@ export class Node {
       const newBranch = result[1]
       this.setBranch(0, newBranch)
 
-      debug(`prune: Replacing ${this} with ${heir}`)
+      // debug(`prune: Replacing ${this} with ${heir}`)
 
       this.leftNode?.verify()
       this.rightNode?.verify()
@@ -534,16 +531,16 @@ export class Node {
     const light = !heavy
     const rotatedNode = this.getBranch(heavy)
     // this.verify(new IntervalSet([]))
-    debug(
-      'singleRotate',
-      this.toString(),
-      `balance=${this.balance}, ${rotatedNode.balance}`,
-      `heavy=${heavy ? 'right' : 'left'}`
-    )
+    // debug(
+    //   'singleRotate',
+    //   this.toString(),
+    //   `balance=${this.balance}, ${rotatedNode.balance}`,
+    //   `heavy=${heavy ? 'right' : 'left'}`
+    // )
     // assert(save.getBranch(light))
     this.setBranch(heavy, rotatedNode.getBranch(light))
     rotatedNode.setBranch(light, this.rotate()) // Needed to ensure the 2 and 3 are balanced under new subnode
-    debug(() => this.printStructure(0, true))
+    // debug(() => this.printStructure(0, true))
 
     // Some intervals may overlap both this.xCenter and save.xCenter
     // Promote those to the new tip of the tree
@@ -551,7 +548,7 @@ export class Node {
       .getBranch(light)
       .sCenter.filter((iv) => rotatedNode.centerHit(iv))
     if (promotees.length) {
-      debug('have promotees', promotees.toString())
+      // debug('have promotees', promotees.toString())
       for (const iv of promotees) {
         rotatedNode.setBranch(light, rotatedNode.getBranch(light).remove(iv))
       }
@@ -567,11 +564,11 @@ export class Node {
     const myHeavy = this.balance > 0
     this.setBranch(myHeavy, this.getBranch(myHeavy).singleRotate())
     this.refreshBalance()
-    debug('doubleRotate: after first rotate')
-    debug(() => this.printStructure(0, true))
+    // debug('doubleRotate: after first rotate')
+    // debug(() => this.printStructure(0, true))
     // Second rotation
     return this.singleRotate()
   }
 }
 
-const branchStr = (branch: boolean | number) => (branch ? 'right' : 'left')
+// const branchStr = (branch: boolean | number) => (branch ? 'right' : 'left')

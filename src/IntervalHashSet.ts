@@ -1,5 +1,4 @@
 import { Interval } from './Interval'
-import { debug } from './debug'
 
 const intervalHash = (iv: Interval) => {
   return `${iv.start},${iv.end},${iv.data}`
@@ -19,7 +18,6 @@ export class IntervalHashSet {
 
   add(interval: Interval) {
     const hash = intervalHash(interval)
-    debug('add', interval, hash)
     this.intervalsMap.set(hash, interval)
   }
 

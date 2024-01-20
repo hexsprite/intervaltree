@@ -3,7 +3,6 @@ import * as crypto from 'crypto'
 import * as lodash from 'lodash'
 
 import { bisectLeft } from './bisect'
-import { debug } from './debug'
 import { Node } from './Node'
 import { Interval } from './Interval'
 import { SortedMap, HashSet } from '@rimbu/core'
@@ -63,7 +62,6 @@ export class IntervalTree {
   }
 
   public add(interval: Interval) {
-    debug('tree/add', interval)
     if (this.allIntervals.has(interval)) {
       return
     }
@@ -98,19 +96,10 @@ export class IntervalTree {
     endHits.forEach((iv) => {
       insertions.add(new Interval(end, iv.end, iv.data))
     })
-    debug(() => ({
-      insertions: insertions.toString(),
-      start,
-      end,
-      endHits: endHits,
-      startHits: startHits,
-    }))
-    debug(() => `chop: before=${this.allIntervals.toArray()}`)
     this.removeEnveloped(start, end)
     this.differenceUpdate(startHits)
     this.differenceUpdate(endHits)
     this.update(insertions.toArray())
-    debug(() => `chop: after=${this.allIntervals.toArray()}`)
   }
 
   chopAll(intervals: [number, number][]) {
@@ -125,7 +114,6 @@ export class IntervalTree {
    */
   public update(intervals: HashSet<Interval> | Interval[] | IntervalHashSet) {
     intervals.forEach((iv: Interval) => {
-      debug('update', iv)
       this.add(iv)
     })
   }
@@ -155,7 +143,6 @@ export class IntervalTree {
 
     Completes in O(log n) time.
     */
-    debug('remove', interval)
     if (!this.allIntervals.has(interval)) {
       if (ignoreMissing) {
         return
@@ -176,10 +163,8 @@ export class IntervalTree {
       * m = number of matches
       * r = size of the search range (this is 1 for a point)
     */
-    debug(`removeEnveloped: start=${start} end=${end}`)
     const hitlist = this.search(start, end, true)
     hitlist.forEach((iv) => {
-      debug('removing', iv)
       try {
         this.remove(iv)
       } catch (err) {
@@ -264,11 +249,11 @@ badInterval=${iv}
     const keysArray = this.boundaryTable.streamKeys().toArray()
     const boundStart = bisectLeft(keysArray, start)
     const boundEnd = bisectLeft(keysArray, end) // exclude final end bound
-    debug(
-      () =>
-        `search: start=${start} end=${end} strict=${strict} boundaryTable=${keysArray}`
-    )
-    debug(() => `search: boundStart=${boundStart} boundEnd=${boundEnd}`)
+    // debug(
+    //   () =>
+    //     `search: start=${start} end=${end} strict=${strict} boundaryTable=${keysArray}`
+    // )
+    // debug(() => `search: boundStart=${boundStart} boundEnd=${boundEnd}`)
     result = result.concat(
       this.topNode.searchOverlap(
         lodash.range(boundStart, boundEnd).map((index) => keysArray[index])
@@ -279,7 +264,6 @@ badInterval=${iv}
     if (strict) {
       result = result.filter((iv) => iv.start >= start && iv.end <= end)
     }
-    debug('search: result=', result)
     return new IntervalHashSet(result)
   }
 
