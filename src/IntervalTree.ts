@@ -281,6 +281,16 @@ badInterval=${iv}
     return this.topNode.searchByLengthStartingAt(length, start, [])
   }
 
+  public findFirstIntervalByLengthStartingAt(
+    minLength: number,
+    startingAt: number
+  ): Interval | undefined {
+    return this.topNode?.findFirstIntervalByLengthStartingAt(
+      minLength,
+      startingAt
+    )
+  }
+
   public clone(): IntervalTree {
     /*
       Construct a new IntervalTree using shallow copies of the

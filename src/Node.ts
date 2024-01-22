@@ -23,7 +23,6 @@ export class Node {
     sCenter: Interval[] | IntervalHashSet,
     leftNode: Node | null = null,
     rightNode: Node | null = null,
-    rotate = true,
     depth = 0,
     balance = 0
   ) {
@@ -36,11 +35,7 @@ export class Node {
     // depth & balance are set when rotated
     this.depth = depth
     this.balance = balance
-    if (rotate) {
-      this.rotate()
-    }
-    this.updateMaxLength()
-    this.updateMaxStart()
+    this.rotate()
   }
 
   public static fromInterval(interval: Interval) {
@@ -89,7 +84,6 @@ export class Node {
       this.sCenter,
       nodeCloner(this.leftNode),
       nodeCloner(this.rightNode),
-      false,
       this.depth,
       this.balance
     )
