@@ -394,4 +394,27 @@ describe('IntervalTree', () => {
     tree = new IntervalTree(data)
     tree.verify()
   })
+
+  it.only('find first interval by length, overlaps bug', () => {
+    const tree = new IntervalTree([
+      new Interval(1449158400000, 1449198000000),
+      new Interval(1449248400000, 1449277200000),
+      new Interval(1449507600000, 1449536400000),
+      new Interval(1449594000000, 1449622800000),
+      new Interval(1449680400000, 1449709200000),
+      new Interval(1449766800000, 1449795600000),
+      new Interval(1449853200000, 1449882000000),
+      new Interval(1450112400000, 1450141200000),
+      new Interval(1450198800000, 1450227600000),
+      new Interval(1450285200000, 1450314000000),
+    ])
+    const minimumDuration = 900000
+    const earliest = 1449153000000
+    const result = tree.findFirstIntervalByLengthStartingAt(
+      minimumDuration,
+      earliest
+    )
+    const expected = new Interval(1449158400000, 1449198000000)
+    expect(expected).toEqual(result)
+  })
 })

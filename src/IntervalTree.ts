@@ -271,26 +271,18 @@ badInterval=${iv}
   }
 
   public searchByLengthStartingAt(length: number, start: number): Interval[] {
-    // find all intervals that overlap start
-    // adjust nodes to match the start time
-    // const intervals = this.search(start, Infinity)
-    //   .toArray()
-    //   .map((iv) =>
-    //     // return a new node with changed start time if necessary
-    //     iv.start < start ? new Interval(start, iv.end, iv.data) : iv
-    //   )
-    //   .filter((iv) => iv.length >= length)
-    // debug(() => `searchByLengthStartingAt: length=${length} start=${start}`)
     return this.topNode.searchByLengthStartingAt(length, start, [])
   }
 
   public findFirstIntervalByLengthStartingAt(
     minLength: number,
-    startingAt: number
+    startingAt: number,
+    filterFn?: (iv: Interval) => boolean
   ): Interval | undefined {
     const foundInterval = this.topNode?.findFirstIntervalByLengthStartingAt(
       minLength,
-      startingAt
+      startingAt,
+      filterFn
     )
     // adjust returned interval to match the requested start time
     if (foundInterval && foundInterval.start < startingAt) {

@@ -4,7 +4,6 @@ import assert from 'assert'
 import { Interval } from './Interval'
 import { compareIntervals } from './IntervalSortedSet'
 import { IntervalHashSet } from './IntervalHashSet'
-import { debug, logger } from './debug'
 import _ from 'lodash'
 
 export class Node {
@@ -38,13 +37,6 @@ export class Node {
     this.balance = balance
     if (rotate) this.rotate()
     this.updateNodeAttributes()
-  }
-
-  private get logger() {
-    return logger.child({
-      type: 'node',
-      xCenter: this.xCenter,
-    })
   }
 
   public static fromInterval(interval: Interval) {
@@ -233,7 +225,7 @@ export class Node {
     if (tostring) {
       return result
     } else {
-      debug('printStructure\n' + result)
+      console.log('printStructure\n' + result)
     }
   }
 
@@ -261,42 +253,17 @@ export class Node {
     result: Interval[]
   ) {
     // Skip this branch if it cannot contain a qualifying interval
-    // debug(
-    //   `${this.toString()} searchPoint: searching minLength=${minLength} startingAt=${startingAt} maxLen=${
-    //     this.maxLength
-    //   }`
-    // )
-    const adjustedMinStart =
-      startingAt + Math.max(0, minLength - this.maxLength)
-    if (this.maxStart < adjustedMinStart) {
-      // debug(
-      //   `${this.toString()} searchPoint: maxStart skipping subtree (maxStart=${
-      //     this.maxStart
-      //   } adjustedMinStart=${adjustedMinStart})`
-      // )
-      return result // Skip this subtree
-    } else if (this.maxLength < minLength) {
-      // debug(`${this.toString()} searchPoint: maxLength skipping subtree`)
-      return result // Skip this subtree
+    if (this.shouldSkipBranch(minLength, startingAt)) {
+      return result
     }
+
     // search intervals that start at startingAt
-    // debug(
-    //   `${this.toString()} searchPoint: searching startingAt=${startingAt} xCenter=${
-    //     this.xCenter
-    //   }`
-    // )
     this.sCenter.forEach((interval) => {
-      // FIXME: use adjusted start and length
-      const adjustedStart =
-        interval.start + Math.max(0, interval.length - minLength)
+      if (interval.end < startingAt) return
       const adjustedLength =
-        interval.length - Math.max(0, startingAt - adjustedMinStart)
-      // debug(
-      //   `comparing ${interval}, aStart=${adjustedStart} >= startingAt=${startingAt}, aLength=${adjustedLength} >= minLength=${minLength}`
-      // )
-      if (adjustedStart >= startingAt && adjustedLength >= minLength) {
+        interval.length - Math.max(0, startingAt - interval.start)
+      if (adjustedLength >= minLength) {
         if (interval.start < startingAt) {
-          // debug(`adjusted start from ${interval.start} to ${startingAt}`)
           interval = new Interval(startingAt, interval.end)
         }
         result.push(interval)
@@ -308,27 +275,7 @@ export class Node {
     return result
   }
 
-  /**
-   * Finds the first interval that meets the specified length and starting
-   * position criteria.
-   * If the interval actually starts before the specified starting position,
-   * the returned interval is adjusted to start at the specified position.
-   *
-   * @param minLength The minimum length of the interval.
-   * @param startingAt The starting position of the interval.
-   * @returns The first interval that meets the criteria, or undefined if no
-   *          interval is found.
-   */
-  public findFirstIntervalByLengthStartingAt(
-    minLength: number,
-    startingAt: number
-  ): Interval | undefined {
-    // debug(
-    //   `${this.toString()} searchPoint: searching minLength=${minLength} startingAt=${startingAt} maxLen=${
-    //     this.maxLength
-    //   }`
-    // )
-    // Skip this branch if it cannot contain a qualifying interval
+  private shouldSkipBranch(minLength: number, startingAt: number) {
     const adjustedMinStart =
       startingAt + Math.max(0, minLength - this.maxLength)
     if (this.maxStart < adjustedMinStart) {
@@ -337,32 +284,65 @@ export class Node {
       //     this.maxStart
       //   } adjustedMinStart=${adjustedMinStart})`
       // )
-      return // Skip this subtree
+      return true // Skip this subtree
     } else if (this.maxLength < minLength) {
       // debug(`${this.toString()} searchPoint: maxLength skipping subtree`)
-      return // Skip this subtree
+      return true // Skip this subtree
+    }
+    return false
+  }
+
+  /**
+   * Finds the first interval that meets the specified length and starting
+   * position criteria.
+   * @param minLength The minimum length of the interval.
+   * @param startingAt Minimum start of the interval.
+   * @returns The first interval that meets the criteria, or undefined if no
+   *          interval is found.
+   */
+  public findFirstIntervalByLengthStartingAt(
+    minLength: number,
+    startingAt: number,
+    filterFn?: (iv: Interval) => boolean
+  ): Interval | undefined {
+    // Skip this branch if it cannot contain a qualifying interval
+    if (this.shouldSkipBranch(minLength, startingAt)) {
+      return
     }
 
-    // search intervals that start at startingAt
-    // debug(
-    //   `${this.toString()} searchPoint: searching startingAt=${startingAt} xCenter=${
-    //     this.xCenter
-    //   }`
-    // )
+    const found = this.sCenter.reduce<Interval | undefined>(
+      (foundInterval, interval) => {
+        // Check if the interval ends before the startingAt point
+        if (interval.end < startingAt) return foundInterval
 
-    const found = this.sCenter.toSorted(compareIntervals).find((interval) => {
-      const overlaps =
-        interval.start <= startingAt && interval.end >= startingAt
-      if (!overlaps) {
-        return
-      }
-      const adjustedLength =
-        interval.length - Math.max(0, startingAt - interval.start)
-      // debug(
-      //   `comparing ${interval}, start=${interval.start} >= startingAt=${startingAt}, aLength=${adjustedLength} >= minLength=${minLength}`
-      // )
-      return adjustedLength >= minLength
-    })
+        const adjustedLength =
+          interval.length - Math.max(0, startingAt - interval.start)
+
+        // Check if the interval meets the minimum length after adjusting
+        // and passes the optional filter function if provided
+        const isValid =
+          adjustedLength >= minLength && (!filterFn || filterFn(interval))
+
+        // If the current interval is not valid, return the accumulator
+        if (!isValid) return foundInterval
+
+        // If there is no current accumulator,
+        // or if the current interval has a lower start value
+        // (or equal start but lower end value in case of a tie on start),
+        // update the accumulator to the current interval
+        if (
+          !foundInterval ||
+          interval.start < foundInterval.start ||
+          (interval.start === foundInterval.start &&
+            interval.end < foundInterval.end)
+        ) {
+          return interval
+        }
+
+        return foundInterval
+      },
+      undefined
+    )
 
     // check other branches, and return the earliest interval found
     const left = this.getBranch(0)?.findFirstIntervalByLengthStartingAt(
@@ -373,10 +353,13 @@ export class Node {
       minLength,
       startingAt
     )
-    // should return the earliest interval found considering both start and end
+
+    // filter out undefined results
+    const candidates = [found, left, right].filter((iv) => iv) as Interval[]
+    // return the earliest interval found considering both start and end
     return _.minBy(
-      [found, left, right],
-      (interval) => interval?.start ?? Infinity
+      candidates,
+      (interval) => `${interval.start},${interval.end}`
     )
   }
 
@@ -805,7 +788,6 @@ export class Node {
     const promotees = heavyChild
       .getBranch(oppositeDirection)
       .sCenter.filter((iv) => heavyChild.centerHit(iv))
-    this.logger.info({ promotees }, 'singleRotate')
     if (promotees.length) {
       for (const iv of promotees) {
         // debug('removing', iv)
@@ -884,4 +866,4 @@ type JSONNode = {
   balance: number
 }
 
-const branchStr = (branch: boolean | number) => (branch ? 'right' : 'left')
+// const branchStr = (branch: boolean | number) => (branch ? 'right' : 'left')

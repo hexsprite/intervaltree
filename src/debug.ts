@@ -2,7 +2,7 @@
 export let enableDebug = process.env.IT_DEBUG === '1'
 
 export function debug(...args: unknown[]) {
-  logger.info(args.map(String).join(' '))
+  logger.debug(args.map(String).join(' '))
 }
 
 export class Logger {
@@ -12,7 +12,7 @@ export class Logger {
     return new Logger({ ...this.context, ...extraContext })
   }
 
-  info(contextOrMessage, optionalMessage?) {
+  debug(contextOrMessage, optionalMessage?) {
     if (this.context.silent) return
     if (typeof contextOrMessage === 'string') {
       console.log(contextOrMessage)

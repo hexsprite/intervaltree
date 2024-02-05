@@ -49,6 +49,14 @@ export class IntervalHashSet {
     return result
   }
 
+  reduce<T>(fn: (acc: T, interval: Interval) => T, initialValue: T) {
+    let result = initialValue
+    for (const interval of this.intervalsMap.values()) {
+      result = fn(result, interval)
+    }
+    return result
+  }
+
   map<T>(fn: (interval: Interval) => T) {
     const result: T[] = []
     for (const interval of this.intervalsMap.values()) {
