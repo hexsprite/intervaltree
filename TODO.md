@@ -25,9 +25,23 @@ Performance
 TypeScript
 
 - implement of IntervalTree<T> where T defines the data type ... must subclass or implement Interval
+- getBranch should really indicate that it COULD be null, prune also
 
 Testing
 
 - full suite of property based tests
 - should work with bun test for speed ideally but issues with fast-check hanging
 
+
+Docs
+- add typedoc or similar
+
+
+Indented logging to better see the sequence of events (based on Node depth)
+
+<Node xCenter=123><spaces by depth><message><attributes>
+
+when Node is hovered you can see its attributes in more detail
+
+
+fully get rid of rimbu

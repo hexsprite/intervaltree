@@ -1,20 +1,25 @@
 // eslint-disable-next-line prefer-const
 export let enableDebug = process.env.IT_DEBUG === '1'
 
-export function debug(...args: any[]) {
-  // works like console.log however if the first arg is a function then it is
-  // called and its return value is applied to the console.log() command
-  // this allows the deferral of expensive logging
-  if (enableDebug) {
-    let consoleArgs = args
-    if (args.length === 1 && typeof args[0] === 'function') {
-      consoleArgs = [args[0]()]
-    }
-    if ('logger' in globalThis) {
-      // @ts-ignore
-      logger.debug(...consoleArgs)
+export function debug(...args: unknown[]) {
+  logger.info(args.map(String).join(' '))
+}
+
+export class Logger {
+  constructor(private context: Record<string, unknown> = {}) {}
+
+  child(extraContext = {}) {
+    return new Logger({ ...this.context, ...extraContext })
+  }
+
+  info(contextOrMessage, optionalMessage?) {
+    if (this.context.silent) return
+    if (typeof contextOrMessage === 'string') {
+      console.log(contextOrMessage)
     } else {
-      console.log(...consoleArgs)
+      console.log(`${optionalMessage}: ${contextOrMessage}`)
     }
   }
 }
+
+export const logger = new Logger({ silent: !enableDebug })

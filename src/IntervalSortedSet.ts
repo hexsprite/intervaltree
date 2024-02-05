@@ -1,7 +1,9 @@
 import { SortedSet } from '@rimbu/core'
 import { Interval } from './Interval'
 
-export const compareIntervals = (a: Interval, b: Interval) => {
+type IntervalLike = { start: number; end: number; data?: string } | Interval
+
+export const compareIntervals = (a: IntervalLike, b: IntervalLike) => {
   return (
     a.start - b.start ||
     a.end - b.end ||

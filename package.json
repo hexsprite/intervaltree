@@ -73,6 +73,9 @@
       "js",
       "jsx"
     ],
+    "setupFilesAfterEnv": [
+      "./src/setupTests.ts"
+    ],
     "testRegex": ".*\\.(test|spec)\\.(ts)$",
     "testEnvironment": "node",
     "transform": {

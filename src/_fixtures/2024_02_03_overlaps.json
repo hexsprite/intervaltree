@@ -1,0 +1,67 @@
+{
+  "xCenter": 332666905,
+  "sCenter": [{ "start": -1458784160, "end": 622101182 }],
+  "leftNode": {
+    "xCenter": -4,
+    "sCenter": [{ "start": -2147483622, "end": 147099033 }],
+    "leftNode": {
+      "xCenter": -1092371147,
+      "sCenter": [{ "start": -1092371147, "end": -26 }],
+      "leftNode": null,
+      "rightNode": {
+        "xCenter": -290491619,
+        "sCenter": [{ "start": -290491619, "end": -8 }],
+        "leftNode": null,
+        "rightNode": null,
+        "depth": 1,
+        "balance": 0
+      },
+      "depth": 2,
+      "balance": 1
+    },
+    "rightNode": {
+      "xCenter": 295850299,
+      "sCenter": [
+        { "start": 295850299, "end": 295850301 },
+        { "start": 22, "end": 305887241 }
+      ],
+      "leftNode": {
+        "xCenter": 4,
+        "sCenter": [{ "start": 4, "end": 23 }],
+        "leftNode": null,
+        "rightNode": null,
+        "depth": 1,
+        "balance": 0
+      },
+      "rightNode": {
+        "xCenter": 305887240,
+        "sCenter": [{ "start": 305887240, "end": 305887270 }],
+        "leftNode": null,
+        "rightNode": null,
+        "depth": 1,
+        "balance": 0
+      },
+      "depth": 2,
+      "balance": 0
+    },
+    "depth": 3,
+    "balance": 0
+  },
+  "rightNode": {
+    "xCenter": 591276165,
+    "sCenter": [{ "start": 591276165, "end": 591276182 }],
+    "leftNode": {
+      "xCenter": 587264023,
+      "sCenter": [{ "start": 587264023, "end": 587264031 }],
+      "leftNode": null,
+      "rightNode": null,
+      "depth": 1,
+      "balance": 0
+    },
+    "rightNode": null,
+    "depth": 2,
+    "balance": -1
+  },
+  "depth": 4,
+  "balance": -1
+}

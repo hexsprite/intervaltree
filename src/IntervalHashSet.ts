@@ -1,15 +1,22 @@
 import { Interval } from './Interval'
 
-const intervalHash = (iv: Interval) => {
+const intervalCompositeKey = (iv: Interval) => {
+  // return `${iv.start},${iv.end},${JSON.stringify(iv.data)}`
   return `${iv.start},${iv.end},${iv.data}`
 }
 
 export class IntervalHashSet {
   private intervalsMap: Map<string, Interval>
 
-  constructor(intervals: Interval[]) {
-    this.intervalsMap = new Map()
-    this.addAll(intervals)
+  constructor(intervals: IntervalHashSet | Interval[] = []) {
+    this.intervalsMap = new Map(
+      // @ts-expect-error map exists in both types
+      intervals.map((iv: Interval) => [intervalCompositeKey(iv), iv])
+    )
+  }
+
+  get [Symbol.iterator]() {
+    return this.intervalsMap.values()
   }
 
   get size() {
@@ -17,18 +24,18 @@ export class IntervalHashSet {
   }
 
   add(interval: Interval) {
-    const hash = intervalHash(interval)
+    const hash = intervalCompositeKey(interval)
     this.intervalsMap.set(hash, interval)
   }
 
   remove(interval: Interval) {
-    const hash = intervalHash(interval)
+    const hash = intervalCompositeKey(interval)
     this.intervalsMap.delete(hash)
     return this
   }
 
   has(interval: Interval) {
-    const hash = intervalHash(interval)
+    const hash = intervalCompositeKey(interval)
     return this.intervalsMap.has(hash)
   }
 

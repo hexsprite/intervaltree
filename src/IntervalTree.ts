@@ -5,11 +5,11 @@ import * as lodash from 'lodash'
 import { bisectLeft } from './bisect'
 import { Node } from './Node'
 import { Interval } from './Interval'
-import { SortedMap, HashSet } from '@rimbu/core'
+import { SortedMap } from '@rimbu/core'
 import { IntervalSortedSet } from './IntervalSortedSet'
 import { IntervalTuples } from './types'
 import { IntervalHashSet } from './IntervalHashSet'
-import { debug } from './debug'
+// import { debug } from './debug'
 
 export class IntervalTree {
   public allIntervals: IntervalHashSet
@@ -39,7 +39,7 @@ export class IntervalTree {
     return new IntervalTree(intervals)
   }
 
-  public fromTuples(intervals: IntervalTuples) {
+  public static fromTuples(intervals: IntervalTuples) {
     return new IntervalTree(
       intervals.map((x) => new Interval(x[0], x[1], x[2]))
     )
@@ -85,7 +85,7 @@ export class IntervalTree {
    */
   public chop(start: number, end: number): void {
     assert(start < end, 'start must be <= end')
-    const insertions = new IntervalHashSet([])
+    const insertions = new IntervalHashSet()
     const startHits = this.search(start).filter((iv) => iv.start < start)
     const endHits = this.search(end).filter((iv) => iv.end > end)
     startHits.forEach((iv) => {
@@ -110,15 +110,13 @@ export class IntervalTree {
    * Given an iterable of intervals, add them to the tree.
    * Completes in O(m*log(n+m)), where m = number of intervals to add.
    */
-  public update(intervals: HashSet<Interval> | Interval[] | IntervalHashSet) {
+  public update(intervals: Interval[] | IntervalHashSet) {
     intervals.forEach((iv: Interval) => {
       this.add(iv)
     })
   }
 
-  public differenceUpdate(
-    other: HashSet<Interval> | Interval[] | IntervalHashSet
-  ) {
+  public differenceUpdate(other: Interval[] | IntervalHashSet) {
     other.forEach((iv) => {
       this.discard(iv)
     })
@@ -235,15 +233,15 @@ badInterval=${iv}
    *   * m = number of matches
    *   * k = size of the search range (this is 1 for a point)
    **/
-  public search(start: number, end?: number, strict = false): IntervalHashSet {
+  public search(start: number, end?: number, strict = false): Interval[] {
     if (!this.topNode) {
-      return new IntervalHashSet([])
+      return []
     }
 
     let result: Interval[] = []
     if (end === undefined) {
       this.topNode.searchPoint(start, result)
-      return new IntervalHashSet(result)
+      return result
     }
 
     this.topNode.searchPoint(start, result)
@@ -258,13 +256,18 @@ badInterval=${iv}
     const overlaps = this.topNode.searchOverlap(
       lodash.range(boundStart, boundEnd).map((index) => keysArray[index])
     )
-    result = result.concat(overlaps)
+    if (overlaps.length > 0) {
+      result = result.concat(overlaps)
+      // remove any duplicate intervals
+      result = IntervalSortedSet.from(result).toArray()
+    }
 
     // TODO: improve strict search to use node info instead of less-efficient filtering
     if (strict) {
       result = result.filter((iv) => iv.start >= start && iv.end <= end)
     }
-    return new IntervalHashSet(result)
+
+    return result
   }
 
   public searchByLengthStartingAt(length: number, start: number): Interval[] {
@@ -277,7 +280,7 @@ badInterval=${iv}
     //     iv.start < start ? new Interval(start, iv.end, iv.data) : iv
     //   )
     //   .filter((iv) => iv.length >= length)
-    debug(() => `searchByLengthStartingAt: length=${length} start=${start}`)
+    // debug(() => `searchByLengthStartingAt: length=${length} start=${start}`)
     return this.topNode.searchByLengthStartingAt(length, start, [])
   }
 
@@ -285,10 +288,15 @@ badInterval=${iv}
     minLength: number,
     startingAt: number
   ): Interval | undefined {
-    return this.topNode?.findFirstIntervalByLengthStartingAt(
+    const foundInterval = this.topNode?.findFirstIntervalByLengthStartingAt(
       minLength,
       startingAt
     )
+    // adjust returned interval to match the requested start time
+    if (foundInterval && foundInterval.start < startingAt) {
+      return new Interval(startingAt, foundInterval.end, foundInterval.data)
+    }
+    return foundInterval
   }
 
   public clone(): IntervalTree {
@@ -301,7 +309,7 @@ badInterval=${iv}
     const tree = new IntervalTree()
     tree.topNode = this.topNode?.clone()
     tree.boundaryTable = this.boundaryTable
-    tree.allIntervals = this.allIntervals
+    tree.allIntervals = new IntervalHashSet(this.allIntervals)
     return tree
   }
 
@@ -347,10 +355,10 @@ badInterval=${iv}
     })
 
     // Reconstructed boundary table (bound_check) ==? boundary_table
-    //   assert(
-    //     this.boundaryTable.equals(boundaryCheck),
-    //     'boundaryTable is out of sync with the intervals in the tree'
-    //   )
+    // assert(
+    //   this.boundaryTable.difference(boundaryCheck),
+    //   'boundaryTable is out of sync with the intervals in the tree'
+    // )
 
     // Internal tree structure
     this.topNode.verify()

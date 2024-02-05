@@ -2,9 +2,9 @@ import fs from 'fs'
 import { Interval } from '../src/Interval'
 import { IntervalTree } from '../src/IntervalTree'
 
-const tree = new IntervalTree()
+let tree = new IntervalTree()
 
-const numIntervals = 100_000
+const numIntervals = 500_00
 const intervalRangeSize = 1_000_000
 
 let allIntervals: Interval[] = []
@@ -43,7 +43,9 @@ function benchmarkIntervals() {
   console.time('generate')
   generateRandomIntervals(numIntervals)
   try {
-    tree.initFromArray(allIntervals)
+    console.profile('generate')
+    tree = new IntervalTree(allIntervals)
+    console.profileEnd('generate')
   } catch (e) {
     console.error(e)
     console.log('INVALID INTERVALS')
@@ -64,9 +66,10 @@ function benchmarkIntervals() {
 
   console.log('searching')
   console.time('search')
+  console.profile('search')
   searchIntervals()
   console.timeEnd('search')
-
+  console.profileEnd('search')
   console.time('arraySearch')
   searchArrayIntervals()
   console.timeEnd('arraySearch')

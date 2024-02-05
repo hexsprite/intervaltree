@@ -1,4 +1,7 @@
 import 'jest'
+import fs from 'fs'
+import path from 'path'
+
 import { Interval } from './Interval'
 import { IntervalTree } from './IntervalTree'
 
@@ -17,7 +20,12 @@ describe('IntervalTree', () => {
   })
 
   afterEach(function afterEach() {
-    tree.verify()
+    try {
+      tree.verify()
+    } catch (e) {
+      tree.printStructure()
+      throw e
+    }
   })
 
   it('Should be pass sanity', () => {
@@ -103,7 +111,7 @@ describe('IntervalTree', () => {
       [1482253200000, 1482282000000],
       [1482253200000, 1483344000000],
     ]
-    tree = tree.fromTuples(allIntervals)
+    tree = IntervalTree.fromTuples(allIntervals)
     tree.chop(1482220800000, 1482253200000)
   })
 
@@ -121,7 +129,7 @@ describe('IntervalTree', () => {
       [228762000000, 228790800000],
       [229021200000, 229050000000],
     ]
-    tree = tree.fromTuples(allIntervals)
+    tree = IntervalTree.fromTuples(allIntervals)
     tree.chop(0, 227923200000)
     expect(tree.start).toBe(227923200000)
   })
@@ -143,15 +151,14 @@ describe('IntervalTree', () => {
 
     // should match intervals that start before startingAt if they are long enough
     tree.addInterval(11, 17)
-    tree.printStructure()
 
     expect(
       tree.searchByLengthStartingAt(3, 12).sort(compareIntervals).toString()
     ).toBe('Interval(12, 17),Interval(14, 19)')
 
-    expect(
-      tree.topNode.findFirstIntervalByLengthStartingAt(3, 12)?.toString()
-    ).toBe('Interval(12, 17)')
+    expect(tree.findFirstIntervalByLengthStartingAt(3, 12)?.toString()).toBe(
+      'Interval(12, 17)'
+    )
   })
 
   it('clone empty', () => {
@@ -163,7 +170,8 @@ describe('IntervalTree', () => {
     tree.addInterval(2, 4)
     tree.addInterval(5, 8)
     tree.addInterval(9, 13)
-    expect(tree.clone().toString()).toBe(tree.toString())
+    const clone = tree.clone()
+    expect(clone.toString()).toBe(tree.toString())
   })
 
   it('cloned intervals are the same', () => {
@@ -179,7 +187,7 @@ describe('IntervalTree', () => {
   })
 
   it('search bugs', () => {
-    tree = tree.fromTuples([
+    tree = IntervalTree.fromTuples([
       [1483315500000, 1483318800000, 'hb3u3ztHuvPttf7dD'],
       [1483387200000, 1483394400000, null],
       [1483399800000, 1483405200000, '56NL2yqQJMhZ4w4dD'],
@@ -214,7 +222,7 @@ describe('IntervalTree', () => {
   })
 
   it('chop bugs', () => {
-    tree = tree.fromTuples([
+    tree = IntervalTree.fromTuples([
       [1406304000000, 1406332800000],
       [1406324425000, 1406328025000],
       [1406328025000, 1406335225000],
@@ -250,7 +258,7 @@ describe('IntervalTree', () => {
   })
 
   it('FOC-209 removeEnveloped RangeError', () => {
-    tree = tree.fromTuples([
+    tree = IntervalTree.fromTuples([
       [1496948100000, 1496948400000, 'PfcyAB6iRmDxbfGSF'],
       [1496948100000, 1496948400000],
     ])
@@ -262,7 +270,7 @@ describe('IntervalTree', () => {
   })
 
   it('verifies with content', () => {
-    tree = tree.fromTuples([
+    tree = IntervalTree.fromTuples([
       [1, 2],
       [3, 4],
       [5, 6],
@@ -270,6 +278,7 @@ describe('IntervalTree', () => {
     tree.verify()
   })
 
+  // consider a property-based test for this to find edge cases
   it('JSON serialization', () => {
     tree.addInterval(1, 2, 'data')
     tree.addInterval(3, 4)
@@ -295,7 +304,7 @@ describe('IntervalTree', () => {
   })
 
   it('null data compares properly with undefined', () => {
-    tree = tree.fromTuples([[1562351400000, 1562354700000, null]])
+    tree = IntervalTree.fromTuples([[1562351400000, 1562354700000, null]])
     tree.addInterval(1562351400000, 1562354700000) // this triggerred an exception
     expect(
       tree.allIntervals.has(new Interval(1562351400000, 1562354700000))
@@ -354,8 +363,8 @@ describe('IntervalTree', () => {
       [1563807600000, 1563808500000, 'GoQyaMQxy5uAMkicC'],
       [1563814800000, 1563822000000, 'Rrzck9MrM4ScLkJBx'],
       [1563827400000, 1563831000000, 'NdYgZdgfttitwFDz3'],
-    ]) {
-      tree.addInterval(start as number, end as number, data)
+    ] as [number, number, string][]) {
+      tree.addInterval(start, end, data)
     }
     tree.addInterval(1563843600000, 1563850800000, 'WQSMXKZEKsrp2Dads')
   })
@@ -365,7 +374,7 @@ describe('IntervalTree', () => {
     tree.addInterval(4, 6)
     tree.addInterval(5, 9)
     const result = tree.search(5, 6)
-    expect(result.toArray().sort(compareIntervals).toString()).toEqual(
+    expect(result.sort(compareIntervals).toString()).toEqual(
       'Interval(4, 6),Interval(5, 9)'
     )
   })
@@ -386,6 +395,3 @@ describe('IntervalTree', () => {
     tree.verify()
   })
 })
-
-import fs from 'fs'
-import path from 'path'
