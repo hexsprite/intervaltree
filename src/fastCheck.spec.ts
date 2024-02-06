@@ -1,8 +1,8 @@
-import { Interval } from './Interval'
-import { IntervalTree } from './IntervalTree'
 import { fc, test } from '@fast-check/jest'
+
+import { Interval, compareIntervals } from './Interval'
+import { IntervalTree } from './IntervalTree'
 import { Node } from './Node'
-import { compareIntervals } from './IntervalSortedSet'
 
 fc.configureGlobal({
   timeout: 1000,

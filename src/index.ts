@@ -1,6 +1,5 @@
-import { Interval } from './Interval'
+import { Interval, compareIntervals } from './Interval'
 import { IntervalTree } from './IntervalTree'
-import { IntervalTuples } from './types'
-import { enableDebug } from './debug'
+import { IntervalTuple } from './types'
 
-export { enableDebug, Interval, IntervalTree, IntervalTuples }
+export { Interval, IntervalTree, IntervalTuple, compareIntervals }

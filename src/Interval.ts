@@ -90,3 +90,16 @@ export class Interval {
     return this.containsPoint(start)
   }
 }
+
+type IntervalLike = { start: number; end: number } | Interval
+
+/**
+ * Compare two intervals by their start, then end.
+ * @param a{IntervalLike}
+ * @param b{IntervalLike}
+ * @returns
+ */
+
+export const compareIntervals = (a: IntervalLike, b: IntervalLike) => {
+  return a.start - b.start || a.end - b.end
+}

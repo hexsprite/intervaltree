@@ -2,7 +2,7 @@
 import assert from 'assert'
 
 import { Interval } from './Interval'
-import { compareIntervals } from './IntervalSortedSet'
+import { compareIntervals } from './Interval'
 import { IntervalHashSet } from './IntervalHashSet'
 import { debug } from './debug'
 

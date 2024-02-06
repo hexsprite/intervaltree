@@ -5,8 +5,6 @@ Build
 
 Logging
 
-- pino logging for improved diagnostics
-- logger should be imported cleanly (get rid of globals.d.ts ref)
 - use DEBUG: label to selectively compile out logging/verify
 
 API
@@ -15,10 +13,10 @@ API
   or moment objects as keys. Interchangably, so introducing new bugs needn't be
   a concern.
 
-- some kind of doc generation system so we can have generated API docs. Have ChatGPT generate the necessary JSDoc.
-
 Performance
 
+- Add a Benchmark section in the docs
+- check out benchmarkify
 - profile heap size
 - optimize for tree creation, chop, findFirstByLengthStartingAt
 
@@ -30,11 +28,11 @@ TypeScript
 Testing
 
 - full suite of property based tests
+- implement model based tests for fastCheck to test various operations of add/remove/search/chop/etc
 - should work with bun test for speed ideally but issues with fast-check hanging
 
 Docs
-- every public method should be documented
-- add typedoc or similar
+- public typedoc: https://github.com/TypeStrong/typedoc/issues/1485#issuecomment-1796185086
 
 
 Indented logging to better see the sequence of events (based on Node depth)
@@ -43,5 +41,3 @@ Indented logging to better see the sequence of events (based on Node depth)
 
 when Node is hovered you can see its attributes in more detail
 
-
-fully get rid of rimbu

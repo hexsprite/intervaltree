@@ -4,7 +4,7 @@ import { IntervalTree } from '../src/IntervalTree'
 
 let tree = new IntervalTree()
 
-const numIntervals = 500_00
+const numIntervals = 100_000
 const intervalRangeSize = 1_000_000
 
 let allIntervals: Interval[] = []

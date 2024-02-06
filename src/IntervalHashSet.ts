@@ -1,4 +1,5 @@
 import { Interval } from './Interval'
+import { compareIntervals } from './Interval'
 
 const intervalCompositeKey = (iv: Interval) => {
   // return `${iv.start},${iv.end},${JSON.stringify(iv.data)}`
@@ -92,7 +93,7 @@ export class IntervalHashSet {
     return [...this.intervalsMap.values()]
   }
 
-  toSorted(sortFn: (a: Interval, b: Interval) => number) {
+  toSorted(sortFn: (a: Interval, b: Interval) => number = compareIntervals) {
     return this.toArray().sort(sortFn)
   }
 
