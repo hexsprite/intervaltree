@@ -9,7 +9,7 @@ fc.configureGlobal({
   interruptAfterTimeLimit: 1000,
   markInterruptAsFailure: false,
   skipAllAfterTimeLimit: 1000,
-  // numRuns: 1000000,
+  numRuns: 1000000,
   // verbose: 2,
 })
 
@@ -51,31 +51,34 @@ test.prop([intervalsArbitrary], {})(
 )
 
 // test maxLength calculation of arbitrary trees
-test.prop([intervalsArbitrary])('should calculate maxStart', (intervals) => {
+test.prop([intervalsArbitrary])('should calculate maxEnd', (intervals) => {
   const root = Node.fromIntervals(
     intervals.map((iv) => new Interval(iv.start, iv.end))
   )!
-  // root.printStructure()
-  const expectedMaxStart = intervals.reduce((acc, iv) => {
-    return iv.start > acc ? iv.start : acc
+  if (!root.maxEnd) {
+    root.printStructure()
+  }
+  const expectedMaxEnd = intervals.reduce((acc, iv) => {
+    return iv.end > acc ? iv.end : acc
   }, 0)
-  expect(root.maxStart).toEqual(expectedMaxStart)
+  expect(root.maxEnd).toEqual(expectedMaxEnd)
 })
 
 // test maxLength calculation of arbitrary trees
 test.prop([intervalsArbitrary])(
-  'should calculate maxStart with add',
+  'should calculate maxEnd with add',
   (intervals) => {
     const tree = new IntervalTree()
     intervals.forEach((iv) => {
       tree.add(new Interval(iv.start, iv.end))
     })
 
-    const expectedMaxStart = intervals.reduce((acc, iv) => {
-      return iv.start > acc ? iv.start : acc
+    const expectedMaxEnd = intervals.reduce((acc, iv) => {
+      return iv.end > acc ? iv.end : acc
     }, 0)
+
     // @ts-expect-error - private property
-    expect(tree.topNode.maxStart).toEqual(expectedMaxStart)
+    expect(tree.topNode.maxEnd).toEqual(expectedMaxEnd)
   }
 )
 

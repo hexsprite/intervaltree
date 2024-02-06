@@ -4,11 +4,11 @@ import assert from 'assert'
 import { Interval } from './Interval'
 import { compareIntervals } from './IntervalSortedSet'
 import { IntervalHashSet } from './IntervalHashSet'
-import _ from 'lodash'
+import { debug } from './debug'
 
 export class Node {
   public maxLength = 0
-  public maxStart = 0
+  public maxEnd = 0
   private xCenter: number
   private sCenter: IntervalHashSet
   private leftNode: Node | null = null
@@ -177,31 +177,27 @@ export class Node {
   }
 
   public add(interval: Interval) {
-    // debug('add', interval.toString())
-    // debug(JSON.stringify(this.toJSON()))
     // eslint-disable-next-line @typescript-eslint/no-this-alias
     let result: Node = this
     if (this.centerHit(interval)) {
-      // this.logger.info('add: on center')
+      // debug('add: on center')
       this.sCenter.add(interval)
     } else {
       const direction = this.hitBranch(interval)
       const branchNode = this.getBranch(direction)
-      // this.logger.info({ interval, direction }, 'add: on branch')
+      // debug({ interval, direction }, 'add: on branch')
       if (!this.getBranch(direction)) {
-        // this.logger.info({ interval }, 'new branch')
+        // debug({ interval }, 'new branch')
         this.setBranch(direction, Node.fromInterval(interval))
       } else {
         this.setBranch(direction, branchNode.add(interval))
-        // this.logger.info('existing branch, rotating')
+        // debug('existing branch, rotating')
         result = this.rotate()
       }
     }
     result.refreshBalance()
     result.updateNodeAttributes()
     // result.verify() -- may fail because node might still need further rotation
-    // this.logger.info({ interval }, 'add: done')
-    // result.printStructure()
     return result
   }
 
@@ -230,18 +226,27 @@ export class Node {
   }
 
   public toString() {
-    return `Node(${this.xCenter}, depth=${this.depth}, balance=${this.balance}, maxLength=${this.maxLength}, maxStart=${this.maxStart})`
+    return `Node(${this.xCenter}, depth=${this.depth}, balance=${this.balance}, maxLength=${this.maxLength}, maxEnd=${this.maxEnd})`
   }
 
   public searchPoint(point: number, result: Interval[]) {
     // Returns all intervals that contain point.
-    // debug(`${this.toString()} searchPoint: searching ${point}`)
-    this.sCenter
-      .filter((interval) => interval.start <= point && point < interval.end)
-      .forEach((interval) => result.push(interval))
-    if (point < this.xCenter && this.getBranch(0)) {
+    this.sCenter.forEach((interval) => {
+      if (interval.start <= point && point < interval.end) {
+        result.push(interval)
+      }
+    })
+    if (
+      point < this.xCenter &&
+      this.getBranch(0) &&
+      this.getBranch(0).maxEnd >= point
+    ) {
       this.getBranch(0).searchPoint(point, result)
-    } else if (point > this.xCenter && this.getBranch(1)) {
+    } else if (
+      point > this.xCenter &&
+      this.getBranch(1) &&
+      this.getBranch(1).maxEnd >= point
+    ) {
       this.getBranch(1).searchPoint(point, result)
     }
     return result
@@ -276,17 +281,15 @@ export class Node {
   }
 
   private shouldSkipBranch(minLength: number, startingAt: number) {
-    const adjustedMinStart =
-      startingAt + Math.max(0, minLength - this.maxLength)
-    if (this.maxStart < adjustedMinStart) {
-      // debug(
-      //   `${this.toString()} searchPoint: maxStart skipping subtree (maxStart=${
-      //     this.maxStart
-      //   } adjustedMinStart=${adjustedMinStart})`
-      // )
+    if (this.maxEnd < startingAt) {
+      debug(
+        `${this.toString()} searchPoint: maxEnd skipping subtree (maxEnd=${
+          this.maxEnd
+        }`
+      )
       return true // Skip this subtree
     } else if (this.maxLength < minLength) {
-      // debug(`${this.toString()} searchPoint: maxLength skipping subtree`)
+      debug(`${this.toString()} searchPoint: maxLength skipping subtree`)
       return true // Skip this subtree
     }
     return false
@@ -303,64 +306,48 @@ export class Node {
   public findFirstIntervalByLengthStartingAt(
     minLength: number,
     startingAt: number,
-    filterFn?: (iv: Interval) => boolean
+    filterFn: (iv: Interval) => boolean = () => true
   ): Interval | undefined {
     // Skip this branch if it cannot contain a qualifying interval
     if (this.shouldSkipBranch(minLength, startingAt)) {
       return
     }
 
-    const found = this.sCenter.reduce<Interval | undefined>(
-      (foundInterval, interval) => {
-        // Check if the interval ends before the startingAt point
-        if (interval.end < startingAt) return foundInterval
+    // Filter `this.sCenter` before finding the minimum to ensure only eligible intervals are considered.
+    const eligibleIntervals = this.sCenter.filter((iv) => {
+      if (iv.end < startingAt) return false // Skip intervals ending before `startingAt`
 
-        const adjustedLength =
-          interval.length - Math.max(0, startingAt - interval.start)
+      const adjustedLength = iv.length - Math.max(0, startingAt - iv.start)
+      if (adjustedLength < minLength) return false // Skip intervals shorter than `minLength` after adjustment
 
-        // Check if the interval meets the minimum length after adjusting
-        // and passes the optional filter function if provided
-        const isValid =
-          adjustedLength >= minLength && (!filterFn || filterFn(interval))
+      return filterFn(iv) // Apply custom filter function if provided
+    })
 
-        // If the current interval is not valid, return the accumulator
-        if (!isValid) return foundInterval
+    // Include eligible intervals from left and right children, if any
+    const leftCandidate = this.getBranch(
+      0
+    )?.findFirstIntervalByLengthStartingAt(minLength, startingAt, filterFn)
+    const rightCandidate = this.getBranch(
+      1
+    )?.findFirstIntervalByLengthStartingAt(minLength, startingAt, filterFn)
 
-        // If there is no current accumulator,
-        // or if the current interval has a lower start value
-        // (or equal start but lower end value in case of a tie on start),
-        // update the accumulator to the current interval
-        if (
-          !foundInterval ||
-          interval.start < foundInterval.start ||
-          (interval.start === foundInterval.start &&
-            interval.end < foundInterval.end)
-        ) {
-          return interval
-        }
+    // Add child candidates to the list of eligible intervals
+    if (leftCandidate) eligibleIntervals.push(leftCandidate)
+    if (rightCandidate) eligibleIntervals.push(rightCandidate)
 
-        return foundInterval
+    // Find the interval with the minimum start (and end as a tiebreaker) from the filtered list
+    return eligibleIntervals.reduce(
+      (minInterval: Interval | undefined, currentInterval) => {
+        if (!minInterval) return currentInterval // If first comparison, return current interval
+
+        return currentInterval.start < minInterval.start ||
+          (currentInterval.start === minInterval.start &&
+            currentInterval.end < minInterval.end)
+          ? currentInterval
+          : minInterval
       },
       undefined
-    )
-
-    // check other branches, and return the earliest interval found
-    const left = this.getBranch(0)?.findFirstIntervalByLengthStartingAt(
-      minLength,
-      startingAt
-    )
-    const right = this.getBranch(1)?.findFirstIntervalByLengthStartingAt(
-      minLength,
-      startingAt
-    )
-
-    // filter out undefined results
-    const candidates = [found, left, right].filter((iv) => iv) as Interval[]
-    // return the earliest interval found considering both start and end
-    return _.minBy(
-      candidates,
-      (interval) => `${interval.start},${interval.end}`
-    )
+    ) // Initial value is the first eligible interval
   }
 
   public searchOverlap(pointList: number[]): Interval[] {
@@ -371,15 +358,15 @@ export class Node {
     return result
   }
 
+  /**
+   * Returns self after removing the interval and balancing.
+   * If interval is not present, raise ValueError.
+   */
   public remove(interval: Interval): Node {
-    /*
-    Returns self after removing the interval and balancing.
-    If interval is not present, raise ValueError.
-    */
     // since this is a list, called methods can set this to [1],
     // making it true
     const result = this.removeIntervalHelper(interval, [], true)
-    // this.logger.info({ interval, result }, 'remove')
+    // debug({ interval, result }, 'remove')
     // result may be null if the node was pruned
     result?.updateNodeAttributes()
     return result
@@ -534,7 +521,7 @@ export class Node {
       }, this.xCenter)
       // Create a new node with the largest x_center possible.
       const newIvs = this.sCenter.filter((iv) => iv.containsPoint(newXCenter))
-      // this.logger.info('popGreatestChild: newIvs', newIvs)
+      // debug('popGreatestChild: newIvs', newIvs)
       const child = Node.fromIntervals(newIvs)
       if (!child) {
         throw new TypeError('child should not be null')
@@ -606,8 +593,6 @@ export class Node {
     }
   }
 
-  // #region Verify
-
   /**
    * Recursively ensures that the invariants of an interval subtree hold.
    * @param parents - The set of parent xCenters.
@@ -659,13 +644,13 @@ export class Node {
       `maxlength incorrect, this.maxLength=${this.maxLength}, actual=${actualMaxLength}`
     )
 
-    const actualMaxStart = this.calcMaxStart()
-    // if (this.maxStart !== actualMaxStart) {
+    const actualMaxEnd = this.calcMaxEnd()
+    // if (this.maxEnd !== actualMaxEnd) {
     //   this.printStructure()
     // }
     assert(
-      this.maxStart === actualMaxStart,
-      `(${this.xCenter}) maxStart incorrect, this.maxStart=${this.maxStart}, actual=${actualMaxStart}`
+      this.maxEnd === actualMaxEnd,
+      `(${this.xCenter}) maxEnd incorrect, this.maxEnd=${this.maxEnd}, actual=${actualMaxEnd}`
     )
 
     // recursively verify branches
@@ -686,8 +671,6 @@ export class Node {
     }
   }
 
-  // #region allChildren
-
   public allChildren(): IntervalHashSet {
     return this.allChildrenHelper(new IntervalHashSet([]))
   }
@@ -700,19 +683,17 @@ export class Node {
     return result
   }
 
-  // #endregion allChildren
-
   private updateNodeAttributes() {
     this.updateMaxLength()
-    this.updateMaxStart()
+    this.updateMaxEnd()
   }
 
   private updateMaxLength() {
     this.maxLength = this.calcMaxLength()
   }
 
-  private updateMaxStart() {
-    this.maxStart = this.calcMaxStart()
+  private updateMaxEnd() {
+    this.maxEnd = this.calcMaxEnd()
   }
 
   private calcMaxLength() {
@@ -725,12 +706,12 @@ export class Node {
     // FIXME: is 0 the right initial value?
   }
 
-  private calcMaxStart() {
-    return this.reduceNodes((maxStart, node) => {
+  private calcMaxEnd() {
+    return this.reduceNodes((maxEnd, node) => {
       node.sCenter.forEach((iv) => {
-        maxStart = Math.max(maxStart, iv.start)
+        maxEnd = Math.max(maxEnd, iv.end)
       })
-      return maxStart
+      return maxEnd
     }, 0)
     // FIXME: is 0 the right initial value?
   }
@@ -755,9 +736,6 @@ export class Node {
     })
     return accumulator
   }
-  // #endregion
-
-  // #region Rotation
 
   private singleRotate(): Node {
     // Single rotation. Assumes that balance is +-2.
@@ -837,8 +815,6 @@ export class Node {
     // Second rotation: Now perform a single rotation on the pivotNode
     return this.singleRotate()
   }
-
-  // #endregion Rotation
 
   /**
    * Converts the Node object to a JSON representation. Useful for reproducing

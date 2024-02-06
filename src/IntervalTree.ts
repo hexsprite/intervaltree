@@ -1,18 +1,22 @@
-import assert from 'assert'
-import * as crypto from 'crypto'
-import * as lodash from 'lodash'
-
-import { bisectLeft } from './bisect'
-import { Node } from './Node'
-import { Interval } from './Interval'
 import { SortedMap } from '@rimbu/core'
-import { IntervalSortedSet } from './IntervalSortedSet'
-import { IntervalTuples } from './types'
+import * as lodash from 'lodash'
+import assert from 'node:assert'
+import * as crypto from 'node:crypto'
+
+import { Interval } from './Interval'
 import { IntervalHashSet } from './IntervalHashSet'
+import { IntervalSortedSet } from './IntervalSortedSet'
+import { Node } from './Node'
+import { bisectLeft } from './bisect'
+import { IntervalTuples } from './types'
+
 // import { debug } from './debug'
 
+/**
+ * Represents an interval tree data structure.
+ */
 export class IntervalTree {
-  public allIntervals: IntervalHashSet
+  private allIntervals: IntervalHashSet
   private topNode: Node
   private boundaryTable: SortedMap<number, number>
 
@@ -20,45 +24,69 @@ export class IntervalTree {
     this.initialize(intervals)
   }
 
+  /**
+   * Gets the end value of the interval tree.
+   * @returns The end value.
+   */
   public get end() {
     return this.boundaryTable.getKeyAtIndex(-1)
   }
 
+  /**
+   * Gets the start value of the interval tree.
+   * @returns The start value.
+   */
   public get start() {
-    return this.boundaryTable.getKeyAtIndex(0, 0)
+    return this.boundaryTable.getKeyAtIndex(0)
   }
 
-  public static fromJSON(nodes: string | Interval[]) {
-    const intervals: Interval[] = []
-    if (typeof nodes === 'string') {
-      nodes = JSON.parse(nodes) as Interval[]
-    }
-    for (const node of nodes) {
-      intervals.push(new Interval(node.start, node.end, node.data))
-    }
-    return new IntervalTree(intervals)
+  /** Size of the interval tree by number of intervals */
+  public get size() {
+    return this.allIntervals.size
   }
 
+  /**
+   * Creates an IntervalTree from an array of interval tuples.
+   * @param intervals - The array of interval tuples.
+   * @returns The created IntervalTree.
+   */
   public static fromTuples(intervals: IntervalTuples) {
     return new IntervalTree(
       intervals.map((x) => new Interval(x[0], x[1], x[2]))
     )
   }
 
+  /**
+   * Returns an array representation of the intervals in the interval tree.
+   *
+   * @returns An array of intervals.
+   */
   public toArray() {
-    return this.allIntervals.toArray().map((e) => [e.start, e.end, e.data])
-  }
-
-  public toJSON() {
     return this.allIntervals.toArray()
   }
 
+  /**
+   * Converts the IntervalTree to a JSON representation.
+   * @returns {Interval[]} The JSON representation of the IntervalTree.
+   */
+  public toJSON() {
+    return this.toArray()
+  }
+
+  /**
+   * Calculates the hash value of the IntervalTree instance.
+   * @returns The hash value as a hexadecimal string.
+   */
   public hash() {
-    const hash = crypto.createHash('md5')
+    const hash = crypto.createHash('sha256')
     hash.update(JSON.stringify(this))
     return hash.digest('hex')
   }
 
+  /**
+   * Adds an interval to the interval tree.
+   * If the interval already exists in the tree, it is not added again.
+   */
   public add(interval: Interval) {
     if (this.allIntervals.has(interval)) {
       return
@@ -72,16 +100,25 @@ export class IntervalTree {
     this.addBoundaries(interval)
   }
 
+  /**
+   * Adds an interval to the interval tree.
+   *
+   * @param start - The start value of the interval.
+   * @param end - The end value of the interval.
+   * @param data - Optional data associated with the interval.
+   */
   public addInterval(start: number, end: number, data?: unknown): void {
     const interval = new Interval(start, end, data)
     this.add(interval)
   }
 
   /**
+   * Removes intervals that overlap with the specified range and updates the
+   * interval tree accordingly.
    * Like removeEnveloped(), but trims back Intervals hanging into the chopped
    * area so that nothing overlaps.
-   * @param start
-   * @param end
+   * @param start The start of the range.
+   * @param end The end of the range.
    */
   public chop(start: number, end: number): void {
     assert(start < end, 'start must be <= end')
@@ -100,12 +137,6 @@ export class IntervalTree {
     this.update(insertions.toArray())
   }
 
-  chopAll(intervals: [number, number][]) {
-    intervals.forEach(([start, end]) => {
-      this.chop(start, end)
-    })
-  }
-
   /**
    * Given an iterable of intervals, add them to the tree.
    * Completes in O(m*log(n+m)), where m = number of intervals to add.
@@ -116,49 +147,67 @@ export class IntervalTree {
     })
   }
 
+  /**
+   * Removes the intervals in the specified array or IntervalHashSet from the IntervalTree.
+   * @param other - The array or IntervalHashSet containing the intervals to be removed.
+   */
   public differenceUpdate(other: Interval[] | IntervalHashSet) {
     other.forEach((iv) => {
       this.discard(iv)
     })
   }
 
+  /**
+   * Removes an interval from the tree, if present. If not, does nothing.
+   *
+   * @param interval The interval to be removed.
+   * @returns True if the interval was removed, false otherwise.
+   *
+   * @remarks
+   * This operation completes in O(log n) time.
+   */
   public discard(interval: Interval) {
-    /*
-    Removes an interval from the tree, if present. If not, does
-    nothing.
-
-    Completes in O(log n) time.
-    */
     return this.remove(interval, true)
   }
 
+  /**
+   * Removes an interval from the tree, if present. If not, raises RangeError.
+   *
+   * @param interval - The interval to remove.
+   * @param ignoreMissing - If true, no error will be thrown if the interval is not found in the tree.
+   * @returns void
+   *
+   * @throws {RangeError} If the interval is not found in the tree and ignoreMissing is false.
+   *
+   * @remarks
+   * This operation completes in O(log n) time.
+   */
   public remove(interval: Interval, ignoreMissing = false) {
-    /*
-    Removes an interval from the tree, if present. If not, raises
-    RangeError.
-
-    Completes in O(log n) time.
-    */
     if (!this.allIntervals.has(interval)) {
       if (ignoreMissing) {
         return
       }
-      throw new RangeError(`no such interval: ${interval}`)
+      throw new RangeError('interval not found')
     }
     this.topNode = this.topNode.remove(interval)
     this.allIntervals.remove(interval)
     this.removeBoundaries(interval)
   }
 
+  /**
+   * Removes all intervals completely enveloped in the given range.
+   *
+   * @param start The start of the range.
+   * @param end The end of the range.
+   * @returns void
+   *
+   * @remarks
+   * This method completes in O((r+m)*log n) time, where:
+   * - n = size of the tree
+   * - m = number of matches
+   * - r = size of the search range (this is 1 for a point)
+   */
   public removeEnveloped(start: number, end: number) {
-    /*
-    Removes all intervals completely enveloped in the given range.
-
-    Completes in O((r+m)*log n) time, where:
-      * n = size of the tree
-      * m = number of matches
-      * r = size of the search range (this is 1 for a point)
-    */
     const hitlist = this.search(start, end, true)
     hitlist.forEach((iv) => {
       try {
@@ -178,17 +227,10 @@ badInterval=${iv}
     })
   }
 
-  public toString() {
-    const sortedIntervals = IntervalSortedSet.from(this.allIntervals.toArray())
-    return `IntervalTree([ ${sortedIntervals.toArray().join(', ')} ])`
-  }
-
-  public printStructure() {
-    if (this.topNode) {
-      this.topNode.printStructure()
-    }
-  }
-
+  /**
+   * Merges overlapping intervals in the IntervalTree.
+   * @returns void
+   */
   public mergeOverlaps() {
     const merged: Interval[] = []
     let currentReduced: unknown
@@ -225,14 +267,13 @@ badInterval=${iv}
   }
 
   /**
-   * Returns a set of all intervals overlapping the given range.
-   * Or, if strict is true, returns the set of all intervals fully contained in
-   * the range [start, end].
-   * Completes in O(m + k*log n) time, where:
-   *   * n = size of the tree
-   *   * m = number of matches
-   *   * k = size of the search range (this is 1 for a point)
-   **/
+   * Searches for intervals within the specified range.
+   *
+   * @param start - The start value of the range.
+   * @param end - The end value of the range. If not provided, only intervals that contain the start value will be returned.
+   * @param strict - Determines whether strict search should be performed. If true, only intervals that are completely within the range will be returned.
+   * @returns An array of intervals that match the search criteria.
+   */
   public search(start: number, end?: number, strict = false): Interval[] {
     if (!this.topNode) {
       return []
@@ -270,10 +311,25 @@ badInterval=${iv}
     return result
   }
 
+  /**
+   * Searches for intervals of a specific length starting at a given position.
+   * @param length The length of the intervals to search for.
+   * @param start The starting position to search from.
+   * @returns An array of intervals that match the specified length and starting position.
+   */
   public searchByLengthStartingAt(length: number, start: number): Interval[] {
     return this.topNode.searchByLengthStartingAt(length, start, [])
   }
 
+  /**
+   * Finds the first interval in the tree that has a length greater than or equal to the specified minimum length,
+   * starting at the specified starting time.
+   *
+   * @param minLength - The minimum length of the interval to search for.
+   * @param startingAt - The starting time of the interval to search for.
+   * @param filterFn - An optional filter function to further refine the search.
+   * @returns The first interval that matches the search criteria, or undefined if no such interval is found.
+   */
   public findFirstIntervalByLengthStartingAt(
     minLength: number,
     startingAt: number,
@@ -291,13 +347,12 @@ badInterval=${iv}
     return foundInterval
   }
 
+  /**
+   * Creates a shallow copy of the IntervalTree.
+   *
+   * @returns A new IntervalTree with shallow copies of the intervals.
+   */
   public clone(): IntervalTree {
-    /*
-      Construct a new IntervalTree using shallow copies of the
-      intervals in the source tree.
-  
-      Completes in O(n*log n) time.
-      */
     const tree = new IntervalTree()
     tree.topNode = this.topNode?.clone()
     tree.boundaryTable = this.boundaryTable
@@ -305,6 +360,11 @@ badInterval=${iv}
     return tree
   }
 
+  /**
+   * Checks the tree to ensure that the invariants are held.
+   * @remarks
+   * This method is for debugging purposes only.
+   */
   public verify() {
     /*
       DEBUG ONLY
@@ -354,6 +414,17 @@ badInterval=${iv}
 
     // Internal tree structure
     this.topNode.verify()
+  }
+
+  public toString() {
+    const sortedIntervals = IntervalSortedSet.from(this.allIntervals.toArray())
+    return `IntervalTree([ ${sortedIntervals.toArray().join(', ')} ])`
+  }
+
+  public printStructure() {
+    if (this.topNode) {
+      this.topNode.printStructure()
+    }
   }
 
   private addBoundaries(interval: Interval) {

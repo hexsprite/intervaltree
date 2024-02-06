@@ -45,7 +45,7 @@ describe('IntervalTree', () => {
     tree.addInterval(0, 3)
     tree.addInterval(0, 3, 'a')
     tree.addInterval(0, 3, 'b')
-    expect(tree.allIntervals.size).toBe(3)
+    expect(tree.size).toBe(3)
   })
 
   it('merges overlapping intervals', () => {
@@ -68,24 +68,13 @@ describe('IntervalTree', () => {
 
   it('can be an array', () => {
     tree.addInterval(1, 5, 'hello')
-    expect(tree.toArray()).toEqual([[1, 5, 'hello']])
+    expect(tree.toArray()).toEqual([new Interval(1, 5, 'hello')])
   })
 
   it('chops tree', () => {
     tree.addInterval(0, 10)
     tree.chop(3, 7)
     expectTree('IntervalTree([ Interval(0, 3), Interval(7, 10) ])')
-  })
-
-  it('chopAll chops multiple', () => {
-    tree.addInterval(0, 100)
-    tree.chopAll([
-      [3, 7],
-      [50, 60],
-    ])
-    expectTree(
-      'IntervalTree([ Interval(0, 3), Interval(7, 50), Interval(60, 100) ])'
-    )
   })
 
   it('chops bigger things', () => {
@@ -180,9 +169,7 @@ describe('IntervalTree', () => {
     tree.addInterval(5, 8)
     tree.addInterval(9, 13)
     const cloned = tree.clone()
-    expect(tree.allIntervals.toArray()[0]).toBe(
-      cloned.allIntervals.toArray()[0]
-    )
+    expect(tree.toArray()[0]).toBe(cloned.toArray()[0])
     cloned.verify()
   })
 
@@ -278,15 +265,6 @@ describe('IntervalTree', () => {
     tree.verify()
   })
 
-  // consider a property-based test for this to find edge cases
-  it('JSON serialization', () => {
-    tree.addInterval(1, 2, 'data')
-    tree.addInterval(3, 4)
-    const json = JSON.stringify(tree)
-    const tree2 = IntervalTree.fromJSON(json)
-    expect(tree.allIntervals.toArray()).toEqual(tree2.allIntervals.toArray())
-  })
-
   it('hashing', () => {
     tree.addInterval(1, 2, 'data')
     tree.addInterval(3, 4)
@@ -300,13 +278,14 @@ describe('IntervalTree', () => {
     tree.addInterval(1, 2)
     tree.addInterval(1, 2)
     tree.addInterval(1, 2)
-    expect(tree.toArray()).toEqual([[1, 2, undefined]])
+    expect(tree.toArray()).toEqual([new Interval(1, 2, undefined)])
   })
 
   it('null data compares properly with undefined', () => {
     tree = IntervalTree.fromTuples([[1562351400000, 1562354700000, null]])
     tree.addInterval(1562351400000, 1562354700000) // this triggerred an exception
     expect(
+      // @ts-expect-error private method
       tree.allIntervals.has(new Interval(1562351400000, 1562354700000))
     ).toBe(true)
   })
@@ -389,13 +368,12 @@ describe('IntervalTree', () => {
     const data = JSON.parse(dataBuf.toString()).map(
       // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access
       (d) => new Interval(d.start, d.end)
-    )
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+    ) as Interval[]
     tree = new IntervalTree(data)
     tree.verify()
   })
 
-  it.only('find first interval by length, overlaps bug', () => {
+  it('find first interval by length, overlaps bug', () => {
     const tree = new IntervalTree([
       new Interval(1449158400000, 1449198000000),
       new Interval(1449248400000, 1449277200000),
@@ -416,5 +394,29 @@ describe('IntervalTree', () => {
     )
     const expected = new Interval(1449158400000, 1449198000000)
     expect(expected).toEqual(result)
+  })
+
+  it('findFirstIntervalByLengthStartingAt bugs', () => {
+    const tree = new IntervalTree()
+    expect(tree.findFirstIntervalByLengthStartingAt(0, 0)).toBeUndefined()
+
+    tree.addInterval(1, 2)
+    expect(tree.findFirstIntervalByLengthStartingAt(0, 0)).toEqual(
+      new Interval(1, 2)
+    )
+
+    tree.addInterval(1, 101)
+    expect(tree.findFirstIntervalByLengthStartingAt(100, 0)).toEqual(
+      new Interval(1, 101)
+    )
+    expect(tree.findFirstIntervalByLengthStartingAt(100, 1)).toEqual(
+      new Interval(1, 101)
+    )
+    expect(tree.findFirstIntervalByLengthStartingAt(100, 2)).toBeUndefined()
+
+    tree.addInterval(1, 150)
+    expect(tree.findFirstIntervalByLengthStartingAt(100, 2)).toEqual(
+      new Interval(2, 150)
+    )
   })
 })

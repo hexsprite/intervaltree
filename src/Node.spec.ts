@@ -62,7 +62,6 @@ describe('Node', () => {
       throw 'no root'
     }
     expect(root.maxLength).toEqual(5)
-    root.printStructure()
     root.verify()
 
     // test adding intervals
@@ -86,13 +85,13 @@ describe('Node', () => {
     expect(root.maxLength).toEqual(5)
   })
 
-  it('calculates maxStart', () => {
+  it('calculates maxEnd', () => {
     const root = Node.fromIntervals([
       new Interval(188, 250),
       new Interval(2, 19),
       new Interval(8, 10),
     ])!
-    expect(root.maxStart).toEqual(188)
+    expect(root.maxEnd).toEqual(250)
   })
 })
 

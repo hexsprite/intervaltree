@@ -32,8 +32,8 @@ Testing
 - full suite of property based tests
 - should work with bun test for speed ideally but issues with fast-check hanging
 
-
 Docs
+- every public method should be documented
 - add typedoc or similar
 
 
