@@ -1,10 +1,11 @@
-import { defineConfig } from "tsup";
+import { defineConfig } from 'tsup'
 
 export default defineConfig({
-  entry: ["src/index.ts"],
+  entry: ['src/index.ts'],
+  format: 'esm',
   dts: true,
   replaceNodeEnv: true,
   env: {
-    INTERVAL_TREE_DEBUG: "",
+    INTERVAL_TREE_DEBUG: '',
   },
-});
+})

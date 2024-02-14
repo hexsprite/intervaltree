@@ -1,13 +1,17 @@
 {
   "name": "intervaltree",
+  "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "type": "module",
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
   "devDependencies": {
     "@antfu/eslint-config": "^2.6.4",
     "@stylistic/eslint-plugin": "^1.6.1",
     "@stylistic/eslint-plugin-ts": "^1.6.1",
     "@types/jest": "^29.5.12",
+    "@types/node": "^20.11.17",
     "@typescript-eslint/eslint-plugin": "^6.21.0",
     "bun-types": "latest",
     "eslint": "^8.56.0",
@@ -22,8 +26,5 @@
     "ts-node": "^10.9.2",
     "tsup": "^8.0.1",
     "typescript": "^5.3.3"
-  },
-  "peerDependencies": {
-    "typescript": "^5.0.0"
   }
 }
