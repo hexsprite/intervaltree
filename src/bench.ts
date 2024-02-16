@@ -8,8 +8,8 @@ import { ArrayIntervalCollection } from './ArrayIntervalCollection'
 
 let tree = new IntervalTree()
 
-const numIntervals = 250
-const numQueries = 500
+const numIntervals = 10_000
+const numQueries = 10_000
 const intervalRangeSize = 1_000_000
 
 let allIntervals: Interval[] = []

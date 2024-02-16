@@ -1,4 +1,3 @@
-import expect from 'expect'
 import { IntervalTree } from './IntervalTree'
 import { Interval } from './Interval'
 

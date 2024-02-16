@@ -1,6 +1,5 @@
-import assert from 'node:assert'
+import { strict as assert } from 'node:assert'
 import { Interval } from './Interval'
-import { DEBUG } from './IntervalTree'
 import { compareIntervals } from './compareIntervals'
 
 const LEFT = 0
@@ -63,7 +62,7 @@ export class Node {
     this.#branch[direction ? RIGHT : LEFT] = node
   }
 
-  insert(interval: Interval): Node {
+  insert(interval: Interval, rebalancingDone: [boolean] = [false], updateRequired: [boolean] = [false]): Node {
     // if the interval starts at the same point as this node, add it to the values
     if (this.start === interval.start) {
       // don't add a duplicate
@@ -71,26 +70,43 @@ export class Node {
         return this
 
       this.values.push(interval)
-      this.updateHeight()
-      this.updateAttributes()
+      // no rebalancing needed because the height of this node doesn't change
+      rebalancingDone[0] = true
+      updateRequired[0] = this.updateAttributes()
 
       return this
     }
 
     // search for the correct branch to insert the interval
     const direction = this.start < interval.start // true = right
-    let branchNode = this.branch(direction)
+    const branchNode = this.branch(direction)
 
-    if (branchNode)
-      branchNode = branchNode.insert(interval)
-    else
-      branchNode = new Node(interval)
+    if (branchNode) {
+      this.setBranch(
+        direction,
+        branchNode.insert(interval, rebalancingDone, updateRequired),
+      )
+      if (updateRequired[0])
+        this.updateAttributes()
+    }
+    else {
+      this.setBranch(direction, new Node(interval))
+      updateRequired[0] = this.updateAttributes()
+    }
 
-    this.setBranch(direction, branchNode)
-    this.updateHeight()
-    this.updateAttributes()
+    if (!rebalancingDone[0]) {
+      this.updateHeight()
+      if (this.balance === 0) {
+        rebalancingDone[0] = true
+        return this
+      }
+      else if (Math.abs(this.balance) > 1) {
+        rebalancingDone[0] = true
+        return this.rotate()
+      }
+    }
 
-    return this.rotate()
+    return this
   }
 
   rotate() {
@@ -111,14 +127,11 @@ export class Node {
       || heavyChild.balance === 0
     )
       rotatedSubtreeRoot = this.singleRotate()
-      // console.log("singleRotate");
     else
       rotatedSubtreeRoot = this.doubleRotate()
-      // console.log("doubleRotate");
 
     rotatedSubtreeRoot.updateHeight()
 
-    rotatedSubtreeRoot.verify()
     return rotatedSubtreeRoot
   }
 
@@ -170,29 +183,7 @@ export class Node {
     return heavyChild
   }
 
-  updateAttributes() {
-    this.minStart = Math.min(
-      ...this.values.map(iv => iv.start),
-      this.left?.minStart ?? Number.POSITIVE_INFINITY,
-      this.right?.minStart ?? Number.POSITIVE_INFINITY,
-    )
-    this.maxEnd = Math.max(
-      ...this.values.map(iv => iv.end),
-      this.left?.maxEnd ?? Number.NEGATIVE_INFINITY,
-      this.right?.maxEnd ?? Number.NEGATIVE_INFINITY,
-    )
-    this.maxLength = Math.max(
-      ...this.values.map(iv => iv.length),
-      this.left?.maxLength ?? 0,
-      this.right?.maxLength ?? 0,
-    )
-  }
-
-  updateHeight() {
-    this.height = 1 + Math.max(this.left?.height ?? 0, this.right?.height ?? 0)
-  }
-
-  searchPoint(point: number, result: Interval[]) {
+  public searchPoint(point: number, result: Interval[]) {
     if (point < this.minStart || point > this.maxEnd)
       return
 
@@ -220,7 +211,7 @@ export class Node {
       this.right.printStructure(indent + 1, (prefix = '> '))
   }
 
-  toArray(): Interval[] {
+  public toArray(): Interval[] {
     let result = [...this.values]
     if (this.left)
       result = result.concat(this.left.toArray())
@@ -231,7 +222,7 @@ export class Node {
     return result
   }
 
-  remove(interval: Interval, rebalance: [true?] = []): Node | null {
+  public remove(interval: Interval, rebalance: [boolean] = [false]): Node | null {
     // Navigate the tree to find the correct node
     // eslint-disable-next-line ts/no-this-alias
     let result: Node = this
@@ -250,11 +241,16 @@ export class Node {
       if (index > -1) {
         this.values.splice(index, 1) // Remove the interval from this node
 
-        // If no more intervals are left in the node, handle node removal
+        // If no more intervals are left in the node, handle node pruning
         if (this.values.length === 0) {
-          rebalance.push(true)
+          rebalance[0] = true
           if (this.left && this.right) {
-            const successor = this.right.findMin().clone()
+            // if both children are present, find the successor and remove it
+            let successor: Node = this.right
+            while (successor.left)
+              successor = successor.left
+
+            successor = successor.clone()
             // filter the successor from the right node - possibly inefficient
             for (const value of successor.values)
               this.right = this.right?.remove(value, rebalance) ?? null
@@ -272,13 +268,13 @@ export class Node {
       }
     }
     result.updateAttributes()
-    if (rebalance.length)
+    if (rebalance[0])
       return result.rotate()
 
     return result
   }
 
-  clone(): Node {
+  public clone(): Node {
     const node = new Node(this.values[0])
     node.values = [...this.values]
     node.left = this.left?.clone() ?? null
@@ -379,7 +375,7 @@ export class Node {
     return result
   }
 
-  searchOverlap(
+  public searchOverlap(
     start: number,
     end: number,
       result: Interval[] = [],
@@ -402,17 +398,7 @@ export class Node {
     return result
   }
 
-  findMin(): Node {
-    if (this.left)
-      return this.left.findMin()
-
-    return this
-  }
-
   public verify(parents: Set<number> = new Set()) {
-    if (!DEBUG)
-      return
-
     // Node is balanced
     const bal = this.balance
     if (Math.abs(bal) > 1)
@@ -480,8 +466,29 @@ export class Node {
     }
   }
 
+  public walkNodes(
+    callback: (node: Node, parent?: Node, parentDir?: number) => void,
+    parent?: Node,
+    parentDir?: number,
+  ) {
+    callback(this, parent, parentDir)
+    this.left?.walkNodes(callback, this, 0)
+    this.right?.walkNodes(callback, this, 1)
+  }
+
+  public reduceNodes<T>(
+    callback: (accumulator: T, node: Node) => T,
+    initialValue: T,
+  ): T {
+    let accumulator = initialValue
+    this.walkNodes((node) => {
+      accumulator = callback(accumulator, node)
+    })
+    return accumulator
+  }
+
   // can replace with walkNodes
-  calcMaxLength(): number {
+  private calcMaxLength(): number {
     return Math.max(
       ...this.values.map(iv => iv.length),
       this.left?.calcMaxLength() ?? 0,
@@ -489,12 +496,44 @@ export class Node {
     )
   }
 
-  calcMaxEnd(): number {
+  private calcMaxEnd(): number {
     return Math.max(
       ...this.values.map(iv => iv.end),
       this.left?.calcMaxEnd() ?? Number.NEGATIVE_INFINITY,
       this.right?.calcMaxEnd() ?? Number.NEGATIVE_INFINITY,
     )
+  }
+
+  /**
+   * Update augmented attributes of the node.
+   * @returns true if the attributes were updated, false otherwise.
+   */
+  private updateAttributes(): boolean {
+    const oldMinStart = this.minStart
+    const oldMaxEnd = this.maxEnd
+    const oldMaxLength = this.maxLength
+    this.minStart = Math.min(
+      ...this.values.map(iv => iv.start),
+      this.left?.minStart ?? Number.POSITIVE_INFINITY,
+      this.right?.minStart ?? Number.POSITIVE_INFINITY,
+    )
+    this.maxEnd = Math.max(
+      ...this.values.map(iv => iv.end),
+      this.left?.maxEnd ?? Number.NEGATIVE_INFINITY,
+      this.right?.maxEnd ?? Number.NEGATIVE_INFINITY,
+    )
+    this.maxLength = Math.max(
+      ...this.values.map(iv => iv.length),
+      this.left?.maxLength ?? 0,
+      this.right?.maxLength ?? 0,
+    )
+    return oldMinStart !== this.minStart
+      || oldMaxEnd !== this.maxEnd
+      || oldMaxLength !== this.maxLength
+  }
+
+  private updateHeight() {
+    this.height = 1 + Math.max(this.left?.height ?? 0, this.right?.height ?? 0)
   }
 
   private shouldSkipBranch(minLength: number, startingAt: number) {

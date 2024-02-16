@@ -2,10 +2,7 @@ import { defineConfig } from 'tsup'
 
 export default defineConfig({
   entry: ['src/index.ts'],
-  format: 'esm',
+  format: ['esm', 'cjs'],
   dts: true,
   replaceNodeEnv: true,
-  env: {
-    INTERVAL_TREE_DEBUG: '',
-  },
 })

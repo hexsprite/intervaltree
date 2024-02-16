@@ -56,10 +56,6 @@ export class Interval {
     return `Interval(${this.start}, ${this.end}, length=${this.length}${this.data ? `, data=${this.data}` : ''})`
   }
 
-  public isNull() {
-    return this.start >= this.end
-  }
-
   public containsPoint(point: number): boolean {
     /*
       Whether the Interval contains point.

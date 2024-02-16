@@ -1,9 +1,8 @@
-import { expect, test } from 'bun:test'
 import { Interval } from './Interval'
 import { IntervalTree } from './IntervalTree'
 import { Node } from './Node'
 
-test('should create a new node', () => {
+it('should create a new node', () => {
   const iv = new Interval(0, 10)
   const node = new Node(iv)
   expect(node).toBeDefined()
@@ -12,7 +11,7 @@ test('should create a new node', () => {
   expect(node.minStart).toEqual(iv.start)
 })
 
-test('should add a new interval to the node', () => {
+it('should add a new interval to the node', () => {
   const iv = new Interval(0, 10)
   const node = new Node(iv)
   const iv2 = new Interval(5, 15)

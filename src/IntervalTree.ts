@@ -1,6 +1,6 @@
+/* eslint-disable node/prefer-global/process */
 import assert from 'node:assert'
 import crypto from 'node:crypto'
-import process from 'node:process'
 
 import { Interval } from './Interval'
 import type { IntervalCollection } from './IntervalCollection'
@@ -8,7 +8,7 @@ import { Node } from './Node'
 import { compareIntervals } from './compareIntervals'
 import type { IntervalTuple } from './types'
 
-export const DEBUG = process.env.NODE_ENV !== 'production'
+const DEBUG = process.env.NODE_ENV !== 'production'
 
 export class IntervalTree implements IntervalCollection {
   private root: Node | null = null

@@ -1,8 +1,5 @@
 #!/bin/bash
-# build with esbuild
-# bunx esbuild --bundle --sourcemap --outfile=dist/bench.js --platform=node --define:process.env.NODE_ENV=\"production\" src/bench.ts
-bun build --sourcemap --outfile=dist/bench.js --target=node --define process.env.NODE_ENV=\"production\" src/bench.ts
+npx tsup src/bench.ts --no-config --format cjs --env.NODE_ENV production
 
 # run with node
-bun dist/bench.js
-
+node dist/bench.cjs

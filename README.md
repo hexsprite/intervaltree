@@ -1,22 +1,36 @@
-# simplervaltree
+# intervaltree JS
 
-To install dependencies:
+A mutable, self-balancing interval tree.
 
-```bash
-bun install
+Written in TypeScript with no external dependendencies
+
+## Install
+
+```
+npm install intervaltree
 ```
 
-To run:
+## Examples
 
-```bash
-bun run index.ts
+- Instantiating
+
+```js
+import { Interval, IntervalTree } from 'intervaltree'
+const tree = new IntervalTree()
 ```
 
-TODO:
+- Adding intervals
 
-- Implement boundaryTable for faster overlap searches (chopping etc.)
-- More tests for chopping, overlap searches
-- Simplify the tests to essence (ask GPT for help)
-- Review previous project for other niceties
-- Production Build
-- Maybe just switch to bun for all the bundling too instead of tsup
+```js
+tree.addInterval(1, 2, 'data for 1 through 2')
+tree.add(new Interval(3, 4, 'data for 3 through 4'))
+```
+
+- Search
+
+```js
+tree.searchPoint(3)
+tree.searchOverlap(1, 3)
+tree.searchByLengthStartingAt(2, 1)
+tree.findOneByLengthStartingAt(2, 1)
+```

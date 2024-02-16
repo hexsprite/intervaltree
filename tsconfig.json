@@ -7,7 +7,7 @@
     "module": "esnext",
     "moduleResolution": "bundler",
     "types": [
-      "bun-types", // add Bun global
+      "node",
       "jest"
     ],
     "allowImportingTsExtensions": true,
