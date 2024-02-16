@@ -6,6 +6,7 @@
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsup",
+    "prepare": "npm run build",
     "test": "vitest --globals --no-watch",
     "test:watch": "vitest --globals"
   },
