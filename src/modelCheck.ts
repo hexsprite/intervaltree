@@ -150,25 +150,60 @@ const allCommands = [
 ]
 
 function main() {
+  // Get timeout from environment variable or command line argument
+  const timeoutMs = parseInt(process.env.MODEL_CHECK_TIMEOUT || process.argv[2] || '0', 10)
+  const numRuns = parseInt(process.env.MODEL_CHECK_RUNS || process.argv[3] || '0', 10)
+
+  // Configuration based on provided parameters
+  const config: any = {
+    endOnFailure: true,
+  }
+
+  if (timeoutMs > 0) {
+    // Use time-based limit
+    config.interruptAfterTimeLimit = timeoutMs
+    config.numRuns = Number.POSITIVE_INFINITY
+    // eslint-disable-next-line no-console
+    console.log(`Running model check for ${timeoutMs}ms...`)
+  } else if (numRuns > 0) {
+    // Use run count limit
+    config.numRuns = numRuns
+    // eslint-disable-next-line no-console
+    console.log(`Running model check for ${numRuns} iterations...`)
+  } else {
+    // Default: run indefinitely
+    config.numRuns = Number.POSITIVE_INFINITY
+    // eslint-disable-next-line no-console
+    console.log('Running model check indefinitely (use MODEL_CHECK_TIMEOUT=ms or pass timeout as first arg)...')
+  }
+
   // clear screen
   // eslint-disable-next-line no-console
   console.log('\x1Bc\nrunning')
-  fc.assert(
-    fc.property(fc.commands(allCommands, { size: 'xlarge' }), (cmds) => {
-      const s = () => ({
-        model: new ArrayIntervalCollection(),
-        real: new IntervalTree(),
-      })
-      // console.log('running')
-      fc.modelRun(s, cmds)
-    }),
-    {
-      endOnFailure: true,
-      numRuns: Number.POSITIVE_INFINITY,
-      seed: -1823745148,
-      path: '0',
-    },
-  )
+
+  try {
+    fc.assert(
+      fc.property(fc.commands(allCommands, { size: 'xlarge' }), (cmds) => {
+        const s = () => ({
+          model: new ArrayIntervalCollection(),
+          real: new IntervalTree(),
+        })
+        // console.log('running')
+        fc.modelRun(s, cmds)
+      }),
+      config,
+    )
+
+    if (timeoutMs > 0 || numRuns > 0) {
+      // eslint-disable-next-line no-console
+      console.log('✓ Model checking completed successfully')
+      process.exit(0)
+    }
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('✗ Model checking failed:', error)
+    process.exit(1)
+  }
 }
 
 main()
