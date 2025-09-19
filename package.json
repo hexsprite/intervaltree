@@ -2,11 +2,20 @@
   "name": "intervaltree",
   "type": "module",
   "version": "1.0.0",
+  "description": "Interval tree for JavaScript",
+  "author": "Jordan Baker",
+  "license": "MIT",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "npx tsup",
+    "clean": "rimraf dist",
+    "prebuild": "rimraf dist",
     "prepare": "npm run build",
+    "prepack": "npm run build",
     "test": "vitest --globals --no-watch",
     "test:watch": "vitest --globals"
   },
@@ -20,6 +29,7 @@
     "expect": "^29.7.0",
     "fast-check": "^3.15.1",
     "pure-rand": "^6.0.4",
+    "rimraf": "^5.0.5",
     "tsup": "^8.0.2",
     "typescript": "^5.3.3",
     "vitest": "^1.2.2"
