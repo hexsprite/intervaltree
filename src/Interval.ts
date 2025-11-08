@@ -1,12 +1,12 @@
 import type { IntervalTuple } from './types'
 import assert from 'node:assert'
 
-export class Interval {
+export class Interval<T = unknown> {
   #start: number
   #end: number
-  #data: unknown
+  #data: T | undefined
 
-  public constructor(start: number, end: number, data?: unknown) {
+  public constructor(start: number, end: number, data?: T) {
     assert.equal(typeof start, 'number', `start not number: ${start}`)
     assert.equal(typeof end, 'number', `end not number: ${end}`)
     assert(start < end, 'invalid null range')
@@ -24,7 +24,7 @@ export class Interval {
     return this.#end
   }
 
-  get data(): unknown {
+  get data(): T | undefined {
     return this.#data
   }
 
@@ -36,7 +36,7 @@ export class Interval {
     return new Interval(0, length)
   }
 
-  equals(interval: Interval): boolean {
+  equals(interval: Interval<T>): boolean {
     return (
       this.start === interval.start
       && this.end === interval.end
@@ -44,12 +44,12 @@ export class Interval {
     )
   }
 
-  toTuple(): IntervalTuple {
+  toTuple(): IntervalTuple<T> {
     return [
       this.start,
       this.end,
-      ...(this.data ? [this.data] : []),
-    ] as IntervalTuple
+      ...(this.data !== undefined ? [this.data] : []),
+    ] as IntervalTuple<T>
   }
 
   public toString() {

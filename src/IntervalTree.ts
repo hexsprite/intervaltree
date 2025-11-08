@@ -10,10 +10,10 @@ import { Node } from './Node'
 
 const DEBUG = process.env.NODE_ENV !== 'production'
 
-export class IntervalTree implements IntervalCollection {
-  private root: Node | null = null
+export class IntervalTree<T = unknown> implements IntervalCollection<T> {
+  private root: Node<T> | null = null
 
-  constructor(intervals: Interval[] = []) {
+  constructor(intervals: Interval<T>[] = []) {
     if (intervals.length > 0)
       this.root = Node.fromIntervals(intervals)
   }
@@ -22,13 +22,20 @@ export class IntervalTree implements IntervalCollection {
     return this.toArray().length
   }
 
-  static fromTuples(allIntervals: Array<[number, number]>): IntervalTree {
+  /**
+   * Returns true if the tree is empty, false otherwise.
+   */
+  public get isEmpty(): boolean {
+    return this.root === null
+  }
+
+  static fromTuples<T = unknown>(allIntervals: Array<[number, number] | [number, number, T]>): IntervalTree<T> {
     return new IntervalTree(
-      allIntervals.map(([start, end]) => new Interval(start, end)),
+      allIntervals.map(([start, end, data]) => new Interval(start, end, data)),
     )
   }
 
-  public add(interval: Interval): void {
+  public add(interval: Interval<T>): void {
     if (!this.root)
       this.root = new Node(interval)
     else
@@ -74,12 +81,21 @@ export class IntervalTree implements IntervalCollection {
     return hash.digest('hex')
   }
 
-  public searchPoint(point: number): Interval[] {
+  public searchPoint(point: number): Interval<T>[] {
     if (!this.root)
       return []
-    const result: Interval[] = []
+    const result: Interval<T>[] = []
     this.root.searchPoint(point, result)
     return result
+  }
+
+  /**
+   * Checks if any interval in the tree contains the given point.
+   * @param point The point to check
+   * @returns true if any interval contains the point, false otherwise
+   */
+  public contains(point: number): boolean {
+    return this.searchPoint(point).length > 0
   }
 
   /**
@@ -92,7 +108,7 @@ export class IntervalTree implements IntervalCollection {
    */
   public chop(start: number, end: number): void {
     assert(start < end, 'start must be <= end')
-    const insertions: Interval[] = []
+    const insertions: Interval<T>[] = []
     const startHits = this.searchPoint(start).filter(iv => iv.start < start)
     const endHits = this.searchPoint(end).filter(iv => iv.end > end)
     startHits.forEach((iv) => {
@@ -108,7 +124,7 @@ export class IntervalTree implements IntervalCollection {
     this.verify()
   }
 
-  public addAll(intervals: Interval[]): void {
+  public addAll(intervals: Interval<T>[]): void {
     intervals.forEach((iv) => {
       this.add(iv)
     })
@@ -125,21 +141,21 @@ export class IntervalTree implements IntervalCollection {
   /**
    * Searches for intervals that are completely enveloped by the specified range.
    */
-  public searchEnvelop(start: number, end: number): Interval[] {
+  public searchEnvelop(start: number, end: number): Interval<T>[] {
     if (!this.root)
       return []
     // quick and dirty, but works
     return this.searchOverlap(start, end).filter(iv => iv.start >= start && iv.end <= end)
   }
 
-  public remove(interval: Interval): void {
+  public remove(interval: Interval<T>): void {
     if (!this.root)
       return
     this.root = this.root.remove(interval)
     this.verify()
   }
 
-  public removeAll(intervals: Interval[]) {
+  public removeAll(intervals: Interval<T>[]) {
     intervals.forEach((iv) => {
       this.remove(iv)
     })
@@ -158,7 +174,7 @@ export class IntervalTree implements IntervalCollection {
     return this.root.toArray()
   }
 
-  public addInterval(start: number, end: number, data?: unknown) {
+  public addInterval(start: number, end: number, data?: T) {
     this.add(new Interval(start, end, data))
   }
 
@@ -184,8 +200,8 @@ export class IntervalTree implements IntervalCollection {
   public findOneByLengthStartingAt(
     minLength: number,
     startingAt: number,
-    filterFn?: (iv: Interval) => boolean,
-  ): Interval | undefined {
+    filterFn?: (iv: Interval<T>) => boolean,
+  ): Interval<T> | undefined {
     assert(minLength > 0, 'minLength must be > 0')
     const foundInterval = this.root?.findOneByLengthStartingAt(
       minLength,
@@ -205,14 +221,14 @@ export class IntervalTree implements IntervalCollection {
    * @param start The starting position to search from.
    * @returns An array of intervals that match the specified length and starting position.
    */
-  public searchByLengthStartingAt(length: number, start: number): Interval[] {
+  public searchByLengthStartingAt(length: number, start: number): Interval<T>[] {
     if (!this.root)
       return []
     return this.root.searchByLengthStartingAt(length, start, []).toSorted(compareIntervals)
   }
 
-  public clone(): IntervalTree {
-    const clone = new IntervalTree()
+  public clone(): IntervalTree<T> {
+    const clone = new IntervalTree<T>()
     if (this.root)
       clone.root = this.root.clone()
 
@@ -221,18 +237,103 @@ export class IntervalTree implements IntervalCollection {
   }
 
   // all intervals overlapping the given range.
-  public searchOverlap(start: number, end: number): Interval[] {
+  public searchOverlap(start: number, end: number): Interval<T>[] {
     if (!this.root)
       return []
     return this.root.searchOverlap(start, end, [])
   }
 
-  public toSorted(): Interval[] {
+  /**
+   * Checks if any interval in the tree overlaps with the given range.
+   * @param start The start of the range
+   * @param end The end of the range
+   * @returns true if any interval overlaps with the range, false otherwise
+   */
+  public overlaps(start: number, end: number): boolean {
+    return this.searchOverlap(start, end).length > 0
+  }
+
+  public toSorted(): Interval<T>[] {
     return this.toArray().toSorted(compareIntervals)
   }
 
-  public toTuples(): IntervalTuple[] {
+  public toTuples(): IntervalTuple<T>[] {
     return this.toSorted().map(iv => iv.toTuple())
+  }
+
+  /**
+   * Implements the iterator protocol, allowing the tree to be iterated with for...of loops.
+   */
+  [Symbol.iterator](): Iterator<Interval<T>> {
+    return this.toArray()[Symbol.iterator]()
+  }
+
+  /**
+   * Executes a callback function for each interval in the tree.
+   * @param callback Function to execute for each interval
+   */
+  public forEach(callback: (interval: Interval<T>, index: number) => void): void {
+    this.toArray().forEach(callback)
+  }
+
+  /**
+   * Creates a new tree with intervals transformed by the callback function.
+   * @param callback Function that transforms each interval
+   * @returns A new IntervalTree with transformed intervals
+   */
+  public map<U>(callback: (interval: Interval<T>) => Interval<U>): IntervalTree<U> {
+    const transformed = this.toArray().map(callback)
+    return new IntervalTree<U>(transformed)
+  }
+
+  /**
+   * Returns the union of this tree with another tree (all intervals from both trees).
+   * @param other The other interval tree
+   * @returns A new IntervalTree containing all intervals from both trees
+   */
+  public union(other: IntervalTree<T>): IntervalTree<T> {
+    const allIntervals = [...this.toArray(), ...other.toArray()]
+    return new IntervalTree<T>(allIntervals)
+  }
+
+  /**
+   * Returns the intersection of this tree with another tree.
+   * Returns a new tree containing only the overlapping regions between intervals in both trees.
+   * @param other The other interval tree
+   * @returns A new IntervalTree containing intersecting regions
+   */
+  public intersection(other: IntervalTree<T>): IntervalTree<T> {
+    const result: Interval<T>[] = []
+
+    for (const interval of this.toArray()) {
+      const overlapping = other.searchOverlap(interval.start, interval.end)
+      for (const otherInterval of overlapping) {
+        const start = Math.max(interval.start, otherInterval.start)
+        const end = Math.min(interval.end, otherInterval.end)
+        if (start < end) {
+          result.push(new Interval(start, end, interval.data))
+        }
+      }
+    }
+
+    return new IntervalTree<T>(result)
+  }
+
+  /**
+   * Returns the difference of this tree with another tree.
+   * Returns a new tree containing intervals from this tree that don't overlap with the other tree.
+   * @param other The other interval tree
+   * @returns A new IntervalTree containing non-overlapping intervals from this tree
+   */
+  public difference(other: IntervalTree<T>): IntervalTree<T> {
+    const result = this.clone()
+
+    // For each interval in the other tree, chop it out of our result
+    for (const interval of other.toArray()) {
+      result.chop(interval.start, interval.end)
+    }
+
+    return result
   }
 
   public verify() {

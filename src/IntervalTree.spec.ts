@@ -260,3 +260,421 @@ it('merges overlapping intervals with data', () => {
     [15, 25],
   ])
 })
+
+// Tests for new DX improvements
+
+describe('TypeScript Generics', () => {
+  it('supports typed data', () => {
+    interface Task {
+      id: number
+      name: string
+    }
+
+    const tree = new IntervalTree<Task>()
+    tree.addInterval(1, 5, { id: 1, name: 'Task 1' })
+    tree.addInterval(10, 15, { id: 2, name: 'Task 2' })
+
+    const results = tree.searchPoint(3)
+    expect(results[0].data?.id).toBe(1)
+    expect(results[0].data?.name).toBe('Task 1')
+  })
+
+  it('supports fromTuples with typed data', () => {
+    interface Event {
+      type: string
+      value: number
+    }
+
+    const tree = IntervalTree.fromTuples<Event>([
+      [1, 5, { type: 'click', value: 100 }],
+      [10, 15, { type: 'scroll', value: 200 }],
+    ])
+
+    const results = tree.searchPoint(12)
+    expect(results[0].data?.type).toBe('scroll')
+    expect(results[0].data?.value).toBe(200)
+  })
+
+  it('works without data', () => {
+    const tree = new IntervalTree()
+    tree.addInterval(1, 5)
+    tree.addInterval(10, 15)
+
+    expect(tree.size).toBe(2)
+    expect(tree.searchPoint(3).length).toBe(1)
+  })
+})
+
+describe('Iterator Protocol', () => {
+  it('supports for...of loops', () => {
+    const tree = IntervalTree.fromTuples([
+      [1, 5],
+      [10, 15],
+      [20, 25],
+    ])
+
+    const intervals: Array<[number, number]> = []
+    for (const interval of tree) {
+      intervals.push([interval.start, interval.end])
+    }
+
+    expect(intervals.length).toBe(3)
+    expect(intervals).toContainEqual([1, 5])
+    expect(intervals).toContainEqual([10, 15])
+    expect(intervals).toContainEqual([20, 25])
+  })
+
+  it('supports spread operator', () => {
+    const tree = IntervalTree.fromTuples([
+      [1, 5],
+      [10, 15],
+    ])
+
+    const intervals = [...tree]
+    expect(intervals.length).toBe(2)
+    expect(intervals[0]).toBeInstanceOf(Interval)
+  })
+
+  it('supports Array.from', () => {
+    const tree = IntervalTree.fromTuples([
+      [1, 5],
+      [10, 15],
+    ])
+
+    const intervals = Array.from(tree)
+    expect(intervals.length).toBe(2)
+  })
+})
+
+describe('Boolean Membership Checks', () => {
+  it('contains() returns true for points in intervals', () => {
+    const tree = IntervalTree.fromTuples([
+      [1, 5],
+      [10, 15],
+    ])
+
+    expect(tree.contains(3)).toBe(true)
+    expect(tree.contains(12)).toBe(true)
+  })
+
+  it('contains() returns false for points not in intervals', () => {
+    const tree = IntervalTree.fromTuples([
+      [1, 5],
+      [10, 15],
+    ])
+
+    expect(tree.contains(7)).toBe(false)
+    expect(tree.contains(20)).toBe(false)
+  })
+
+  it('contains() returns false on end boundary (half-open intervals)', () => {
+    const tree = IntervalTree.fromTuples([[1, 5]])
+    expect(tree.contains(5)).toBe(false)
+  })
+
+  it('overlaps() returns true for overlapping ranges', () => {
+    const tree = IntervalTree.fromTuples([
+      [1, 5],
+      [10, 15],
+    ])
+
+    expect(tree.overlaps(3, 7)).toBe(true)
+    expect(tree.overlaps(12, 20)).toBe(true)
+    expect(tree.overlaps(0, 3)).toBe(true)
+  })
+
+  it('overlaps() returns false for non-overlapping ranges', () => {
+    const tree = IntervalTree.fromTuples([
+      [1, 5],
+      [10, 15],
+    ])
+
+    expect(tree.overlaps(6, 9)).toBe(false)
+    expect(tree.overlaps(16, 20)).toBe(false)
+  })
+
+  it('isEmpty getter returns true for empty tree', () => {
+    const tree = new IntervalTree()
+    expect(tree.isEmpty).toBe(true)
+  })
+
+  it('isEmpty getter returns false for non-empty tree', () => {
+    const tree = IntervalTree.fromTuples([[1, 5]])
+    expect(tree.isEmpty).toBe(false)
+  })
+})
+
+describe('forEach and map', () => {
+  it('forEach iterates over all intervals', () => {
+    const tree = IntervalTree.fromTuples([
+      [1, 5],
+      [10, 15],
+      [20, 25],
+    ])
+
+    const starts: number[] = []
+    tree.forEach((interval) => {
+      starts.push(interval.start)
+    })
+
+    expect(starts.length).toBe(3)
+    expect(starts).toContain(1)
+    expect(starts).toContain(10)
+    expect(starts).toContain(20)
+  })
+
+  it('forEach provides index', () => {
+    const tree = IntervalTree.fromTuples([
+      [1, 5],
+      [10, 15],
+    ])
+
+    const indices: number[] = []
+    tree.forEach((_, index) => {
+      indices.push(index)
+    })
+
+    expect(indices).toEqual([0, 1])
+  })
+
+  it('map transforms intervals', () => {
+    const tree = IntervalTree.fromTuples<string>([
+      [1, 5, 'a'],
+      [10, 15, 'b'],
+    ])
+
+    const shifted = tree.map((interval) =>
+      new Interval(interval.start + 10, interval.end + 10, interval.data),
+    )
+
+    expect(shifted.toTuples()).toEqual([
+      [11, 15, 'a'],
+      [20, 25, 'b'],
+    ])
+  })
+
+  it('map can change data type', () => {
+    const tree = IntervalTree.fromTuples<string>([
+      [1, 5, 'a'],
+      [10, 15, 'b'],
+    ])
+
+    const withNumbers = tree.map((interval) =>
+      new Interval<number>(interval.start, interval.end, interval.data?.length ?? 0),
+    )
+
+    const results = withNumbers.searchPoint(3)
+    expect(results[0].data).toBe(1)
+  })
+})
+
+describe('Set Operations', () => {
+  describe('union', () => {
+    it('combines intervals from both trees', () => {
+      const tree1 = IntervalTree.fromTuples([
+        [1, 5],
+        [10, 15],
+      ])
+
+      const tree2 = IntervalTree.fromTuples([
+        [20, 25],
+        [30, 35],
+      ])
+
+      const result = tree1.union(tree2)
+      expect(result.size).toBe(4)
+      expect(result.contains(3)).toBe(true)
+      expect(result.contains(22)).toBe(true)
+    })
+
+    it('preserves duplicate intervals', () => {
+      const tree1 = IntervalTree.fromTuples([[1, 5]])
+      const tree2 = IntervalTree.fromTuples([[1, 5]])
+
+      const result = tree1.union(tree2)
+      expect(result.size).toBe(1) // Duplicates are ignored
+    })
+
+    it('works with typed data', () => {
+      const tree1 = IntervalTree.fromTuples<string>([[1, 5, 'a']])
+      const tree2 = IntervalTree.fromTuples<string>([[10, 15, 'b']])
+
+      const result = tree1.union(tree2)
+      expect(result.toTuples()).toEqual([
+        [1, 5, 'a'],
+        [10, 15, 'b'],
+      ])
+    })
+  })
+
+  describe('intersection', () => {
+    it('returns overlapping regions', () => {
+      const tree1 = IntervalTree.fromTuples([
+        [1, 10],
+        [20, 30],
+      ])
+
+      const tree2 = IntervalTree.fromTuples([
+        [5, 15],
+        [25, 35],
+      ])
+
+      const result = tree1.intersection(tree2)
+      expect(result.toTuples()).toEqual([
+        [5, 10],
+        [25, 30],
+      ])
+    })
+
+    it('returns empty tree for non-overlapping trees', () => {
+      const tree1 = IntervalTree.fromTuples([[1, 5]])
+      const tree2 = IntervalTree.fromTuples([[10, 15]])
+
+      const result = tree1.intersection(tree2)
+      expect(result.isEmpty).toBe(true)
+    })
+
+    it('handles multiple overlaps', () => {
+      const tree1 = IntervalTree.fromTuples([[1, 20]])
+
+      const tree2 = IntervalTree.fromTuples([
+        [3, 7],
+        [10, 15],
+      ])
+
+      const result = tree1.intersection(tree2)
+      expect(result.size).toBe(2)
+      expect(result.toTuples()).toEqual([
+        [3, 7],
+        [10, 15],
+      ])
+    })
+
+    it('preserves data from first tree', () => {
+      const tree1 = IntervalTree.fromTuples<string>([[1, 10, 'first']])
+      const tree2 = IntervalTree.fromTuples<string>([[5, 15, 'second']])
+
+      const result = tree1.intersection(tree2)
+      expect(result.toTuples()).toEqual([[5, 10, 'first']])
+    })
+  })
+
+  describe('difference', () => {
+    it('returns intervals not in second tree', () => {
+      const tree1 = IntervalTree.fromTuples([[1, 20]])
+      const tree2 = IntervalTree.fromTuples([[5, 10]])
+
+      const result = tree1.difference(tree2)
+      expect(result.toTuples()).toEqual([
+        [1, 5],
+        [10, 20],
+      ])
+    })
+
+    it('returns all intervals if no overlap', () => {
+      const tree1 = IntervalTree.fromTuples([[1, 5]])
+      const tree2 = IntervalTree.fromTuples([[10, 15]])
+
+      const result = tree1.difference(tree2)
+      expect(result.toTuples()).toEqual([[1, 5]])
+    })
+
+    it('returns empty tree if completely overlapped', () => {
+      const tree1 = IntervalTree.fromTuples([[5, 10]])
+      const tree2 = IntervalTree.fromTuples([[1, 20]])
+
+      const result = tree1.difference(tree2)
+      expect(result.isEmpty).toBe(true)
+    })
+
+    it('handles multiple removals', () => {
+      const tree1 = IntervalTree.fromTuples([[1, 100]])
+      const tree2 = IntervalTree.fromTuples([
+        [10, 20],
+        [30, 40],
+        [50, 60],
+      ])
+
+      const result = tree1.difference(tree2)
+      expect(result.toTuples()).toEqual([
+        [1, 10],
+        [20, 30],
+        [40, 50],
+        [60, 100],
+      ])
+    })
+
+    it('preserves data', () => {
+      const tree1 = IntervalTree.fromTuples<string>([[1, 20, 'keep']])
+      const tree2 = IntervalTree.fromTuples<string>([[5, 10, 'remove']])
+
+      const result = tree1.difference(tree2)
+      expect(result.toArray()[0].data).toBe('keep')
+    })
+  })
+})
+
+describe('Real-world use cases', () => {
+  it('works with scheduling system', () => {
+    interface Meeting {
+      title: string
+      attendees: number
+    }
+
+    const schedule = new IntervalTree<Meeting>()
+    schedule.addInterval(9, 10, { title: 'Standup', attendees: 5 })
+    schedule.addInterval(14, 15, { title: 'Review', attendees: 3 })
+
+    // Check if time slot is available
+    expect(schedule.contains(11)).toBe(false) // 11am is free
+    expect(schedule.contains(9.5)).toBe(true) // 9:30am is busy
+
+    // Find all meetings in afternoon
+    const afternoon = schedule.searchOverlap(12, 17)
+    expect(afternoon.length).toBe(1)
+    expect(afternoon[0].data?.title).toBe('Review')
+  })
+
+  it('works with date ranges', () => {
+    const jan1 = new Date('2024-01-01').getTime()
+    const jan10 = new Date('2024-01-10').getTime()
+    const feb1 = new Date('2024-02-01').getTime()
+    const feb10 = new Date('2024-02-10').getTime()
+
+    const events = new IntervalTree<string>()
+    events.addInterval(jan1, jan10, 'Winter Sale')
+    events.addInterval(feb1, feb10, 'Valentine Promo')
+
+    const jan5 = new Date('2024-01-05').getTime()
+    expect(events.contains(jan5)).toBe(true)
+
+    // Iterate over events
+    const eventNames: string[] = []
+    for (const event of events) {
+      if (event.data) {
+        eventNames.push(event.data)
+      }
+    }
+    expect(eventNames).toEqual(['Winter Sale', 'Valentine Promo'])
+  })
+
+  it('handles resource allocation', () => {
+    const server1 = IntervalTree.fromTuples<string>([
+      [0, 5, 'Job A'],
+      [10, 15, 'Job B'],
+    ])
+
+    const server2 = IntervalTree.fromTuples<string>([
+      [3, 8, 'Job C'],
+      [12, 17, 'Job D'],
+    ])
+
+    // Find conflicts
+    const conflicts = server1.intersection(server2)
+    expect(conflicts.size).toBeGreaterThan(0)
+
+    // Combine all jobs
+    const allJobs = server1.union(server2)
+    expect(allJobs.size).toBe(4)
+  })
+})

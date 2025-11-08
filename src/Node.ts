@@ -8,17 +8,17 @@ type Direction = 0 | 1 | true | false
 
 // const debug = (...args: any[]) => console.log(...args)
 
-export class Node {
-  values: Interval[] = []
+export class Node<T = unknown> {
+  values: Interval<T>[] = []
   start: number
   height = 1 // default height for AVL node
   minStart = 0
   maxEnd = 0
   maxLength = 0
 
-  #branch: [Node | null, Node | null] = [null, null]
+  #branch: [Node<T> | null, Node<T> | null] = [null, null]
 
-  constructor(value: Interval) {
+  constructor(value: Interval<T>) {
     this.values = [value]
     this.start = value.start
     this.updateAttributes()
@@ -36,15 +36,15 @@ export class Node {
     return this.#branch[RIGHT]
   }
 
-  private set left(node: Node | null) {
+  private set left(node: Node<T> | null) {
     this.#branch[LEFT] = node
   }
 
-  private set right(node: Node | null) {
+  private set right(node: Node<T> | null) {
     this.#branch[RIGHT] = node
   }
 
-  static fromIntervals(intervals: Interval[]): Node {
+  static fromIntervals<T>(intervals: Interval<T>[]): Node<T> {
     assert(intervals.length > 0, 'Error: intervals must not be empty')
     const sortedIntervals = intervals.toSorted(compareIntervals)
     let newNode = new Node(sortedIntervals[0])
@@ -58,11 +58,11 @@ export class Node {
     return this.#branch[direction ? RIGHT : LEFT]
   }
 
-  setBranch(direction: Direction, node: Node | null) {
+  setBranch(direction: Direction, node: Node<T> | null) {
     this.#branch[direction ? RIGHT : LEFT] = node
   }
 
-  insert(interval: Interval, rebalancingDone: [boolean] = [false], updateRequired: [boolean] = [false]): Node {
+  insert(interval: Interval<T>, rebalancingDone: [boolean] = [false], updateRequired: [boolean] = [false]): Node<T> {
     // if the interval starts at the same point as this node, add it to the values
     if (this.start === interval.start) {
       // don't add a duplicate
@@ -121,7 +121,7 @@ export class Node {
     const heavyChild = this.branch(pivotNodeDirection)!
     const heavyChildDirection = heavyChild.balance > 0
 
-    let rotatedSubtreeRoot: Node
+    let rotatedSubtreeRoot: Node<T>
     if (
       pivotNodeDirection === heavyChildDirection
       || heavyChild.balance === 0
@@ -137,7 +137,7 @@ export class Node {
     return rotatedSubtreeRoot
   }
 
-  doubleRotate(): Node {
+  doubleRotate(): Node<T> {
     assert(this.balance !== 0, 'doubleRotate called on balanced node')
     const heavyDirection = this.balance > 0
     const oppositeDirection = !heavyDirection
@@ -163,7 +163,7 @@ export class Node {
     return this.singleRotate()
   }
 
-  singleRotate(): Node {
+  singleRotate(): Node<T> {
     assert(this.balance !== 0, 'singleRotate called on balanced node')
     const pivotNodeDirection = this.balance > 0
     const oppositeDirection = !pivotNodeDirection
@@ -185,7 +185,7 @@ export class Node {
     return heavyChild
   }
 
-  public searchPoint(point: number, result: Interval[]) {
+  public searchPoint(point: number, result: Interval<T>[]) {
     if (point < this.minStart || point > this.maxEnd)
       return
 
@@ -213,7 +213,7 @@ export class Node {
       this.right.printStructure(indent + 1, (prefix = '> '))
   }
 
-  public toArray(): Interval[] {
+  public toArray(): Interval<T>[] {
     let result = [...this.values]
     if (this.left)
       result = result.concat(this.left.toArray())
@@ -224,10 +224,10 @@ export class Node {
     return result
   }
 
-  public remove(interval: Interval, rebalance: [boolean] = [false]): Node | null {
+  public remove(interval: Interval<T>, rebalance: [boolean] = [false]): Node<T> | null {
     // Navigate the tree to find the correct node
     // eslint-disable-next-line ts/no-this-alias
-    let result: Node = this
+    let result: Node<T> = this
 
     if (interval.start < this.start) {
       this.left = this.left?.remove(interval, rebalance) ?? null
@@ -248,7 +248,7 @@ export class Node {
           rebalance[0] = true
           if (this.left && this.right) {
             // if both children are present, find the successor and remove it
-            let successor: Node = this.right
+            let successor: Node<T> = this.right
             while (successor.left)
               successor = successor.left
 
@@ -276,7 +276,7 @@ export class Node {
     return result
   }
 
-  public clone(): Node {
+  public clone(): Node<T> {
     const node = new Node(this.values[0])
     node.values = [...this.values]
     node.left = this.left?.clone() ?? null
@@ -296,8 +296,8 @@ export class Node {
   public findOneByLengthStartingAt(
     minLength: number,
     startingAt: number,
-    filterFn: (iv: Interval) => boolean = () => true,
-  ): Interval | undefined {
+    filterFn: (iv: Interval<T>) => boolean = () => true,
+  ): Interval<T> | undefined {
     // Skip this branch if it cannot contain a qualifying interval
     if (this.shouldSkipBranch(minLength, startingAt))
       return
@@ -335,7 +335,7 @@ export class Node {
 
     // Find the interval with the minimum start (and end as a tiebreaker) from the filtered list
     return eligibleIntervals.reduce(
-      (minInterval: Interval | undefined, currentInterval) => {
+      (minInterval: Interval<T> | undefined, currentInterval) => {
         if (!minInterval)
           return currentInterval // If first comparison, return current interval
 
@@ -352,7 +352,7 @@ export class Node {
   public searchByLengthStartingAt(
     minLength: number,
     startingAt: number,
-    result: Interval[],
+    result: Interval<T>[],
   ) {
     // Skip this branch if it cannot contain a qualifying interval
     if (this.shouldSkipBranch(minLength, startingAt))
@@ -380,8 +380,8 @@ export class Node {
   public searchOverlap(
     start: number,
     end: number,
-    result: Interval[] = [],
-  ): Interval[] {
+    result: Interval<T>[] = [],
+  ): Interval<T>[] {
     // Check current node's intervals for overlap
     this.values.forEach((interval) => {
       if (interval.end >= start && interval.start <= end)
@@ -469,8 +469,8 @@ export class Node {
   }
 
   public walkNodes(
-    callback: (node: Node, parent?: Node, parentDir?: number) => void,
-    parent?: Node,
+    callback: (node: Node<T>, parent?: Node<T>, parentDir?: number) => void,
+    parent?: Node<T>,
     parentDir?: number,
   ) {
     callback(this, parent, parentDir)
@@ -478,10 +478,10 @@ export class Node {
     this.right?.walkNodes(callback, this, 1)
   }
 
-  public reduceNodes<T>(
-    callback: (accumulator: T, node: Node) => T,
-    initialValue: T,
-  ): T {
+  public reduceNodes<U>(
+    callback: (accumulator: U, node: Node<T>) => U,
+    initialValue: U,
+  ): U {
     let accumulator = initialValue
     this.walkNodes((node) => {
       accumulator = callback(accumulator, node)
