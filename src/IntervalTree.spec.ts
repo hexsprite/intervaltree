@@ -263,7 +263,7 @@ it('merges overlapping intervals with data', () => {
 
 // Tests for new DX improvements
 
-describe('TypeScript Generics', () => {
+describe('typeScript Generics', () => {
   it('supports typed data', () => {
     interface Task {
       id: number
@@ -305,7 +305,7 @@ describe('TypeScript Generics', () => {
   })
 })
 
-describe('Iterator Protocol', () => {
+describe('iterator Protocol', () => {
   it('supports for...of loops', () => {
     const tree = IntervalTree.fromTuples([
       [1, 5],
@@ -346,7 +346,7 @@ describe('Iterator Protocol', () => {
   })
 })
 
-describe('Boolean Membership Checks', () => {
+describe('boolean Membership Checks', () => {
   it('contains() returns true for points in intervals', () => {
     const tree = IntervalTree.fromTuples([
       [1, 5],
@@ -443,7 +443,7 @@ describe('forEach and map', () => {
       [10, 15, 'b'],
     ])
 
-    const shifted = tree.map((interval) =>
+    const shifted = tree.map(interval =>
       new Interval(interval.start + 10, interval.end + 10, interval.data),
     )
 
@@ -459,7 +459,7 @@ describe('forEach and map', () => {
       [10, 15, 'b'],
     ])
 
-    const withNumbers = tree.map((interval) =>
+    const withNumbers = tree.map(interval =>
       new Interval<number>(interval.start, interval.end, interval.data?.length ?? 0),
     )
 
@@ -468,7 +468,7 @@ describe('forEach and map', () => {
   })
 })
 
-describe('Set Operations', () => {
+describe('set Operations', () => {
   describe('union', () => {
     it('combines intervals from both trees', () => {
       const tree1 = IntervalTree.fromTuples([
@@ -614,7 +614,7 @@ describe('Set Operations', () => {
   })
 })
 
-describe('Real-world use cases', () => {
+describe('real-world use cases', () => {
   it('works with scheduling system', () => {
     interface Meeting {
       title: string
