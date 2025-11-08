@@ -1,6 +1,7 @@
 // More complex Fastcheck test using model-based testing
 // https://fast-check.dev/docs/advanced/model-based-testing/
 
+import './polyfills'
 import fc from 'fast-check'
 import { expect } from 'expect'
 import prand from 'pure-rand'

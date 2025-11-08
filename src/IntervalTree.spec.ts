@@ -1,3 +1,4 @@
+import './polyfills'
 import { IntervalTree } from './IntervalTree'
 import { Interval } from './Interval'
 
