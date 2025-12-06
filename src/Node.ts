@@ -383,8 +383,9 @@ export class Node<T = unknown> {
     result: Interval<T>[] = [],
   ): Interval<T>[] {
     // Check current node's intervals for overlap
+    // Using strict inequalities for half-open interval semantics [start, end)
     this.values.forEach((interval) => {
-      if (interval.end >= start && interval.start <= end)
+      if (interval.end > start && interval.start < end)
         result.push(interval)
     })
 

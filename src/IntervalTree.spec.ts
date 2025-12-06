@@ -393,6 +393,45 @@ describe('boolean Membership Checks', () => {
     expect(tree.overlaps(16, 20)).toBe(false)
   })
 
+  it('searchOverlap respects half-open interval semantics at boundaries', () => {
+    // Adjacent intervals [1,5) and [5,10) should NOT overlap
+    const tree = IntervalTree.fromTuples<string>([
+      [1, 5, 'first'],
+      [5, 10, 'second'],
+    ])
+
+    // Query [5,10) should only find 'second', not 'first'
+    const results = tree.searchOverlap(5, 10)
+    expect(results.map(r => r.data)).toEqual(['second'])
+
+    // Query [0,5) should only find 'first', not 'second'
+    const results2 = tree.searchOverlap(0, 5)
+    expect(results2.map(r => r.data)).toEqual(['first'])
+
+    // Query starting exactly at interval end should not find that interval
+    const results3 = tree.searchOverlap(10, 15)
+    expect(results3).toHaveLength(0)
+  })
+
+  it('overlaps() respects half-open interval semantics at boundaries', () => {
+    // Adjacent intervals [1,5) and [5,10)
+    const tree = IntervalTree.fromTuples([
+      [1, 5],
+      [5, 10],
+    ])
+
+    // Query exactly at boundary - [5,10) touches [1,5) at point 5
+    // but since intervals are half-open, they don't actually overlap
+    expect(tree.overlaps(5, 10)).toBe(true) // finds [5,10)
+    expect(tree.overlaps(0, 5)).toBe(true) // finds [1,5)
+
+    // Query starting exactly where all intervals end
+    expect(tree.overlaps(10, 15)).toBe(false)
+
+    // Query ending exactly where interval starts
+    expect(tree.overlaps(-5, 1)).toBe(false)
+  })
+
   it('isEmpty getter returns true for empty tree', () => {
     const tree = new IntervalTree()
     expect(tree.isEmpty).toBe(true)
