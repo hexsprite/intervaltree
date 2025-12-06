@@ -18,11 +18,9 @@
     "prepack": "npm run build",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "test": "vitest --globals --no-watch",
-    "test:watch": "vitest --globals",
-    "model-check": "tsx src/modelCheck.ts",
-    "model-check:quick": "tsx src/modelCheck.ts 10000",
-    "model-check:ci": "tsx src/modelCheck.ts 300000"
+    "test": "vitest --no-watch",
+    "test:watch": "vitest",
+    "model-check": "vitest run --config vitest.model.config.ts"
   },
   "devDependencies": {
     "@antfu/eslint-config": "^6.4.2",

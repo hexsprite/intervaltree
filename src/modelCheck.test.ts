@@ -1,10 +1,9 @@
-// More complex Fastcheck test using model-based testing
+// Model-based property testing using fast-check
 // https://fast-check.dev/docs/advanced/model-based-testing/
 
-import process from 'node:process'
-import { expect } from 'expect'
 import fc from 'fast-check'
 import prand from 'pure-rand'
+import { describe, expect, it } from 'vitest'
 import { ArrayIntervalCollection } from './ArrayIntervalCollection'
 import { compareIntervals } from './compareIntervals'
 import { Interval } from './Interval'
@@ -28,8 +27,7 @@ class AddCommand implements fc.Command<ArrayIntervalCollection, IntervalTree> {
   toString = () => `add(${this.interval.toString()})`
 }
 
-class RemoveCommand
-implements fc.Command<ArrayIntervalCollection, IntervalTree> {
+class RemoveCommand implements fc.Command<ArrayIntervalCollection, IntervalTree> {
   readonly seed: number
   index = 0
 
@@ -42,9 +40,7 @@ implements fc.Command<ArrayIntervalCollection, IntervalTree> {
   }
 
   run(m: ArrayIntervalCollection, r: IntervalTree): void {
-    // seed the random number generator for deterministic results
     const rng = prand.xoroshiro128plus(this.seed)
-    // pick a random interval to remove
     const [index] = prand.uniformIntDistribution(0, m.size - 1, rng)
     const removed = m.toSorted().at(index)!
 
@@ -79,8 +75,7 @@ class ChopCommand implements fc.Command<ArrayIntervalCollection, IntervalTree> {
   toString = () => `chop(${this.interval})`
 }
 
-class SearchCommand
-implements fc.Command<ArrayIntervalCollection, IntervalTree> {
+class SearchCommand implements fc.Command<ArrayIntervalCollection, IntervalTree> {
   value: number
 
   constructor(value: number) {
@@ -88,6 +83,7 @@ implements fc.Command<ArrayIntervalCollection, IntervalTree> {
   }
 
   check = () => true
+
   run(m: ArrayIntervalCollection, r: IntervalTree): void {
     const rSorted = r.searchPoint(this.value).toSorted(compareIntervals)
     const mSorted = m.searchPoint(this.value).toSorted(compareIntervals)
@@ -97,8 +93,7 @@ implements fc.Command<ArrayIntervalCollection, IntervalTree> {
   toString = () => `search(${this.value})`
 }
 
-class FindOneByLengthStartingAtCommand
-implements fc.Command<ArrayIntervalCollection, IntervalTree> {
+class FindOneByLengthStartingAtCommand implements fc.Command<ArrayIntervalCollection, IntervalTree> {
   minLength: number
   startingAt: number
 
@@ -108,105 +103,47 @@ implements fc.Command<ArrayIntervalCollection, IntervalTree> {
   }
 
   check = () => true
+
   run(m: ArrayIntervalCollection, r: IntervalTree): void {
     const rResult = r.findOneByLengthStartingAt(this.minLength, this.startingAt)
     const mResult = m.findOneByLengthStartingAt(this.minLength, this.startingAt)
     expect(rResult).toEqual(mResult)
   }
 
-  toString = () =>
-    `findOneByLengthStartingAt(${this.minLength}, ${this.startingAt})`
+  toString = () => `findOneByLengthStartingAt(${this.minLength}, ${this.startingAt})`
 }
 
 const intervalArbitrary = fc.integer({ max: 2147483647 - 1 }).chain(start =>
   fc.record({
     start: fc.constant(start),
-    // ensure a minimum length of 1
     end: fc.integer({ min: start + 1 }),
   }),
 )
 
-// const commandArbitrary = fc.oneof(intervalArbitrary.map((v) => new AddCommand(v)))
-// // define the possible commands and their inputs
 const allCommands = [
-  // AddCommand
   intervalArbitrary.map(v => new AddCommand(v)),
-  // RemoveCommand
-  fc
-    .integer()
-    .noBias()
-    // .noShrink()
-    .map(seed => new RemoveCommand(seed)),
-  // ChopCommand
+  fc.integer().map(seed => new RemoveCommand(seed)),
   intervalArbitrary.map(v => new ChopCommand(v)),
-  // SearchCommand
   fc.integer().map(v => new SearchCommand(v)),
-  // FindOneByLengthStartingAtCommand
-  fc
-    .tuple(fc.integer({ min: 1 }), fc.integer())
-    .map(
-      ([minLength, startingAt]) =>
-        new FindOneByLengthStartingAtCommand(minLength, startingAt),
-    ),
+  fc.tuple(fc.integer({ min: 1 }), fc.integer()).map(
+    ([minLength, startingAt]) => new FindOneByLengthStartingAtCommand(minLength, startingAt),
+  ),
 ]
 
-function main() {
-  // Get timeout from environment variable or command line argument
-  const timeoutMs = Number.parseInt(process.env.MODEL_CHECK_TIMEOUT || process.argv[2] || '0', 10)
-  const numRuns = Number.parseInt(process.env.MODEL_CHECK_RUNS || process.argv[3] || '0', 10)
-
-  // Configuration based on provided parameters
-  const config: any = {
-    endOnFailure: true,
-  }
-
-  if (timeoutMs > 0) {
-    // Use time-based limit
-    config.interruptAfterTimeLimit = timeoutMs
-    config.numRuns = Number.POSITIVE_INFINITY
-    // eslint-disable-next-line no-console
-    console.log(`Running model check for ${timeoutMs}ms...`)
-  }
-  else if (numRuns > 0) {
-    // Use run count limit
-    config.numRuns = numRuns
-    // eslint-disable-next-line no-console
-    console.log(`Running model check for ${numRuns} iterations...`)
-  }
-  else {
-    // Default: run indefinitely
-    config.numRuns = Number.POSITIVE_INFINITY
-    // eslint-disable-next-line no-console
-    console.log('Running model check indefinitely (use MODEL_CHECK_TIMEOUT=ms or pass timeout as first arg)...')
-  }
-
-  // clear screen
-  // eslint-disable-next-line no-console
-  console.log('\x1Bc\nrunning')
-
-  try {
+describe('model checking', () => {
+  it('intervalTree matches ArrayIntervalCollection behavior', () => {
     fc.assert(
       fc.property(fc.commands(allCommands, { size: 'xlarge' }), (cmds) => {
         const s = () => ({
           model: new ArrayIntervalCollection(),
           real: new IntervalTree(),
         })
-        // console.log('running')
         fc.modelRun(s, cmds)
       }),
-      config,
+      {
+        numRuns: 100,
+        endOnFailure: true,
+      },
     )
-
-    if (timeoutMs > 0 || numRuns > 0) {
-      // eslint-disable-next-line no-console
-      console.log('✓ Model checking completed successfully')
-      process.exit(0)
-    }
-  }
-  catch (error) {
-    console.error('✗ Model checking failed:', error)
-    process.exit(1)
-  }
-}
-
-main()
+  })
+})

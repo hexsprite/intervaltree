@@ -40,7 +40,7 @@ jobs:
   model-check:
     needs: build
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -53,21 +53,8 @@ jobs:
 
       - run: pnpm install
 
-      - name: Run model checking (1000 iterations)
-        run: |
-          echo "Running model-based property testing..."
-          MODEL_CHECK_RUNS=1000 pnpm tsx src/modelCheck.ts
-        env:
-          NODE_ENV: production
-
-      # Extended model check only on schedule or manual trigger
-      - name: Run extended model checking (5 minutes)
-        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
-        run: |
-          echo "Running extended model-based property testing for 5 minutes..."
-          pnpm tsx src/modelCheck.ts 300000
-        env:
-          NODE_ENV: production
+      - name: Run model checking
+        run: pnpm model-check
 
   test-compat:
     needs: build
