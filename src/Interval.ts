@@ -53,7 +53,7 @@ export class Interval<T = unknown> {
   }
 
   public toString() {
-    return `Interval(${this.start}, ${this.end}, length=${this.length}${this.data ? `, data=${this.data}` : ''})`
+    return `Interval(${this.start}, ${this.end}, length=${this.length}${this.data !== undefined ? `, data=${this.data}` : ''})`
   }
 
   public containsPoint(point: number): boolean {
