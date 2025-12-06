@@ -1,9 +1,6 @@
-// https://github.com/antfu/eslint-config
 import antfu from '@antfu/eslint-config'
 
-export default antfu({}, {
-  // your overrides
-  rules: {
-    'ts/member-ordering': 'error',
-  },
+export default antfu({
+  typescript: true,
+  ignores: ['dist/**', 'node_modules/**', '*.md', '*.json', '.github/**'],
 })

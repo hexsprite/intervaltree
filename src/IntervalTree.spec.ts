@@ -1,5 +1,5 @@
-import { IntervalTree } from './IntervalTree'
 import { Interval } from './Interval'
+import { IntervalTree } from './IntervalTree'
 
 it('find intervals of minimum length', () => {
   const tree = IntervalTree.fromTuples([

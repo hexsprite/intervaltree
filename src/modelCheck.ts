@@ -1,13 +1,14 @@
 // More complex Fastcheck test using model-based testing
 // https://fast-check.dev/docs/advanced/model-based-testing/
 
-import fc from 'fast-check'
+import process from 'node:process'
 import { expect } from 'expect'
+import fc from 'fast-check'
 import prand from 'pure-rand'
-import { Interval } from './Interval'
-import { IntervalTree } from './IntervalTree'
 import { ArrayIntervalCollection } from './ArrayIntervalCollection'
 import { compareIntervals } from './compareIntervals'
+import { Interval } from './Interval'
+import { IntervalTree } from './IntervalTree'
 
 class AddCommand implements fc.Command<ArrayIntervalCollection, IntervalTree> {
   interval: Interval
@@ -151,8 +152,8 @@ const allCommands = [
 
 function main() {
   // Get timeout from environment variable or command line argument
-  const timeoutMs = parseInt(process.env.MODEL_CHECK_TIMEOUT || process.argv[2] || '0', 10)
-  const numRuns = parseInt(process.env.MODEL_CHECK_RUNS || process.argv[3] || '0', 10)
+  const timeoutMs = Number.parseInt(process.env.MODEL_CHECK_TIMEOUT || process.argv[2] || '0', 10)
+  const numRuns = Number.parseInt(process.env.MODEL_CHECK_RUNS || process.argv[3] || '0', 10)
 
   // Configuration based on provided parameters
   const config: any = {
@@ -165,12 +166,14 @@ function main() {
     config.numRuns = Number.POSITIVE_INFINITY
     // eslint-disable-next-line no-console
     console.log(`Running model check for ${timeoutMs}ms...`)
-  } else if (numRuns > 0) {
+  }
+  else if (numRuns > 0) {
     // Use run count limit
     config.numRuns = numRuns
     // eslint-disable-next-line no-console
     console.log(`Running model check for ${numRuns} iterations...`)
-  } else {
+  }
+  else {
     // Default: run indefinitely
     config.numRuns = Number.POSITIVE_INFINITY
     // eslint-disable-next-line no-console
@@ -199,8 +202,8 @@ function main() {
       console.log('✓ Model checking completed successfully')
       process.exit(0)
     }
-  } catch (error) {
-    // eslint-disable-next-line no-console
+  }
+  catch (error) {
     console.error('✗ Model checking failed:', error)
     process.exit(1)
   }

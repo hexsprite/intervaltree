@@ -1,6 +1,6 @@
-import { Interval } from './Interval'
 import type { IntervalCollection } from './IntervalCollection'
 import { compareIntervals } from './compareIntervals'
+import { Interval } from './Interval'
 
 export class ArrayIntervalCollection implements IntervalCollection {
   private intervals: Interval[]
@@ -20,7 +20,7 @@ export class ArrayIntervalCollection implements IntervalCollection {
   findOneByLengthStartingAt(
     minLength: number,
     startingAt: number,
-    filterFn?: ((iv: Interval) => boolean) | undefined,
+    _filterFn?: ((iv: Interval) => boolean) | undefined,
   ): Interval | undefined {
     let earliestInterval: Interval | undefined
 
@@ -132,7 +132,7 @@ export class ArrayIntervalCollection implements IntervalCollection {
   }
 
   // Updates the tree with given intervals
-  update(intervals: Interval[]): void {
+  update(_intervals: Interval[]): void {
     // Implementation
   }
 

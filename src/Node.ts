@@ -1,6 +1,6 @@
 import { strict as assert } from 'node:assert'
-import { Interval } from './Interval'
 import { compareIntervals } from './compareIntervals'
+import { Interval } from './Interval'
 
 const LEFT = 0
 const RIGHT = 1
@@ -125,10 +125,12 @@ export class Node {
     if (
       pivotNodeDirection === heavyChildDirection
       || heavyChild.balance === 0
-    )
+    ) {
       rotatedSubtreeRoot = this.singleRotate()
-    else
+    }
+    else {
       rotatedSubtreeRoot = this.doubleRotate()
+    }
 
     rotatedSubtreeRoot.updateHeight()
 
@@ -202,7 +204,7 @@ export class Node {
   printStructure(indent = 0, prefix = '') {
     console.error(
       `${'  '.repeat(indent)
-         }${prefix}Node(${this.values}, maxEnd=${this.maxEnd} height=${this.height} balance=${this.balance})`,
+      }${prefix}Node(${this.values}, maxEnd=${this.maxEnd} height=${this.height} balance=${this.balance})`,
     )
     if (this.left)
       this.left.printStructure(indent + 1, (prefix = '< '))
@@ -294,7 +296,7 @@ export class Node {
   public findOneByLengthStartingAt(
     minLength: number,
     startingAt: number,
-      filterFn: (iv: Interval) => boolean = () => true,
+    filterFn: (iv: Interval) => boolean = () => true,
   ): Interval | undefined {
     // Skip this branch if it cannot contain a qualifying interval
     if (this.shouldSkipBranch(minLength, startingAt))
@@ -339,7 +341,7 @@ export class Node {
 
         return currentInterval.start < minInterval.start
           || (currentInterval.start === minInterval.start
-          && currentInterval.end < minInterval.end)
+            && currentInterval.end < minInterval.end)
           ? currentInterval
           : minInterval
       },
@@ -361,7 +363,7 @@ export class Node {
       if (interval.end < startingAt)
         return
       const adjustedLength
-          = interval.length - Math.max(0, startingAt - interval.start)
+        = interval.length - Math.max(0, startingAt - interval.start)
       if (adjustedLength >= minLength) {
         if (interval.start < startingAt)
           interval = new Interval(startingAt, interval.end)
@@ -378,7 +380,7 @@ export class Node {
   public searchOverlap(
     start: number,
     end: number,
-      result: Interval[] = [],
+    result: Interval[] = [],
   ): Interval[] {
     // Check current node's intervals for overlap
     this.values.forEach((interval) => {

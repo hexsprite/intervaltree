@@ -1,10 +1,10 @@
 /* eslint-disable no-console */
+import type { IntervalCollection } from './IntervalCollection'
 import fs from 'node:fs'
+import { ArrayIntervalCollection } from './ArrayIntervalCollection'
+import { compareIntervals } from './compareIntervals'
 import { Interval } from './Interval'
 import { IntervalTree } from './IntervalTree'
-import { compareIntervals } from './compareIntervals'
-import type { IntervalCollection } from './IntervalCollection'
-import { ArrayIntervalCollection } from './ArrayIntervalCollection'
 
 let tree = new IntervalTree()
 

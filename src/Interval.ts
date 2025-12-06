@@ -1,5 +1,5 @@
-import assert from 'node:assert'
 import type { IntervalTuple } from './types'
+import assert from 'node:assert'
 
 export class Interval {
   #start: number

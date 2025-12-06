@@ -15,17 +15,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
+          cache: pnpm
 
-      - run: npm ci
-      - run: npm run build
-      - run: npm test
+      - run: pnpm install
+      - run: pnpm build
+      - run: pnpm test
+      - run: pnpm lint
 
       - name: Generate coverage report
-        run: npx vitest run --coverage
+        run: pnpm vitest run --coverage
         continue-on-error: true
 
       - uses: actions/upload-artifact@v4
@@ -39,17 +43,20 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
+          cache: pnpm
 
-      - run: npm ci
+      - run: pnpm install
 
       - name: Run model checking (1000 iterations)
         run: |
           echo "Running model-based property testing..."
-          MODEL_CHECK_RUNS=1000 npx tsx src/modelCheck.ts
+          MODEL_CHECK_RUNS=1000 pnpm tsx src/modelCheck.ts
         env:
           NODE_ENV: production
 
@@ -58,7 +65,7 @@ jobs:
         if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
         run: |
           echo "Running extended model-based property testing for 5 minutes..."
-          npx tsx src/modelCheck.ts 300000
+          pnpm tsx src/modelCheck.ts 300000
         env:
           NODE_ENV: production
 

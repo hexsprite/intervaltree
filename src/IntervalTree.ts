@@ -1,12 +1,12 @@
 /* eslint-disable node/prefer-global/process */
+import type { IntervalCollection } from './IntervalCollection'
+import type { IntervalTuple } from './types'
+
 import assert from 'node:assert'
 import crypto from 'node:crypto'
-
-import { Interval } from './Interval'
-import type { IntervalCollection } from './IntervalCollection'
-import { Node } from './Node'
 import { compareIntervals } from './compareIntervals'
-import type { IntervalTuple } from './types'
+import { Interval } from './Interval'
+import { Node } from './Node'
 
 const DEBUG = process.env.NODE_ENV !== 'production'
 

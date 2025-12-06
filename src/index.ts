@@ -1,7 +1,7 @@
-import './polyfills'
+import { compareIntervals } from './compareIntervals'
 import { Interval } from './Interval'
 import { IntervalTree } from './IntervalTree'
-import { compareIntervals } from './compareIntervals'
 import { IntervalTuple } from './types'
+import './polyfills'
 
-export { Interval, IntervalTree, IntervalTuple, compareIntervals }
+export { compareIntervals, Interval, IntervalTree, IntervalTuple }

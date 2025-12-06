@@ -12,7 +12,7 @@ export interface IntervalCollection {
   findOneByLengthStartingAt: (
     minLength: number,
     startingAt: number,
-    filterFn?: (iv: Interval) => boolean
+    filterFn?: (iv: Interval) => boolean,
   ) => Interval | undefined
   toArray: () => Interval[]
   toSorted: () => Interval[]

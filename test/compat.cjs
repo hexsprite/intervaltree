@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 /**
  * Compatibility smoke test for the built dist.
  * Runs against Node 14+ to verify the package works on older runtimes.
