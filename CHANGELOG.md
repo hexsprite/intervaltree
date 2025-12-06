@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- `Interval.toString()` now uses consistent `!== undefined` check for data, matching `toTuple()` behavior. Previously used truthy check which incorrectly omitted falsy values like `0`, `false`, `""`, or `null`.
+
+### Infrastructure
+- Switched from npm to pnpm for faster, stricter dependency management
+- Upgraded all dependencies to latest versions
+- Added ESLint with @antfu/eslint-config
+- Consolidated CI workflows into single `ci.yml`
+- Added `toSorted` polyfill for Node 14 compatibility
+- Converted model-check to vitest test (removed tsx dependency)
+- CI now builds once on Node 20, tests compat on Node 14/16/18/20 matrix
+
+## [1.1.0] - 2025-12-06
+
 ### Added
 
 #### 🎯 TypeScript Generics Support
