@@ -1,1 +1,1 @@
-export type IntervalTuple = [number, number] | [number, number, unknown]
+export type IntervalTuple<T = unknown> = [number, number] | [number, number, T]
