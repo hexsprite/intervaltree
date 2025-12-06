@@ -1,10 +1,14 @@
-name: Tests
+name: CI
 
 on:
   push:
     branches: [master, main]
   pull_request:
     branches: [master, main]
+  schedule:
+    # Run full model check once a day at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
 
 jobs:
   build:
@@ -29,7 +33,35 @@ jobs:
           name: dist
           path: dist/
 
-  # Test the built package against older Node versions
+  model-check:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - run: npm ci
+
+      - name: Run model checking (1000 iterations)
+        run: |
+          echo "Running model-based property testing..."
+          MODEL_CHECK_RUNS=1000 npx tsx src/modelCheck.ts
+        env:
+          NODE_ENV: production
+
+      # Extended model check only on schedule or manual trigger
+      - name: Run extended model checking (5 minutes)
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+        run: |
+          echo "Running extended model-based property testing for 5 minutes..."
+          npx tsx src/modelCheck.ts 300000
+        env:
+          NODE_ENV: production
+
   test-compat:
     needs: build
     runs-on: ubuntu-latest
