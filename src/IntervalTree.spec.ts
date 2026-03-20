@@ -234,6 +234,77 @@ it('chop other intervals', () => {
   ])
 })
 
+it('chopAll removes multiple ranges at once', () => {
+  const tree = IntervalTree.fromTuples([
+    [0, 100],
+  ])
+  tree.chopAll([[10, 20], [30, 40], [50, 60]])
+  expect(tree.toTuples()).toEqual([
+    [0, 10],
+    [20, 30],
+    [40, 50],
+    [60, 100],
+  ])
+})
+
+it('chopAll handles overlapping chop ranges', () => {
+  const tree = IntervalTree.fromTuples([
+    [0, 100],
+  ])
+  tree.chopAll([[10, 30], [20, 40], [50, 60]])
+  expect(tree.toTuples()).toEqual([
+    [0, 10],
+    [40, 50],
+    [60, 100],
+  ])
+})
+
+it('chopAll handles empty ranges', () => {
+  const tree = IntervalTree.fromTuples([
+    [0, 100],
+  ])
+  tree.chopAll([])
+  expect(tree.toTuples()).toEqual([[0, 100]])
+})
+
+it('chopAll handles multiple intervals', () => {
+  const tree = IntervalTree.fromTuples([
+    [0, 50],
+    [60, 100],
+  ])
+  tree.chopAll([[10, 20], [70, 80]])
+  expect(tree.toTuples()).toEqual([
+    [0, 10],
+    [20, 50],
+    [60, 70],
+    [80, 100],
+  ])
+})
+
+it('chopAll equivalent to sequential chops', () => {
+  // Same test case as the existing 'chop other intervals' test
+  const tree1 = IntervalTree.fromTuples([
+    [0, 100],
+    [200, 300],
+    [400, 500],
+  ])
+  const tree2 = IntervalTree.fromTuples([
+    [0, 100],
+    [200, 300],
+    [400, 500],
+  ])
+
+  const ranges: Array<[number, number]> = [[50, 75], [225, 275], [450, 475]]
+
+  // Sequential chops
+  for (const [s, e] of ranges) tree1.chop(s, e)
+
+  // Batch chopAll
+  tree2.chopAll(ranges)
+
+  expect(tree2.toTuples()).toEqual(tree1.toTuples())
+})
+
 it('merges overlapping intervals 2', () => {
   const tree = IntervalTree.fromTuples([
     [1, 5],

@@ -130,6 +130,73 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
     })
   }
 
+  /**
+   * Batch chop: remove multiple ranges from the tree in a single operation.
+   * Much faster than calling chop() N times because it does a single
+   * linear sweep over sorted intervals instead of N tree modifications.
+   *
+   * @param ranges Array of [start, end] pairs to remove
+   */
+  public chopAll(ranges: Array<[number, number]>): void {
+    if (ranges.length === 0 || !this.root) return
+
+    // For small numbers of ranges, individual chops are fine
+    if (ranges.length <= 3) {
+      for (const [start, end] of ranges) {
+        this.chop(start, end)
+      }
+      return
+    }
+
+    // Sort and merge overlapping chop ranges
+    const sorted = ranges.slice().sort((a, b) => a[0] - b[0])
+    const merged: Array<[number, number]> = [sorted[0]]
+    for (let i = 1; i < sorted.length; i++) {
+      const last = merged[merged.length - 1]
+      if (sorted[i][0] <= last[1]) {
+        last[1] = Math.max(last[1], sorted[i][1])
+      }
+      else {
+        merged.push(sorted[i])
+      }
+    }
+
+    // Get all existing intervals sorted
+    const existing = this.toArray().toSorted(compareIntervals)
+
+    // Linear sweep: subtract merged chop ranges from existing intervals
+    const result: Interval<T>[] = []
+    let chopIdx = 0
+
+    for (const iv of existing) {
+      let ivStart = iv.start
+      const ivEnd = iv.end
+
+      while (chopIdx < merged.length && merged[chopIdx][1] <= ivStart) {
+        chopIdx++
+      }
+
+      let ci = chopIdx
+      while (ci < merged.length && merged[ci][0] < ivEnd) {
+        const [cStart, cEnd] = merged[ci]
+        if (ivStart < cStart) {
+          // Keep the part before this chop range
+          result.push(new Interval(ivStart, Math.min(cStart, ivEnd), iv.data))
+        }
+        ivStart = Math.max(ivStart, cEnd)
+        ci++
+      }
+
+      // Keep remaining part after all chops
+      if (ivStart < ivEnd) {
+        result.push(new Interval(ivStart, ivEnd, iv.data))
+      }
+    }
+
+    this.root = result.length > 0 ? Node.fromIntervals(result) : null
+    this.verify()
+  }
+
   public removeEnveloped(start: number, end: number): void {
     if (!this.root)
       return

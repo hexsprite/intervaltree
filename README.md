@@ -154,6 +154,27 @@ console.log(tree.toTuples())
 // The interval [12, 20] becomes [13, 20]
 ```
 
+### Batch Chopping
+
+The `chopAll` method removes multiple ranges in a single operation, much faster than calling `chop()` individually when removing many ranges (e.g., marking calendar events as busy time).
+
+```js
+const tree = new IntervalTree()
+tree.addInterval(0, 100)
+
+// Remove multiple ranges at once
+tree.chopAll([[10, 20], [30, 40], [50, 60]])
+
+console.log(tree.toTuples())
+// Result: [[0, 10], [20, 30], [40, 50], [60, 100]]
+
+// Overlapping chop ranges are merged automatically
+tree.chopAll([[10, 30], [20, 40]])
+// Equivalent to chopping [10, 40]
+```
+
+For small numbers of ranges (≤3), `chopAll` delegates to individual `chop()` calls. For larger batches, it sorts and merges the ranges, then does a single linear sweep — O(n log n) instead of O(n × m) for n ranges on m intervals.
+
 ### Merging Overlapping Intervals
 
 ```js
