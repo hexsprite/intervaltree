@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.0](https://github.com/hexsprite/intervaltree/compare/v1.1.0...v1.2.0) (2026-03-20)
+
+
+### Features
+
+* add chopAll() for batch interval removal ([407a015](https://github.com/hexsprite/intervaltree/commit/407a015a7a49802eb30f82fed815d23cbaac0fc6))
+
 ## [1.1.0](https://github.com/hexsprite/intervaltree/compare/v1.0.0...v1.1.0) (2025-12-06)
 
 
