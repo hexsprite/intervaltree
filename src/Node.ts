@@ -8,6 +8,14 @@ type Direction = 0 | 1 | true | false
 
 // const debug = (...args: any[]) => console.log(...args)
 
+// Shared mutable flags to avoid allocating [boolean] arrays per insert call
+const _rebalancingDone = [false]
+const _updateRequired = [false]
+/** Set to true by insert() when a duplicate was detected and nothing was added */
+export let _insertWasDuplicate = false
+/** Set to true by remove() when the interval was actually found and removed */
+export let _removeSucceeded = false
+
 export class Node<T = unknown> {
   values: Interval<T>[] = []
   start: number
@@ -16,7 +24,8 @@ export class Node<T = unknown> {
   maxEnd = 0
   maxLength = 0
 
-  #branch: [Node<T> | null, Node<T> | null] = [null, null]
+  _left: Node<T> | null = null
+  _right: Node<T> | null = null
 
   constructor(value: Interval<T>) {
     this.values = [value]
@@ -25,49 +34,142 @@ export class Node<T = unknown> {
   }
 
   public get balance() {
-    return (this.right?.height ?? 0) - (this.left?.height ?? 0)
+    return (this._right?.height ?? 0) - (this._left?.height ?? 0)
   }
 
   private get left() {
-    return this.#branch[LEFT]
+    return this._left
   }
 
   private get right() {
-    return this.#branch[RIGHT]
+    return this._right
   }
 
   private set left(node: Node<T> | null) {
-    this.#branch[LEFT] = node
+    this._left = node
   }
 
   private set right(node: Node<T> | null) {
-    this.#branch[RIGHT] = node
+    this._right = node
   }
 
   static fromIntervals<T>(intervals: Interval<T>[]): Node<T> {
     assert(intervals.length > 0, 'Error: intervals must not be empty')
-    const sortedIntervals = intervals.toSorted(compareIntervals)
-    let newNode = new Node(sortedIntervals[0])
-    for (const interval of sortedIntervals.slice(1))
-      newNode = newNode.insert(interval)
+    const sorted = intervals.toSorted(compareIntervals)
+    // Group same-start intervals and dedup, then build balanced tree from groups
+    const groups = Node._groupByStart(sorted)
+    return Node._buildFromGroups(groups, 0, groups.length - 1)
+  }
 
-    return newNode
+  /** Like fromIntervals but skips sorting — caller guarantees sorted, non-overlapping input. */
+  static fromSortedIntervals<T>(sorted: Interval<T>[]): Node<T> {
+    assert(sorted.length > 0, 'Error: intervals must not be empty')
+    // Fast path: sorted non-overlapping intervals have unique starts — skip grouping
+    return Node._buildSimple(sorted, 0, sorted.length - 1)
+  }
+
+  /** Build balanced tree from sorted intervals with unique starts (no grouping needed). */
+  private static _buildSimple<T>(sorted: Interval<T>[], lo: number, hi: number): Node<T> {
+    if (lo === hi) return new Node(sorted[lo])
+    if (lo + 1 === hi) {
+      const node = new Node(sorted[lo])
+      node._right = new Node(sorted[hi])
+      node.height = 2
+      node.updateAttributes()
+      return node
+    }
+    const mid = (lo + hi) >> 1
+    const node = new Node(sorted[mid])
+    node._left = Node._buildSimple(sorted, lo, mid - 1)
+    node._right = Node._buildSimple(sorted, mid + 1, hi)
+    const lh = node._left?.height ?? 0
+    const rh = node._right?.height ?? 0
+    node.height = 1 + (lh > rh ? lh : rh)
+    node.updateAttributes()
+    return node
+  }
+
+  /** Group sorted intervals by start, deduplicating same start+end. */
+  private static _groupByStart<T>(sorted: Interval<T>[]): Array<{ start: number, values: Interval<T>[] }> {
+    const groups: Array<{ start: number, values: Interval<T>[] }> = []
+    let i = 0
+    while (i < sorted.length) {
+      const s = sorted[i].start
+      const values: Interval<T>[] = [sorted[i]]
+      i++
+      while (i < sorted.length && sorted[i].start === s) {
+        // Dedup by end
+        if (!values.some(v => v.end === sorted[i].end))
+          values.push(sorted[i])
+        i++
+      }
+      groups.push({ start: s, values })
+    }
+    return groups
+  }
+
+  /**
+   * Build a balanced AVL tree from pre-grouped intervals in O(n).
+   * Each group has a unique start and 1+ intervals.
+   */
+  private static _buildFromGroups<T>(groups: Array<{ start: number, values: Interval<T>[] }>, lo: number, hi: number): Node<T> {
+    if (lo === hi) {
+      const g = groups[lo]
+      const node = new Node(g.values[0])
+      for (let i = 1; i < g.values.length; i++)
+        node.values.push(g.values[i])
+      node.updateAttributes()
+      return node
+    }
+    if (lo + 1 === hi) {
+      const node = new Node(groups[lo].values[0])
+      for (let i = 1; i < groups[lo].values.length; i++)
+        node.values.push(groups[lo].values[i])
+      const right = new Node(groups[hi].values[0])
+      for (let i = 1; i < groups[hi].values.length; i++)
+        right.values.push(groups[hi].values[i])
+      node._right = right
+      right.updateAttributes()
+      node.height = 2
+      node.updateAttributes()
+      return node
+    }
+
+    const mid = (lo + hi) >> 1
+    const g = groups[mid]
+    const node = new Node(g.values[0])
+    for (let i = 1; i < g.values.length; i++)
+      node.values.push(g.values[i])
+
+    node._left = Node._buildFromGroups(groups, lo, mid - 1)
+    node._right = Node._buildFromGroups(groups, mid + 1, hi)
+
+    const lh = node._left?.height ?? 0
+    const rh = node._right?.height ?? 0
+    node.height = 1 + (lh > rh ? lh : rh)
+    node.updateAttributes()
+    return node
   }
 
   branch(direction: Direction) {
-    return this.#branch[direction ? RIGHT : LEFT]
+    return direction ? this._right : this._left
   }
 
   setBranch(direction: Direction, node: Node<T> | null) {
-    this.#branch[direction ? RIGHT : LEFT] = node
+    if (direction) this._right = node; else this._left = node
   }
 
-  insert(interval: Interval<T>, rebalancingDone: [boolean] = [false], updateRequired: [boolean] = [false]): Node<T> {
+  insert(interval: Interval<T>, rebalancingDone: [boolean] = (_rebalancingDone[0] = false, _insertWasDuplicate = false, _rebalancingDone), updateRequired: [boolean] = (_updateRequired[0] = false, _updateRequired)): Node<T> {
     // if the interval starts at the same point as this node, add it to the values
     if (this.start === interval.start) {
       // don't add a duplicate
-      if (this.values.some(iv => iv.end === interval.end))
-        return this
+      const end = interval.end
+      for (let i = 0; i < this.values.length; i++) {
+        if (this.values[i].end === end) {
+          _insertWasDuplicate = true
+          return this
+        }
+      }
 
       this.values.push(interval)
       // no rebalancing needed because the height of this node doesn't change
@@ -78,19 +180,18 @@ export class Node<T = unknown> {
     }
 
     // search for the correct branch to insert the interval
-    const direction = this.start < interval.start // true = right
-    const branchNode = this.branch(direction)
+    const dir = this.start < interval.start ? RIGHT : LEFT
+    const branchNode = dir === RIGHT ? this._right : this._left
 
     if (branchNode) {
-      this.setBranch(
-        direction,
-        branchNode.insert(interval, rebalancingDone, updateRequired),
-      )
+      const inserted = branchNode.insert(interval, rebalancingDone, updateRequired)
+      if (dir === RIGHT) this._right = inserted; else this._left = inserted
       if (updateRequired[0])
         this.updateAttributes()
     }
     else {
-      this.setBranch(direction, new Node(interval))
+      const newNode = new Node(interval)
+      if (dir === RIGHT) this._right = newNode; else this._left = newNode
       updateRequired[0] = this.updateAttributes()
     }
 
@@ -189,15 +290,19 @@ export class Node<T = unknown> {
     if (point < this.minStart || point > this.maxEnd)
       return
 
-    for (const value of this.values) {
-      if (value.containsPoint(point))
-        result.push(value)
+    for (let i = 0; i < this.values.length; i++) {
+      const v = this.values[i]
+      if (v.start <= point && point < v.end)
+        result.push(v)
     }
-    if (this.left && point >= this.left.minStart)
-      this.left.searchPoint(point, result)
 
-    if (this.right && point <= this.right.maxEnd)
-      this.right.searchPoint(point, result)
+    const left = this._left
+    if (left && point >= left.minStart)
+      left.searchPoint(point, result)
+
+    const right = this._right
+    if (right && point <= right.maxEnd)
+      right.searchPoint(point, result)
   }
 
   // print structure recursively, showing branches with extra spaces
@@ -213,59 +318,83 @@ export class Node<T = unknown> {
       this.right.printStructure(indent + 1, (prefix = '> '))
   }
 
-  public toArray(): Interval<T>[] {
-    let result = [...this.values]
-    if (this.left)
-      result = result.concat(this.left.toArray())
+  public countIntervals(): number {
+    let count = this.values.length
+    const left = this._left
+    const right = this._right
+    if (left) count += left.countIntervals()
+    if (right) count += right.countIntervals()
+    return count
+  }
 
-    if (this.right)
-      result = result.concat(this.right.toArray())
+  /** Return the leftmost (minimum start) node */
+  public min(): Node<T> {
+    const left = this._left
+    return left ? left.min() : this
+  }
 
+  /** Return the rightmost (maximum start) node */
+  public max(): Node<T> {
+    const right = this._right
+    return right ? right.max() : this
+  }
+
+  public toArray(result: Interval<T>[] = []): Interval<T>[] {
+    // In-order traversal: left, self, right — produces sorted output
+    const left = this._left
+    if (left) left.toArray(result)
+    for (let i = 0; i < this.values.length; i++)
+      result.push(this.values[i])
+    const right = this._right
+    if (right) right.toArray(result)
     return result
   }
 
-  public remove(interval: Interval<T>, rebalance: [boolean] = [false]): Node<T> | null {
-    // Navigate the tree to find the correct node
+  public remove(interval: Interval<T>, rebalance: [boolean] = (_removeSucceeded = false, [false])): Node<T> | null {
     // eslint-disable-next-line ts/no-this-alias
     let result: Node<T> = this
 
     if (interval.start < this.start) {
-      this.left = this.left?.remove(interval, rebalance) ?? null
+      const left = this._left
+      this._left = left?.remove(interval, rebalance) ?? null
     }
     else if (interval.start > this.start) {
-      this.right = this.right?.remove(interval, rebalance) ?? null
+      const right = this._right
+      this._right = right?.remove(interval, rebalance) ?? null
     }
     else {
-      // Found the node with the matching start value, now remove the specific interval
-      const index = this.values.findIndex(
-        iv => iv.end === interval.end && iv.data === interval.data,
-      )
-      if (index > -1) {
-        this.values.splice(index, 1) // Remove the interval from this node
+      // Found the node — remove the specific interval
+      const values = this.values
+      for (let i = 0; i < values.length; i++) {
+        if (values[i].end === interval.end && values[i].data === interval.data) {
+          values.splice(i, 1)
+          _removeSucceeded = true
+          break
+        }
+      }
 
-        // If no more intervals are left in the node, handle node pruning
-        if (this.values.length === 0) {
-          rebalance[0] = true
-          if (this.left && this.right) {
-            // if both children are present, find the successor and remove it
-            let successor: Node<T> = this.right
-            while (successor.left)
-              successor = successor.left
+      if (values.length === 0) {
+        rebalance[0] = true
+        const left = this._left
+        const right = this._right
+        if (left && right) {
+          // Find in-order successor
+          let successor: Node<T> = right
+          while (successor._left)
+            successor = successor._left!
 
-            successor = successor.clone()
-            // filter the successor from the right node - possibly inefficient
-            for (const value of successor.values)
-              this.right = this.right?.remove(value, rebalance) ?? null
+          successor = successor.clone()
+          // Remove successor values from right subtree
+          let rightNode: Node<T> | null = right
+          for (const value of successor.values)
+            rightNode = rightNode?.remove(value, rebalance) ?? null
 
-            // replace the current node with the successor
-            successor.left = this.left
-            successor.right = this.right
-            result = successor
-          }
-          else {
-            // if only one child, return that child, otherwise null
-            return this.left ?? this.right ?? null
-          }
+          successor._left = left
+          successor._right = rightNode
+          result = successor
+        }
+        else {
+          return left ?? right ?? null
         }
       }
     }
@@ -278,9 +407,11 @@ export class Node<T = unknown> {
 
   public clone(): Node<T> {
     const node = new Node(this.values[0])
-    node.values = [...this.values]
-    node.left = this.left?.clone() ?? null
-    node.right = this.right?.clone() ?? null
+    node.values = this.values.slice()
+    const left = this._left
+    const right = this._right
+    node._left = left?.clone() ?? null
+    node._right = right?.clone() ?? null
     node.updateAttributes()
     return node
   }
@@ -302,51 +433,29 @@ export class Node<T = unknown> {
     if (this.shouldSkipBranch(minLength, startingAt))
       return
 
-    // Filter `this.sCenter` before finding the minimum to ensure only eligible intervals are considered.
-    const eligibleIntervals = this.values.filter((iv) => {
-      if (iv.end < startingAt)
-        return false // Skip intervals ending before `startingAt`
+    // Find best (earliest start, smallest end) among eligible intervals
+    let best: Interval<T> | undefined
 
-      const adjustedLength = iv.length - Math.max(0, startingAt - iv.start)
-      if (adjustedLength < minLength)
-        return false // Skip intervals shorter than `minLength` after adjustment
+    for (let i = 0; i < this.values.length; i++) {
+      const iv = this.values[i]
+      if (iv.end < startingAt) continue
+      const adjustedLength = iv.end - iv.start - Math.max(0, startingAt - iv.start)
+      if (adjustedLength < minLength) continue
+      if (!filterFn(iv)) continue
+      if (!best || iv.start < best.start || (iv.start === best.start && iv.end < best.end))
+        best = iv
+    }
 
-      return filterFn(iv) // Apply custom filter function if provided
-    })
+    // Check children
+    const leftCandidate = this._left?.findOneByLengthStartingAt(minLength, startingAt, filterFn)
+    if (leftCandidate && (!best || leftCandidate.start < best.start || (leftCandidate.start === best.start && leftCandidate.end < best.end)))
+      best = leftCandidate
 
-    // Include eligible intervals from left and right children, if any
-    const leftCandidate = this.branch(0)?.findOneByLengthStartingAt(
-      minLength,
-      startingAt,
-      filterFn,
-    )
+    const rightCandidate = this._right?.findOneByLengthStartingAt(minLength, startingAt, filterFn)
+    if (rightCandidate && (!best || rightCandidate.start < best.start || (rightCandidate.start === best.start && rightCandidate.end < best.end)))
+      best = rightCandidate
 
-    const rightCandidate = this.branch(1)?.findOneByLengthStartingAt(
-      minLength,
-      startingAt,
-      filterFn,
-    )
-
-    // Add child candidates to the list of eligible intervals
-    if (leftCandidate)
-      eligibleIntervals.push(leftCandidate)
-    if (rightCandidate)
-      eligibleIntervals.push(rightCandidate)
-
-    // Find the interval with the minimum start (and end as a tiebreaker) from the filtered list
-    return eligibleIntervals.reduce(
-      (minInterval: Interval<T> | undefined, currentInterval) => {
-        if (!minInterval)
-          return currentInterval // If first comparison, return current interval
-
-        return currentInterval.start < minInterval.start
-          || (currentInterval.start === minInterval.start
-            && currentInterval.end < minInterval.end)
-          ? currentInterval
-          : minInterval
-      },
-      undefined,
-    ) // Initial value is the first eligible interval
+    return best
   }
 
   public searchByLengthStartingAt(
@@ -354,27 +463,72 @@ export class Node<T = unknown> {
     startingAt: number,
     result: Interval<T>[],
   ) {
-    // Skip this branch if it cannot contain a qualifying interval
-    if (this.shouldSkipBranch(minLength, startingAt))
+    // Skip this entire subtree if it cannot contain a qualifying interval
+    if (this.maxEnd < startingAt || this.maxLength < minLength)
       return result
 
-    // search intervals that start at startingAt
-    this.values.forEach((interval) => {
+    // In-order traversal: left, self, right — produces sorted output
+    const left = this._left
+    if (left && left.maxEnd >= startingAt && left.maxLength >= minLength)
+      left.searchByLengthStartingAt(minLength, startingAt, result)
+
+    for (let i = 0; i < this.values.length; i++) {
+      const interval = this.values[i]
       if (interval.end < startingAt)
-        return
+        continue
       const adjustedLength
-        = interval.length - Math.max(0, startingAt - interval.start)
+        = interval.end - interval.start - Math.max(0, startingAt - interval.start)
       if (adjustedLength >= minLength) {
-        if (interval.start < startingAt)
-          interval = new Interval(startingAt, interval.end)
-
-        result.push(interval)
+        result.push(interval.start < startingAt
+          ? new Interval(startingAt, interval.end)
+          : interval)
       }
-    })
+    }
 
-    this.branch(0)?.searchByLengthStartingAt(minLength, startingAt, result)
-    this.branch(1)?.searchByLengthStartingAt(minLength, startingAt, result)
+    const right = this._right
+    if (right && right.maxEnd >= startingAt && right.maxLength >= minLength)
+      right.searchByLengthStartingAt(minLength, startingAt, result)
     return result
+  }
+
+  /**
+   * Find the first interval (in sorted order) that meets the length and start criteria.
+   * Uses in-order traversal with early termination — O(log n) best case.
+   */
+  public findFirstByLengthStartingAt(
+    minLength: number,
+    startingAt: number,
+  ): Interval<T> | undefined {
+    if (this.maxEnd < startingAt || this.maxLength < minLength)
+      return undefined
+
+    // Check left subtree first (in-order)
+    const left = this._left
+    if (left && left.maxEnd >= startingAt && left.maxLength >= minLength) {
+      const found = left.findFirstByLengthStartingAt(minLength, startingAt)
+      if (found) return found
+    }
+
+    // Check self
+    for (let i = 0; i < this.values.length; i++) {
+      const interval = this.values[i]
+      if (interval.end < startingAt) continue
+      const adjustedLength
+        = interval.end - interval.start - Math.max(0, startingAt - interval.start)
+      if (adjustedLength >= minLength) {
+        return interval.start < startingAt
+          ? new Interval(startingAt, interval.end)
+          : interval
+      }
+    }
+
+    // Check right subtree
+    const right = this._right
+    if (right && right.maxEnd >= startingAt && right.maxLength >= minLength) {
+      return right.findFirstByLengthStartingAt(minLength, startingAt)
+    }
+
+    return undefined
   }
 
   public searchOverlap(
@@ -382,21 +536,23 @@ export class Node<T = unknown> {
     end: number,
     result: Interval<T>[] = [],
   ): Interval<T>[] {
+    // In-order traversal: left, self, right
+    const left = this._left
+    if (left && start <= left.maxEnd)
+      left.searchOverlap(start, end, result)
+
     // Check current node's intervals for overlap
     // Using strict inequalities for half-open interval semantics [start, end)
-    this.values.forEach((interval) => {
-      if (interval.end > start && interval.start < end)
-        result.push(interval)
-    })
-
-    // Traverse left subtree if it might contain overlapping intervals
-    if (this.left && start <= this.left.maxEnd)
-      this.left.searchOverlap(start, end, result)
+    for (let i = 0; i < this.values.length; i++) {
+      const iv = this.values[i]
+      if (iv.end > start && iv.start < end)
+        result.push(iv)
+    }
 
     // Traverse right subtree if it might contain overlapping intervals
-    // Since intervals are keyed on their start value, we check against the start for the right subtree
-    if (this.right && end >= this.right.minStart)
-      this.right.searchOverlap(start, end, result)
+    const right = this._right
+    if (right && end >= right.minStart)
+      right.searchOverlap(start, end, result)
 
     return result
   }
@@ -515,28 +671,46 @@ export class Node<T = unknown> {
     const oldMinStart = this.minStart
     const oldMaxEnd = this.maxEnd
     const oldMaxLength = this.maxLength
-    this.minStart = Math.min(
-      ...this.values.map(iv => iv.start),
-      this.left?.minStart ?? Number.POSITIVE_INFINITY,
-      this.right?.minStart ?? Number.POSITIVE_INFINITY,
-    )
-    this.maxEnd = Math.max(
-      ...this.values.map(iv => iv.end),
-      this.left?.maxEnd ?? Number.NEGATIVE_INFINITY,
-      this.right?.maxEnd ?? Number.NEGATIVE_INFINITY,
-    )
-    this.maxLength = Math.max(
-      ...this.values.map(iv => iv.length),
-      this.left?.maxLength ?? 0,
-      this.right?.maxLength ?? 0,
-    )
-    return oldMinStart !== this.minStart
-      || oldMaxEnd !== this.maxEnd
-      || oldMaxLength !== this.maxLength
+
+    // All values share the same start (tree invariant)
+    // Only need to scan for maxEnd and maxLength
+    let minStart = this.start
+    let maxEnd = this.values[0].end
+    let maxLength = maxEnd - this.start
+    for (let i = 1; i < this.values.length; i++) {
+      const e = this.values[i].end
+      if (e > maxEnd) maxEnd = e
+      const len = e - this.start
+      if (len > maxLength) maxLength = len
+    }
+
+    // Incorporate children
+    const left = this._left
+    const right = this._right
+    if (left) {
+      if (left.minStart < minStart) minStart = left.minStart
+      if (left.maxEnd > maxEnd) maxEnd = left.maxEnd
+      if (left.maxLength > maxLength) maxLength = left.maxLength
+    }
+    if (right) {
+      if (right.minStart < minStart) minStart = right.minStart
+      if (right.maxEnd > maxEnd) maxEnd = right.maxEnd
+      if (right.maxLength > maxLength) maxLength = right.maxLength
+    }
+
+    this.minStart = minStart
+    this.maxEnd = maxEnd
+    this.maxLength = maxLength
+
+    return oldMinStart !== minStart
+      || oldMaxEnd !== maxEnd
+      || oldMaxLength !== maxLength
   }
 
   private updateHeight() {
-    this.height = 1 + Math.max(this.left?.height ?? 0, this.right?.height ?? 0)
+    const lh = this._left?.height ?? 0
+    const rh = this._right?.height ?? 0
+    this.height = 1 + (lh > rh ? lh : rh)
   }
 
   private shouldSkipBranch(minLength: number, startingAt: number) {

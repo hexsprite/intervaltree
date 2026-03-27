@@ -6,20 +6,25 @@ import assert from 'node:assert'
 import crypto from 'node:crypto'
 import { compareIntervals } from './compareIntervals'
 import { Interval } from './Interval'
-import { Node } from './Node'
+import { _insertWasDuplicate, _removeSucceeded, Node } from './Node'
 
 const DEBUG = process.env.NODE_ENV !== 'production'
 
 export class IntervalTree<T = unknown> implements IntervalCollection<T> {
   private root: Node<T> | null = null
+  private _dirty = false
+  private _size = 0
 
   constructor(intervals: Interval<T>[] = []) {
-    if (intervals.length > 0)
+    if (intervals.length > 0) {
       this.root = Node.fromIntervals(intervals)
+      this._dirty = true
+      this._size = this.root.countIntervals()
+    }
   }
 
   public get size(): number {
-    return this.toArray().length
+    return this._size
   }
 
   /**
@@ -29,6 +34,26 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
     return this.root === null
   }
 
+  /**
+   * Returns the interval(s) with the smallest start value, or null if empty.
+   * O(log n) — walks left branch without materializing the full tree.
+   */
+  public first(): Interval<T> | null {
+    if (!this.root) return null
+    const node = this.root.min()
+    return node.values[0] ?? null
+  }
+
+  /**
+   * Returns the interval(s) with the largest start value, or null if empty.
+   * O(log n) — walks right branch without materializing the full tree.
+   */
+  public last(): Interval<T> | null {
+    if (!this.root) return null
+    const node = this.root.max()
+    return node.values[0] ?? null
+  }
+
   static fromTuples<T = unknown>(allIntervals: Array<[number, number] | [number, number, T]>): IntervalTree<T> {
     return new IntervalTree(
       allIntervals.map(([start, end, data]) => new Interval(start, end, data)),
@@ -36,24 +61,30 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
   }
 
   public add(interval: Interval<T>): void {
-    if (!this.root)
+    if (!this.root) {
       this.root = new Node(interval)
-    else
+      this._size = 1
+    }
+    else {
       this.root = this.root.insert(interval)
-
+      if (!_insertWasDuplicate)
+        this._size++
+    }
+    this._dirty = true
     this.verify()
   }
 
   public mergeOverlaps(): void {
-    if (!this.root)
+    if (!this.root || !this._dirty)
       return
 
-    const intervals = this.toArray().toSorted(compareIntervals)
+    // toArray() already returns in-order (sorted by start)
+    const intervals = this.toArray()
 
-    // start with first interval
+    // Merge overlapping intervals in a single pass
     const merged = [intervals[0]]
-
-    for (const current of intervals.slice(1)) {
+    for (let i = 1; i < intervals.length; i++) {
+      const current = intervals[i]
       const last = merged[merged.length - 1]
       if (current.start <= last.end) {
         // Overlap detected, merge current with last
@@ -67,7 +98,9 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
         merged.push(current)
       }
     }
-    this.root = Node.fromIntervals(merged)
+    this.root = Node.fromSortedIntervals(merged)
+    this._size = merged.length
+    this._dirty = false
     this.verify()
   }
 
@@ -108,19 +141,33 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
    */
   public chop(start: number, end: number): void {
     assert(start < end, 'start must be <= end')
-    const insertions: Interval<T>[] = []
-    const startHits = this.searchPoint(start).filter(iv => iv.start < start)
-    const endHits = this.searchPoint(end).filter(iv => iv.end > end)
-    startHits.forEach((iv) => {
-      insertions.push(new Interval(iv.start, start, iv.data))
-    })
-    endHits.forEach((iv) => {
-      insertions.push(new Interval(end, iv.end, iv.data))
-    })
-    this.removeEnveloped(start, end)
-    this.removeAll(startHits)
-    this.removeAll(endHits)
-    this.addAll(insertions)
+    if (!this.root) return
+
+    // Single searchOverlap to find all affected intervals
+    const overlapping = this.root.searchOverlap(start, end)
+    if (overlapping.length === 0) return
+
+    // Chop never creates overlaps — preserve dirty state so mergeOverlaps
+    // doesn't unnecessarily rebuild after every chop
+    const wasDirty = this._dirty
+
+    // Remove all overlapping, then add trimmed flanks
+    for (let i = 0; i < overlapping.length; i++) {
+      this.remove(overlapping[i])
+    }
+    for (let i = 0; i < overlapping.length; i++) {
+      const iv = overlapping[i]
+      if (iv.start < start) {
+        this.add(new Interval(iv.start, start, iv.data))
+      }
+      if (iv.end > end) {
+        this.add(new Interval(end, iv.end, iv.data))
+      }
+    }
+
+    // Restore dirty state — chop only splits intervals, never creates overlaps
+    this._dirty = wasDirty
+
     this.verify()
   }
 
@@ -148,6 +195,9 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
       return
     }
 
+    // Preserve dirty state to choose correct rebuild path
+    const wasDirty = this._dirty
+
     // Sort and merge overlapping chop ranges
     const sorted = ranges.slice().sort((a, b) => a[0] - b[0])
     const merged: Array<[number, number]> = [sorted[0]]
@@ -162,13 +212,15 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
     }
 
     // Get all existing intervals sorted
-    const existing = this.toArray().toSorted(compareIntervals)
+    // toArray() already returns in-order (sorted by start)
+    const existing = this.toArray()
 
     // Linear sweep: subtract merged chop ranges from existing intervals
     const result: Interval<T>[] = []
     let chopIdx = 0
 
-    for (const iv of existing) {
+    for (let ei = 0; ei < existing.length; ei++) {
+      const iv = existing[ei]
       let ivStart = iv.start
       const ivEnd = iv.end
 
@@ -178,22 +230,32 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
 
       let ci = chopIdx
       while (ci < merged.length && merged[ci][0] < ivEnd) {
-        const [cStart, cEnd] = merged[ci]
+        const cStart = merged[ci][0]
+        const cEnd = merged[ci][1]
         if (ivStart < cStart) {
-          // Keep the part before this chop range
-          result.push(new Interval(ivStart, Math.min(cStart, ivEnd), iv.data))
+          result.push(new Interval(ivStart, cStart < ivEnd ? cStart : ivEnd, iv.data))
         }
-        ivStart = Math.max(ivStart, cEnd)
+        ivStart = cEnd > ivStart ? cEnd : ivStart
         ci++
       }
 
-      // Keep remaining part after all chops
       if (ivStart < ivEnd) {
         result.push(new Interval(ivStart, ivEnd, iv.data))
       }
     }
 
-    this.root = result.length > 0 ? Node.fromIntervals(result) : null
+    if (result.length > 0) {
+      // If tree was clean (no overlaps), result is sorted — use fast path.
+      // If dirty (had overlaps), result may be unsorted — use full sort.
+      this.root = wasDirty ? Node.fromIntervals(result) : Node.fromSortedIntervals(result)
+      this._size = wasDirty ? this.root.countIntervals() : result.length
+    }
+    else {
+      this.root = null
+      this._size = 0
+    }
+    // Preserve dirty state — chopAll doesn't merge overlaps
+    this._dirty = wasDirty
     this.verify()
   }
 
@@ -219,6 +281,9 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
     if (!this.root)
       return
     this.root = this.root.remove(interval)
+    if (_removeSucceeded)
+      this._size--
+    this._dirty = true
     this.verify()
   }
 
@@ -291,7 +356,23 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
   public searchByLengthStartingAt(length: number, start: number): Interval<T>[] {
     if (!this.root)
       return []
-    return this.root.searchByLengthStartingAt(length, start, []).toSorted(compareIntervals)
+    // In-order traversal with per-child pruning produces sorted results
+    return this.root.searchByLengthStartingAt(length, start, [])
+  }
+
+  /**
+   * Find the first (earliest start) interval that has at least `minLength`
+   * available starting at or after `startingAt`.
+   * Much faster than searchByLengthStartingAt when only the first result is needed.
+   * O(log n) best case via early termination during in-order traversal.
+   */
+  public findFirstByLengthStartingAt(minLength: number, startingAt: number): Interval<T> | undefined {
+    if (!this.root) return undefined
+    const found = this.root.findFirstByLengthStartingAt(minLength, startingAt)
+    // Adjust start when interval begins before startingAt
+    if (found && found.start < startingAt)
+      return new Interval(startingAt, found.end, found.data)
+    return found
   }
 
   public clone(): IntervalTree<T> {
@@ -299,6 +380,8 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
     if (this.root)
       clone.root = this.root.clone()
 
+    clone._size = this._size
+    clone._dirty = this._dirty
     clone.verify()
     return clone
   }
@@ -321,6 +404,7 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
   }
 
   public toSorted(): Interval<T>[] {
+    // toArray() is in-order by start; sort fully by start then end
     return this.toArray().toSorted(compareIntervals)
   }
 
