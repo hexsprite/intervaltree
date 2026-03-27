@@ -515,24 +515,42 @@ export class Node<T = unknown> {
     const oldMinStart = this.minStart
     const oldMaxEnd = this.maxEnd
     const oldMaxLength = this.maxLength
-    this.minStart = Math.min(
-      ...this.values.map(iv => iv.start),
-      this.left?.minStart ?? Number.POSITIVE_INFINITY,
-      this.right?.minStart ?? Number.POSITIVE_INFINITY,
-    )
-    this.maxEnd = Math.max(
-      ...this.values.map(iv => iv.end),
-      this.left?.maxEnd ?? Number.NEGATIVE_INFINITY,
-      this.right?.maxEnd ?? Number.NEGATIVE_INFINITY,
-    )
-    this.maxLength = Math.max(
-      ...this.values.map(iv => iv.length),
-      this.left?.maxLength ?? 0,
-      this.right?.maxLength ?? 0,
-    )
-    return oldMinStart !== this.minStart
-      || oldMaxEnd !== this.maxEnd
-      || oldMaxLength !== this.maxLength
+
+    // Compute from values array without allocating intermediate arrays
+    let minStart = this.values[0].start
+    let maxEnd = this.values[0].end
+    let maxLength = this.values[0].end - this.values[0].start
+    for (let i = 1; i < this.values.length; i++) {
+      const iv = this.values[i]
+      const s = iv.start
+      const e = iv.end
+      if (s < minStart) minStart = s
+      if (e > maxEnd) maxEnd = e
+      const len = e - s
+      if (len > maxLength) maxLength = len
+    }
+
+    // Incorporate children
+    const left = this.#branch[LEFT]
+    const right = this.#branch[RIGHT]
+    if (left) {
+      if (left.minStart < minStart) minStart = left.minStart
+      if (left.maxEnd > maxEnd) maxEnd = left.maxEnd
+      if (left.maxLength > maxLength) maxLength = left.maxLength
+    }
+    if (right) {
+      if (right.minStart < minStart) minStart = right.minStart
+      if (right.maxEnd > maxEnd) maxEnd = right.maxEnd
+      if (right.maxLength > maxLength) maxLength = right.maxLength
+    }
+
+    this.minStart = minStart
+    this.maxEnd = maxEnd
+    this.maxLength = maxLength
+
+    return oldMinStart !== minStart
+      || oldMaxEnd !== maxEnd
+      || oldMaxLength !== maxLength
   }
 
   private updateHeight() {
