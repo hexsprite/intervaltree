@@ -344,8 +344,8 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
   }
 
   public toSorted(): Interval<T>[] {
-    // toArray() does in-order traversal, already sorted by start then end
-    return this.toArray()
+    // toArray() is in-order by start; sort fully by start then end
+    return this.toArray().toSorted(compareIntervals)
   }
 
   public toTuples(): IntervalTuple<T>[] {

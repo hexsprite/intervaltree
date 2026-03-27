@@ -81,19 +81,28 @@ export class Node<T = unknown> {
     }
     const mid = (lo + hi) >> 1
     const node = new Node(sorted[mid])
+    const midStart = sorted[mid].start
 
     // Group intervals with the same start into this node, skipping duplicates
+    // Expand forwards
     let groupEnd = mid + 1
-    while (groupEnd <= hi && sorted[groupEnd].start === sorted[mid].start) {
+    while (groupEnd <= hi && sorted[groupEnd].start === midStart) {
       const iv = sorted[groupEnd]
-      // Skip duplicates (same end as an existing value)
       if (!node.values.some(v => v.end === iv.end))
         node.values.push(iv)
       groupEnd++
     }
+    // Expand backwards
+    let groupStart = mid - 1
+    while (groupStart >= lo && sorted[groupStart].start === midStart) {
+      const iv = sorted[groupStart]
+      if (!node.values.some(v => v.end === iv.end))
+        node.values.push(iv)
+      groupStart--
+    }
 
-    if (lo < mid) {
-      node.setBranch(LEFT as any, Node._buildBalanced(sorted, lo, mid - 1))
+    if (groupStart >= lo) {
+      node.setBranch(LEFT as any, Node._buildBalanced(sorted, lo, groupStart))
     }
     if (groupEnd <= hi) {
       node.setBranch(RIGHT as any, Node._buildBalanced(sorted, groupEnd, hi))
