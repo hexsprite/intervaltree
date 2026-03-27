@@ -47,11 +47,59 @@ export class Node<T = unknown> {
   static fromIntervals<T>(intervals: Interval<T>[]): Node<T> {
     assert(intervals.length > 0, 'Error: intervals must not be empty')
     const sortedIntervals = intervals.toSorted(compareIntervals)
-    let newNode = new Node(sortedIntervals[0])
-    for (const interval of sortedIntervals.slice(1))
-      newNode = newNode.insert(interval)
+    return Node._buildBalanced(sortedIntervals, 0, sortedIntervals.length - 1)
+  }
 
-    return newNode
+  /**
+   * Build a balanced AVL tree from a sorted array in O(n).
+   * Recursively splits at midpoint, creating a balanced structure directly.
+   */
+  private static _buildBalanced<T>(sorted: Interval<T>[], lo: number, hi: number): Node<T> {
+    if (lo === hi) {
+      const node = new Node(sorted[lo])
+      // height is already 1 from constructor
+      return node
+    }
+    if (lo + 1 === hi) {
+      const node = new Node(sorted[lo])
+      // If same start, group into same node (skip if duplicate end)
+      if (sorted[hi].start === sorted[lo].start) {
+        if (!node.values.some(v => v.end === sorted[hi].end))
+          node.values.push(sorted[hi])
+        node.updateAttributes()
+        return node
+      }
+      const right = new Node(sorted[hi])
+      node.setBranch(RIGHT as any, right)
+      node.height = 2
+      node.updateAttributes()
+      return node
+    }
+    const mid = (lo + hi) >> 1
+    const node = new Node(sorted[mid])
+
+    // Group intervals with the same start into this node, skipping duplicates
+    let groupEnd = mid + 1
+    while (groupEnd <= hi && sorted[groupEnd].start === sorted[mid].start) {
+      const iv = sorted[groupEnd]
+      // Skip duplicates (same end as an existing value)
+      if (!node.values.some(v => v.end === iv.end))
+        node.values.push(iv)
+      groupEnd++
+    }
+
+    if (lo < mid) {
+      node.setBranch(LEFT as any, Node._buildBalanced(sorted, lo, mid - 1))
+    }
+    if (groupEnd <= hi) {
+      node.setBranch(RIGHT as any, Node._buildBalanced(sorted, groupEnd, hi))
+    }
+
+    const leftH = node.branch(LEFT as any)?.height ?? 0
+    const rightH = node.branch(RIGHT as any)?.height ?? 0
+    node.height = 1 + Math.max(leftH, rightH)
+    node.updateAttributes()
+    return node
   }
 
   branch(direction: Direction) {
