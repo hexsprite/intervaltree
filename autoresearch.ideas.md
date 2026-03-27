@@ -1,26 +1,29 @@
 # Autoresearch Ideas
 
-## Exhausted — at V8 JIT floor
+## Status: 253x improvement (1,146ms → 4.52ms), 55 experiments
 
-After 45 experiments, we've reached 97x faster than baseline (1,146ms → 11.81ms). The last 10+ experiments have all been noise-level or regressions. The schedule loop runs at ~28μs per hit (~120ns per node visit), which is at V8's JIT floor for pointer-chasing tree workloads.
+Practical optimization limit reached. Schedule loop runs at ~7μs per hit on ~250 nodes. 
+Init phase at ~2.2ms for chopAll of 1000+101 ranges. Both are near V8's JIT floor.
 
-### Confirmed dead ends (don't retry)
+## All confirmed dead ends (don't retry)
 - Removing/guarding assert in Interval constructor
-- Replacing #private with readonly public on Interval (V8 prefers private+getters)
+- Replacing #private with readonly public on Interval (confirmed 2x)
 - Insertion sort vs V8 Timsort
 - Fast-path/single-overlap chop
-- Eliminating intermediate arrays in chop
+- Eliminating intermediate arrays in chop (confirmed 2x)
 - Rotation method optimization (too infrequent)
 - _buildBalanced dedup optimization
-- chopKnownInterval / findFirstRaw
-- In-place replaceInterval (correctness issues)
-- Shared scratch arrays for remove
+- chopKnownInterval / findFirstRaw (within noise)
+- In-place replaceInterval/replaceValue (correctness issues, tried 4x)
+- Shared scratch arrays for remove (confirmed 2x at different scales)
 - Swap-pop vs splice in remove
 - Inline constructor attributes
 - Derive maxLength from maxEnd
 - searchOverlap early termination
+- Sort chopAll ranges in-place (API-breaking mutation)
+- Skip updateAttributes in Node constructor (V8 deopt)
+- Avoid deep clone in remove successor (successor is usually leaf, clone is cheap)
 
-### Theoretically possible but impractical
-- **Flat array-based tree**: Would improve cache locality but requires complete rewrite.
-- **WASM/Rust**: FFI overhead would eat gains at this workload size. Only viable for 10K+ intervals.
-- **Node pooling**: Minimal GC pressure at this scale.
+## Only theoretical paths remaining
+- **Flat array-based tree**: Cache-friendly layout. Complete rewrite.
+- **WASM/Rust**: FFI overhead negates gains at this scale.
