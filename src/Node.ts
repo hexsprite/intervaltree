@@ -12,9 +12,12 @@ type Direction = 0 | 1 | true | false
 const _rebalancingDone = [false]
 const _updateRequired = [false]
 /** Set to true by insert() when a duplicate was detected and nothing was added */
-export let _insertWasDuplicate = false
-/** Set to true by remove() when the interval was actually found and removed */
-export let _removeSucceeded = false
+export const _flags = {
+  /** Set to true by insert() when a duplicate was detected and nothing was added */
+  insertWasDuplicate: false,
+  /** Set to true by remove() when the interval was actually found and removed */
+  removeSucceeded: false,
+}
 
 export class Node<T = unknown> {
   values: Interval<T>[] = []
@@ -70,7 +73,8 @@ export class Node<T = unknown> {
 
   /** Build balanced tree from sorted intervals with unique starts (no grouping needed). */
   private static _buildSimple<T>(sorted: Interval<T>[], lo: number, hi: number): Node<T> {
-    if (lo === hi) return new Node(sorted[lo])
+    if (lo === hi)
+      return new Node(sorted[lo])
     if (lo + 1 === hi) {
       const node = new Node(sorted[lo])
       node._right = new Node(sorted[hi])
@@ -156,17 +160,19 @@ export class Node<T = unknown> {
   }
 
   setBranch(direction: Direction, node: Node<T> | null) {
-    if (direction) this._right = node; else this._left = node
+    if (direction)
+      this._right = node
+    else this._left = node
   }
 
-  insert(interval: Interval<T>, rebalancingDone: [boolean] = (_rebalancingDone[0] = false, _insertWasDuplicate = false, _rebalancingDone), updateRequired: [boolean] = (_updateRequired[0] = false, _updateRequired)): Node<T> {
+  insert(interval: Interval<T>, rebalancingDone: [boolean] = (_rebalancingDone[0] = false, _flags.insertWasDuplicate = false, _rebalancingDone), updateRequired: [boolean] = (_updateRequired[0] = false, _updateRequired)): Node<T> {
     // if the interval starts at the same point as this node, add it to the values
     if (this.start === interval.start) {
       // don't add a duplicate
       const end = interval.end
       for (let i = 0; i < this.values.length; i++) {
         if (this.values[i].end === end) {
-          _insertWasDuplicate = true
+          _flags.insertWasDuplicate = true
           return this
         }
       }
@@ -185,13 +191,17 @@ export class Node<T = unknown> {
 
     if (branchNode) {
       const inserted = branchNode.insert(interval, rebalancingDone, updateRequired)
-      if (dir === RIGHT) this._right = inserted; else this._left = inserted
+      if (dir === RIGHT)
+        this._right = inserted
+      else this._left = inserted
       if (updateRequired[0])
         this.updateAttributes()
     }
     else {
       const newNode = new Node(interval)
-      if (dir === RIGHT) this._right = newNode; else this._left = newNode
+      if (dir === RIGHT)
+        this._right = newNode
+      else this._left = newNode
       updateRequired[0] = this.updateAttributes()
     }
 
@@ -322,8 +332,10 @@ export class Node<T = unknown> {
     let count = this.values.length
     const left = this._left
     const right = this._right
-    if (left) count += left.countIntervals()
-    if (right) count += right.countIntervals()
+    if (left)
+      count += left.countIntervals()
+    if (right)
+      count += right.countIntervals()
     return count
   }
 
@@ -342,15 +354,17 @@ export class Node<T = unknown> {
   public toArray(result: Interval<T>[] = []): Interval<T>[] {
     // In-order traversal: left, self, right — produces sorted output
     const left = this._left
-    if (left) left.toArray(result)
+    if (left)
+      left.toArray(result)
     for (let i = 0; i < this.values.length; i++)
       result.push(this.values[i])
     const right = this._right
-    if (right) right.toArray(result)
+    if (right)
+      right.toArray(result)
     return result
   }
 
-  public remove(interval: Interval<T>, rebalance: [boolean] = (_removeSucceeded = false, [false])): Node<T> | null {
+  public remove(interval: Interval<T>, rebalance: [boolean] = (_flags.removeSucceeded = false, [false])): Node<T> | null {
     // eslint-disable-next-line ts/no-this-alias
     let result: Node<T> = this
 
@@ -368,7 +382,7 @@ export class Node<T = unknown> {
       for (let i = 0; i < values.length; i++) {
         if (values[i].end === interval.end && values[i].data === interval.data) {
           values.splice(i, 1)
-          _removeSucceeded = true
+          _flags.removeSucceeded = true
           break
         }
       }
@@ -438,10 +452,13 @@ export class Node<T = unknown> {
 
     for (let i = 0; i < this.values.length; i++) {
       const iv = this.values[i]
-      if (iv.end < startingAt) continue
+      if (iv.end < startingAt)
+        continue
       const adjustedLength = iv.end - iv.start - Math.max(0, startingAt - iv.start)
-      if (adjustedLength < minLength) continue
-      if (!filterFn(iv)) continue
+      if (adjustedLength < minLength)
+        continue
+      if (!filterFn(iv))
+        continue
       if (!best || iv.start < best.start || (iv.start === best.start && iv.end < best.end))
         best = iv
     }
@@ -506,13 +523,15 @@ export class Node<T = unknown> {
     const left = this._left
     if (left && left.maxEnd >= startingAt && left.maxLength >= minLength) {
       const found = left.findFirstByLengthStartingAt(minLength, startingAt)
-      if (found) return found
+      if (found)
+        return found
     }
 
     // Check self
     for (let i = 0; i < this.values.length; i++) {
       const interval = this.values[i]
-      if (interval.end < startingAt) continue
+      if (interval.end < startingAt)
+        continue
       const adjustedLength
         = interval.end - interval.start - Math.max(0, startingAt - interval.start)
       if (adjustedLength >= minLength) {
@@ -679,23 +698,31 @@ export class Node<T = unknown> {
     let maxLength = maxEnd - this.start
     for (let i = 1; i < this.values.length; i++) {
       const e = this.values[i].end
-      if (e > maxEnd) maxEnd = e
+      if (e > maxEnd)
+        maxEnd = e
       const len = e - this.start
-      if (len > maxLength) maxLength = len
+      if (len > maxLength)
+        maxLength = len
     }
 
     // Incorporate children
     const left = this._left
     const right = this._right
     if (left) {
-      if (left.minStart < minStart) minStart = left.minStart
-      if (left.maxEnd > maxEnd) maxEnd = left.maxEnd
-      if (left.maxLength > maxLength) maxLength = left.maxLength
+      if (left.minStart < minStart)
+        minStart = left.minStart
+      if (left.maxEnd > maxEnd)
+        maxEnd = left.maxEnd
+      if (left.maxLength > maxLength)
+        maxLength = left.maxLength
     }
     if (right) {
-      if (right.minStart < minStart) minStart = right.minStart
-      if (right.maxEnd > maxEnd) maxEnd = right.maxEnd
-      if (right.maxLength > maxLength) maxLength = right.maxLength
+      if (right.minStart < minStart)
+        minStart = right.minStart
+      if (right.maxEnd > maxEnd)
+        maxEnd = right.maxEnd
+      if (right.maxLength > maxLength)
+        maxLength = right.maxLength
     }
 
     this.minStart = minStart

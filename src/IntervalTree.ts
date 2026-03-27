@@ -6,7 +6,7 @@ import assert from 'node:assert'
 import crypto from 'node:crypto'
 import { compareIntervals } from './compareIntervals'
 import { Interval } from './Interval'
-import { _insertWasDuplicate, _removeSucceeded, Node } from './Node'
+import { _flags, Node } from './Node'
 
 const DEBUG = process.env.NODE_ENV !== 'production'
 
@@ -39,7 +39,8 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
    * O(log n) — walks left branch without materializing the full tree.
    */
   public first(): Interval<T> | null {
-    if (!this.root) return null
+    if (!this.root)
+      return null
     const node = this.root.min()
     return node.values[0] ?? null
   }
@@ -49,7 +50,8 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
    * O(log n) — walks right branch without materializing the full tree.
    */
   public last(): Interval<T> | null {
-    if (!this.root) return null
+    if (!this.root)
+      return null
     const node = this.root.max()
     return node.values[0] ?? null
   }
@@ -67,7 +69,7 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
     }
     else {
       this.root = this.root.insert(interval)
-      if (!_insertWasDuplicate)
+      if (!_flags.insertWasDuplicate)
         this._size++
     }
     this._dirty = true
@@ -141,11 +143,13 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
    */
   public chop(start: number, end: number): void {
     assert(start < end, 'start must be <= end')
-    if (!this.root) return
+    if (!this.root)
+      return
 
     // Single searchOverlap to find all affected intervals
     const overlapping = this.root.searchOverlap(start, end)
-    if (overlapping.length === 0) return
+    if (overlapping.length === 0)
+      return
 
     // Chop never creates overlaps — preserve dirty state so mergeOverlaps
     // doesn't unnecessarily rebuild after every chop
@@ -185,7 +189,8 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
    * @param ranges Array of [start, end] pairs to remove
    */
   public chopAll(ranges: Array<[number, number]>): void {
-    if (ranges.length === 0 || !this.root) return
+    if (ranges.length === 0 || !this.root)
+      return
 
     // For small numbers of ranges, individual chops are fine
     if (ranges.length <= 3) {
@@ -281,7 +286,7 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
     if (!this.root)
       return
     this.root = this.root.remove(interval)
-    if (_removeSucceeded)
+    if (_flags.removeSucceeded)
       this._size--
     this._dirty = true
     this.verify()
@@ -367,7 +372,8 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
    * O(log n) best case via early termination during in-order traversal.
    */
   public findFirstByLengthStartingAt(minLength: number, startingAt: number): Interval<T> | undefined {
-    if (!this.root) return undefined
+    if (!this.root)
+      return undefined
     const found = this.root.findFirstByLengthStartingAt(minLength, startingAt)
     // Adjust start when interval begins before startingAt
     if (found && found.start < startingAt)
