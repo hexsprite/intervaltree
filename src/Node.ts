@@ -241,15 +241,19 @@ export class Node<T = unknown> {
     if (point < this.minStart || point > this.maxEnd)
       return
 
-    for (const value of this.values) {
-      if (value.containsPoint(point))
-        result.push(value)
+    for (let i = 0; i < this.values.length; i++) {
+      const v = this.values[i]
+      if (v.start <= point && point < v.end)
+        result.push(v)
     }
-    if (this.left && point >= this.left.minStart)
-      this.left.searchPoint(point, result)
 
-    if (this.right && point <= this.right.maxEnd)
-      this.right.searchPoint(point, result)
+    const left = this.#branch[LEFT]
+    if (left && point >= left.minStart)
+      left.searchPoint(point, result)
+
+    const right = this.#branch[RIGHT]
+    if (right && point <= right.maxEnd)
+      right.searchPoint(point, result)
   }
 
   // print structure recursively, showing branches with extra spaces
@@ -410,21 +414,23 @@ export class Node<T = unknown> {
       return result
 
     // search intervals that start at startingAt
-    this.values.forEach((interval) => {
+    for (let i = 0; i < this.values.length; i++) {
+      const interval = this.values[i]
       if (interval.end < startingAt)
-        return
+        continue
       const adjustedLength
-        = interval.length - Math.max(0, startingAt - interval.start)
+        = interval.end - interval.start - Math.max(0, startingAt - interval.start)
       if (adjustedLength >= minLength) {
-        if (interval.start < startingAt)
-          interval = new Interval(startingAt, interval.end)
-
-        result.push(interval)
+        result.push(interval.start < startingAt
+          ? new Interval(startingAt, interval.end)
+          : interval)
       }
-    })
+    }
 
-    this.branch(0)?.searchByLengthStartingAt(minLength, startingAt, result)
-    this.branch(1)?.searchByLengthStartingAt(minLength, startingAt, result)
+    const left = this.#branch[LEFT]
+    const right = this.#branch[RIGHT]
+    if (left) left.searchByLengthStartingAt(minLength, startingAt, result)
+    if (right) right.searchByLengthStartingAt(minLength, startingAt, result)
     return result
   }
 
@@ -435,19 +441,21 @@ export class Node<T = unknown> {
   ): Interval<T>[] {
     // Check current node's intervals for overlap
     // Using strict inequalities for half-open interval semantics [start, end)
-    this.values.forEach((interval) => {
-      if (interval.end > start && interval.start < end)
-        result.push(interval)
-    })
+    for (let i = 0; i < this.values.length; i++) {
+      const iv = this.values[i]
+      if (iv.end > start && iv.start < end)
+        result.push(iv)
+    }
 
     // Traverse left subtree if it might contain overlapping intervals
-    if (this.left && start <= this.left.maxEnd)
-      this.left.searchOverlap(start, end, result)
+    const left = this.#branch[LEFT]
+    if (left && start <= left.maxEnd)
+      left.searchOverlap(start, end, result)
 
     // Traverse right subtree if it might contain overlapping intervals
-    // Since intervals are keyed on their start value, we check against the start for the right subtree
-    if (this.right && end >= this.right.minStart)
-      this.right.searchOverlap(start, end, result)
+    const right = this.#branch[RIGHT]
+    if (right && end >= right.minStart)
+      right.searchOverlap(start, end, result)
 
     return result
   }
