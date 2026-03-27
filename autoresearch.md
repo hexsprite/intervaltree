@@ -44,4 +44,8 @@ Optimize the IntervalTree library for Focuster's scheduling workload. The schedu
 - **BUG FIX**: searchByLengthStartingAt traversal is NOT in-order (due to shouldSkipBranch pruning) — sort is required. Previous 15ms result was incorrect (unsorted results).
 - **Restored sort in searchByLengthStartingAt**: in-order traversal doesn't work with shouldSkipBranch pruning — sort required for correctness.
 - **Property-based tests**: Found bugs in ArrayIntervalCollection (searchByLengthStartingAt wrong formula, mergeOverlaps was no-op). Added 4 new model check commands.
-- **Current**: 18.10ms (63x faster than 1146ms baseline). All 87 unit tests + 200 property-based model check runs pass.
+- **In-order searchByLengthStartingAt with per-child pruning**: eliminates sort, 5.6% faster.
+- **In-order searchOverlap**: same pattern, 4.5% faster.
+- **findFirstByLengthStartingAt**: new API with early termination for when only first result needed. O(log n) best case.
+- **clone() optimization**: slice() instead of spread, direct #branch.
+- **Current**: 15.18ms (75x faster than 1146ms baseline). 87 unit tests + 200 property-based model check runs pass.
