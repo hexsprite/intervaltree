@@ -31,4 +31,15 @@ Optimize the IntervalTree library for Focuster's scheduling workload. The schedu
 - NODE_ENV=production disables debug verification
 
 ## What's Been Tried
-(Baseline pending — first run)
+- **updateAttributes() spread+map → for-loops**: 1146→222ms (5.2x) — biggest single win. The Math.min/max with spread was allocating arrays on every insert/rotate.
+- **toArray() concat chains → single result array**: 222→182ms — pass result array through recursion instead of creating intermediate arrays.
+- **Dirty flag for mergeOverlaps()**: 182→58ms (3.2x) — skip rebuild when tree unchanged since last merge. Constructor must set dirty=true.
+- **O(n) balanced bulk build**: 58→31ms (1.8x) — recursive midpoint split instead of O(n log n) sequential inserts. Must handle same-start grouping bidirectionally + dedup.
+- **Simplified chop()**: 31→30ms — single searchOverlap instead of 2x searchPoint + removeEnveloped.
+- **Shared insert() flag arrays**: 30→28ms — module-level scratch [boolean] arrays instead of per-call allocation.
+- **For-loops + direct #branch access in search methods**: 28→27ms — converted forEach to for-loops, inline length calc.
+- **In-order toArray traversal + skip redundant sorts**: 27→22ms — toArray now does left→self→right, eliminating toSorted() in mergeOverlaps/chopAll.
+- **DEAD END**: Removing assert from Interval constructor — no measurable difference.
+- **DEAD END**: Replacing #private fields with readonly public — actually slower.
+- **BUG FIX**: searchByLengthStartingAt traversal is NOT in-order (due to shouldSkipBranch pruning) — sort is required. Previous 15ms result was incorrect (unsorted results).
+- **Current**: 22.37ms (51.3x faster than 1146ms baseline)

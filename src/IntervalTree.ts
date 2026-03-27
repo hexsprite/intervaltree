@@ -314,7 +314,8 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
   public searchByLengthStartingAt(length: number, start: number): Interval<T>[] {
     if (!this.root)
       return []
-    return this.root.searchByLengthStartingAt(length, start, []).toSorted(compareIntervals)
+    // In-order traversal produces sorted results
+    return this.root.searchByLengthStartingAt(length, start, [])
   }
 
   public clone(): IntervalTree<T> {

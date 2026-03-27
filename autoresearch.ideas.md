@@ -1,42 +1,30 @@
 # Autoresearch Ideas
 
-## New Operations for Focuster
+## Done ✓
+- ~~updateAttributes() spread+map → for-loops~~
+- ~~fromIntervals() O(n) bulk build~~
+- ~~toArray() single result array~~
+- ~~dirty flag for mergeOverlaps()~~
+- ~~chop() simplification~~
+- ~~insert() shared flag arrays~~
+- ~~search methods for-loops + direct #branch~~
+- ~~in-order toArray + skip redundant sorts~~
 
-### 1. `chopAll(ranges)` — batch chop (ALREADY EXISTS but could be used more in Focuster)
-Focuster calls `chop()` in a loop ~100+ times during `initialize()` (one per busy event) and again during `markWorkHours()`. The library already has `chopAll()` which does a single linear sweep for >3 ranges. **Focuster should use this instead of individual chops.**
+## Dead Ends
+- Removing assert from Interval constructor — no effect
+- Replacing #private fields with readonly public — actually slower
+- Making searchByLengthStartingAt in-order — can't due to shouldSkipBranch pruning
 
-### 2. `min()` / `max()` / `first()` / `last()` — O(log n) extremes
-Focuster does `tree.toSorted()[0]` to get the earliest interval and `tree.toArray()[tree.size - 1]` to get the latest. Both are O(n) — they flatten the entire tree to get one element. With an AVL/RB tree we can walk left/right to get min/max in O(log n).
+## Remaining Ideas
 
-### 3. `size` as a maintained count instead of `toArray().length`
-`tree.size` currently calls `toArray().length` which is O(n) every time. Should maintain a running count on insert/remove. Focuster calls `.size` and `.isEmpty` frequently.
+### Performance (schedule loop is 66% of time now)
+- **Avoid toSorted in searchByLengthStartingAt**: Currently does full sort after collecting results. Could sort values within each node at insert time so traversal yields sorted output, or use insertion sort since results are nearly sorted.
+- **size as O(1) counter**: Currently O(n) via toArray().length. Not in benchmark hot path but used by Focuster.
+- **first()/last() O(log n)**: Walk left/right instead of toSorted()[0] or toArray()[size-1]. Not in benchmark but used by Focuster.
 
-### 4. `chopAllSorted(sortedRanges)` — skip the sort for pre-sorted input
-When Focuster inverts work hours, the non-work intervals are already sorted. A variant that skips the internal sort would save time.
+### Init phase (34% of time now)
+- **Use chopAll for batch event chopping**: Init chops 1000 events one by one. chopAll does a single linear sweep for >3 ranges. Should use it in bench and suggest for Focuster.
 
-### 5. `difference(other)` as a primitive — currently does N individual chops
-`tree.difference(other)` iterates other.toArray() and calls chop() for each. Could be done as a single merge-sweep like chopAll.
-
-## Performance Optimizations
-
-### Node.ts hot paths
-- `updateAttributes()` uses `Math.min(...this.values.map())` and `Math.max(...)` with spread — creates arrays + spreads on every call. Should use simple loops.
-- `searchPoint()` could be tighter — avoid array allocation for `values` iteration
-- `fromIntervals()` does sorted insert one-by-one — could do a balanced bulk build in O(n) instead of O(n log n)
-- `toArray()` creates many intermediate arrays via concat — could use a single flat walk
-- `insert()` allocates `[boolean]` arrays for rebalancingDone/updateRequired on every call
-
-### IntervalTree.ts hot paths
-- `mergeOverlaps()` rebuilds entire tree from scratch — could merge in-place
-- `chop()` does searchPoint twice + removeEnveloped + removeAll + addAll — lots of tree ops per chop
-- `removeEnveloped()` does searchEnvelop (which does searchOverlap + filter) then removeAll (N individual removes)
-- `size` getter does `toArray().length` — O(n) every time, should cache
-
-### Interval.ts
-- Uses `assert()` in constructor — even in production mode this is imported. The import itself may have cost.
-- Private fields with `#` (true private) may be slower than underscore-prefixed in some engines
-
-### Structural changes
-- Consider storing intervals in a flat typed array (Float64Array) instead of object nodes for cache locality
-- The AVL tree uses object-based nodes with pointers — a van Emde Boas layout or implicit array could improve cache performance
-- `mergeOverlaps()` before every `searchByLengthStartingAt()` is wasteful if tree hasn't changed — add a dirty flag
+### Structural
+- **Flatten node values array**: Most nodes have exactly 1 value. Store single interval directly, only use array for multi-value nodes.
+- **Avoid Interval object allocation in chop**: chop creates new Interval objects for trimmed flanks. Could use inline start/end pairs.

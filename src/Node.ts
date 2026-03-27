@@ -419,11 +419,14 @@ export class Node<T = unknown> {
     startingAt: number,
     result: Interval<T>[],
   ) {
-    // Skip this branch if it cannot contain a qualifying interval
+    // Skip this entire subtree if it cannot contain a qualifying interval
     if (this.shouldSkipBranch(minLength, startingAt))
       return result
 
-    // search intervals that start at startingAt
+    // In-order traversal: left, self, right — produces sorted output
+    const left = this.#branch[LEFT]
+    if (left) left.searchByLengthStartingAt(minLength, startingAt, result)
+
     for (let i = 0; i < this.values.length; i++) {
       const interval = this.values[i]
       if (interval.end < startingAt)
@@ -437,9 +440,7 @@ export class Node<T = unknown> {
       }
     }
 
-    const left = this.#branch[LEFT]
     const right = this.#branch[RIGHT]
-    if (left) left.searchByLengthStartingAt(minLength, startingAt, result)
     if (right) right.searchByLengthStartingAt(minLength, startingAt, result)
     return result
   }
