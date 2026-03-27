@@ -216,7 +216,8 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
     const result: Interval<T>[] = []
     let chopIdx = 0
 
-    for (const iv of existing) {
+    for (let ei = 0; ei < existing.length; ei++) {
+      const iv = existing[ei]
       let ivStart = iv.start
       const ivEnd = iv.end
 
@@ -226,16 +227,15 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
 
       let ci = chopIdx
       while (ci < merged.length && merged[ci][0] < ivEnd) {
-        const [cStart, cEnd] = merged[ci]
+        const cStart = merged[ci][0]
+        const cEnd = merged[ci][1]
         if (ivStart < cStart) {
-          // Keep the part before this chop range
-          result.push(new Interval(ivStart, Math.min(cStart, ivEnd), iv.data))
+          result.push(new Interval(ivStart, cStart < ivEnd ? cStart : ivEnd, iv.data))
         }
-        ivStart = Math.max(ivStart, cEnd)
+        ivStart = cEnd > ivStart ? cEnd : ivStart
         ci++
       }
 
-      // Keep remaining part after all chops
       if (ivStart < ivEnd) {
         result.push(new Interval(ivStart, ivEnd, iv.data))
       }
