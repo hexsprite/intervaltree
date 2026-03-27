@@ -669,17 +669,15 @@ export class Node<T = unknown> {
     const oldMaxEnd = this.maxEnd
     const oldMaxLength = this.maxLength
 
-    // Compute from values array without allocating intermediate arrays
-    let minStart = this.values[0].start
+    // All values share the same start (tree invariant)
+    // Only need to scan for maxEnd and maxLength
+    let minStart = this.start
     let maxEnd = this.values[0].end
-    let maxLength = this.values[0].end - this.values[0].start
+    let maxLength = maxEnd - this.start
     for (let i = 1; i < this.values.length; i++) {
-      const iv = this.values[i]
-      const s = iv.start
-      const e = iv.end
-      if (s < minStart) minStart = s
+      const e = this.values[i].end
       if (e > maxEnd) maxEnd = e
-      const len = e - s
+      const len = e - this.start
       if (len > maxLength) maxLength = len
     }
 
