@@ -65,5 +65,7 @@ Optimize the IntervalTree library for Focuster's scheduling workload. The schedu
 - **DEAD END**: In-place replaceValue in chop — property tests found duplicate bug 3 times. Fundamentally unsafe without dedup.
 - **Optimized _buildBalanced**: direct _left/_right, inline height calc.
 - **Optimized findOneByLengthStartingAt**: eliminated filter/reduce allocations (helps Focuster).
-- **Current**: 4.52ms (253x faster than 1146ms baseline). 87 unit tests + 200 property-based model check runs pass.
-- **Analysis**: Schedule loop is 341 hits × ~7μs (findFirst+chop) + 1159 near-free misses. Init is ~2.2ms (chopAll). At V8 JIT floor (~120ns per node visit). 57 experiments, last 15+ all within noise.
+- **Simplified chop**: eliminated toRemove/toAdd arrays, overlapping IS the remove list.
+- **Optimized chopAll sweep**: index loops, avoid destructuring — 5% init improvement.
+- **Current**: 4.38ms (261x faster than 1146ms baseline). 87 unit tests + 200 property-based model check runs pass.
+- **Analysis**: 59 experiments. Schedule loop: 341 hits × ~7μs + 1159 free misses. Init: ~2.0ms. At V8 JIT floor. Last 20+ experiments all noise.
