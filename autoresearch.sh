@@ -5,14 +5,16 @@ set -euo pipefail
 npx tsup src/bench-metric.ts --no-config --format cjs --env.NODE_ENV production --silent 2>&1 | tail -5
 
 # Run benchmark 5 times, collect medians for stability
-declare -a build_times search_times
+declare -a init_times schedule_times total_times
 
 for i in {1..5}; do
   output=$(node dist/bench-metric.cjs 2>/dev/null)
-  bt=$(echo "$output" | grep '^BUILD_MS=' | cut -d= -f2)
-  st=$(echo "$output" | grep '^SEARCH_MS=' | cut -d= -f2)
-  build_times+=("$bt")
-  search_times+=("$st")
+  it=$(echo "$output" | grep '^INIT_MS=' | cut -d= -f2)
+  st=$(echo "$output" | grep '^SCHEDULE_MS=' | cut -d= -f2)
+  tt=$(echo "$output" | grep '^TOTAL_MS=' | cut -d= -f2)
+  init_times+=("$it")
+  schedule_times+=("$st")
+  total_times+=("$tt")
 done
 
 # Compute medians
@@ -22,12 +24,10 @@ median() {
   echo "${sorted[$((n/2))]}"
 }
 
-build_median=$(median "${build_times[@]}")
-search_median=$(median "${search_times[@]}")
+init_median=$(median "${init_times[@]}")
+schedule_median=$(median "${schedule_times[@]}")
+total_median=$(median "${total_times[@]}")
 
-# Total = build + search (the two hot paths)
-total=$(echo "$build_median + $search_median" | bc)
-
-echo "METRIC total_ms=$total"
-echo "METRIC build_ms=$build_median"
-echo "METRIC search_ms=$search_median"
+echo "METRIC total_ms=$total_median"
+echo "METRIC init_ms=$init_median"
+echo "METRIC schedule_ms=$schedule_median"
