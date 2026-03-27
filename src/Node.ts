@@ -29,7 +29,7 @@ export class Node<T = unknown> {
   }
 
   public get balance() {
-    return (this.right?.height ?? 0) - (this.left?.height ?? 0)
+    return (this.#branch[RIGHT]?.height ?? 0) - (this.#branch[LEFT]?.height ?? 0)
   }
 
   private get left() {
@@ -624,7 +624,9 @@ export class Node<T = unknown> {
   }
 
   private updateHeight() {
-    this.height = 1 + Math.max(this.left?.height ?? 0, this.right?.height ?? 0)
+    const lh = this.#branch[LEFT]?.height ?? 0
+    const rh = this.#branch[RIGHT]?.height ?? 0
+    this.height = 1 + (lh > rh ? lh : rh)
   }
 
   private shouldSkipBranch(minLength: number, startingAt: number) {

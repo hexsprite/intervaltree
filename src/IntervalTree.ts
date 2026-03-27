@@ -55,10 +55,10 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
     // toArray() already returns in-order (sorted by start)
     const intervals = this.toArray()
 
-    // start with first interval
+    // Merge overlapping intervals in a single pass
     const merged = [intervals[0]]
-
-    for (const current of intervals.slice(1)) {
+    for (let i = 1; i < intervals.length; i++) {
+      const current = intervals[i]
       const last = merged[merged.length - 1]
       if (current.start <= last.end) {
         // Overlap detected, merge current with last
