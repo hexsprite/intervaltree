@@ -1,31 +1,25 @@
 # Autoresearch Ideas
 
-## Done ✓
-- ~~updateAttributes() spread+map → for-loops~~
-- ~~fromIntervals() O(n) bulk build~~
-- ~~toArray() single result array~~
-- ~~dirty flag for mergeOverlaps()~~
-- ~~chop() simplification~~
-- ~~insert() shared flag arrays~~
-- ~~search methods for-loops + direct #branch~~
-- ~~in-order toArray + skip redundant sorts~~
-
-## Dead Ends
+## Dead Ends (tried, no gain)
 - Removing assert from Interval constructor — no effect
-- Replacing #private fields with readonly public — actually slower
-- Making searchByLengthStartingAt in-order — can't due to shouldSkipBranch pruning
+- Replacing #private fields with readonly public — actually slower  
+- Insertion sort for searchByLengthStartingAt — V8 Timsort is faster
+- Fast-path chop for single overlap — no improvement, tree ops dominate
+- Eliminate intermediate arrays in chop — no improvement
+- Optimize rotation methods with direct #branch — rotations too infrequent
+- Optimize _buildBalanced dedup — slight regression
 
 ## Remaining Ideas
 
-### Performance (schedule loop is 66% of time now)
-- **Avoid toSorted in searchByLengthStartingAt**: Currently does full sort after collecting results. Could sort values within each node at insert time so traversal yields sorted output, or use insertion sort since results are nearly sorted.
-- **size as O(1) counter**: Currently O(n) via toArray().length. Not in benchmark hot path but used by Focuster.
-- **first()/last() O(log n)**: Walk left/right instead of toSorted()[0] or toArray()[size-1]. Not in benchmark but used by Focuster.
+### Schedule loop (85% of time, ~12.8ms for 1500 iters)
+- **Flatten node values array**: Most nodes have exactly 1 value. Store single interval directly on the node, only use array for multi-value nodes. Saves array indirection in every hot path.
+- **In-place interval replacement in chop**: For single-interval chop where the left piece shares the same start, modify the node's value in-place instead of remove+add. Avoids 2 tree walks.
+- **Avoid Interval allocation in findFirstByLengthStartingAt**: Return original interval and let caller adjust, avoiding `new Interval(startingAt, end)`.
+- **Combine findFirst + chop into single tree walk**: Since schedule loop always does findFirst then chop on the result, a combined operation could avoid the redundant searchOverlap in chop.
 
-### Init phase (34% of time now)
-- **Use chopAll for batch event chopping**: Init chops 1000 events one by one. chopAll does a single linear sweep for >3 ranges. Should use it in bench and suggest for Focuster.
+### Init phase (15% of time, ~2.5ms)
+- Already using chopAll — not much left here.
 
-### Structural
-- **Flatten node values array**: Most nodes have exactly 1 value. Store single interval directly, only use array for multi-value nodes.
-- **In-place interval replacement in chop**: For single-interval chop where the left piece shares the same start, replace in-place instead of remove+add. Requires mutable intervals or node-level support.
-- **Node pooling / recycling**: avoid GC pressure by reusing removed nodes
+### Structural (bigger changes)
+- **Node pooling / recycling**: Avoid GC pressure by reusing removed nodes
+- **Flat array-based tree**: Store nodes in a contiguous array for cache locality instead of heap-allocated objects

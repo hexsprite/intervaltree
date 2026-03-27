@@ -24,8 +24,7 @@ export class Node<T = unknown> {
   maxEnd = 0
   maxLength = 0
 
-  _left: Node<T> | null = null
-  _right: Node<T> | null = null
+  #branch: [Node<T> | null, Node<T> | null] = [null, null]
 
   constructor(value: Interval<T>) {
     this.values = [value]
@@ -34,23 +33,23 @@ export class Node<T = unknown> {
   }
 
   public get balance() {
-    return (this._right?.height ?? 0) - (this._left?.height ?? 0)
+    return (this.#branch[RIGHT]?.height ?? 0) - (this.#branch[LEFT]?.height ?? 0)
   }
 
   private get left() {
-    return this._left
+    return this.#branch[LEFT]
   }
 
   private get right() {
-    return this._right
+    return this.#branch[RIGHT]
   }
 
   private set left(node: Node<T> | null) {
-    this._left = node
+    this.#branch[LEFT] = node
   }
 
   private set right(node: Node<T> | null) {
-    this._right = node
+    this.#branch[RIGHT] = node
   }
 
   static fromIntervals<T>(intervals: Interval<T>[]): Node<T> {
@@ -121,11 +120,11 @@ export class Node<T = unknown> {
   }
 
   branch(direction: Direction) {
-    return direction ? this._right : this._left
+    return this.#branch[direction ? RIGHT : LEFT]
   }
 
   setBranch(direction: Direction, node: Node<T> | null) {
-    if (direction) this._right = node; else this._left = node
+    this.#branch[direction ? RIGHT : LEFT] = node
   }
 
   insert(interval: Interval<T>, rebalancingDone: [boolean] = (_rebalancingDone[0] = false, _insertWasDuplicate = false, _rebalancingDone), updateRequired: [boolean] = (_updateRequired[0] = false, _updateRequired)): Node<T> {
@@ -150,17 +149,15 @@ export class Node<T = unknown> {
 
     // search for the correct branch to insert the interval
     const dir = this.start < interval.start ? RIGHT : LEFT
-    const branchNode = dir === RIGHT ? this._right : this._left
+    const branchNode = this.#branch[dir]
 
     if (branchNode) {
-      const inserted = branchNode.insert(interval, rebalancingDone, updateRequired)
-      if (dir === RIGHT) this._right = inserted; else this._left = inserted
+      this.#branch[dir] = branchNode.insert(interval, rebalancingDone, updateRequired)
       if (updateRequired[0])
         this.updateAttributes()
     }
     else {
-      const newNode = new Node(interval)
-      if (dir === RIGHT) this._right = newNode; else this._left = newNode
+      this.#branch[dir] = new Node(interval)
       updateRequired[0] = this.updateAttributes()
     }
 
@@ -265,11 +262,11 @@ export class Node<T = unknown> {
         result.push(v)
     }
 
-    const left = this._left
+    const left = this.#branch[LEFT]
     if (left && point >= left.minStart)
       left.searchPoint(point, result)
 
-    const right = this._right
+    const right = this.#branch[RIGHT]
     if (right && point <= right.maxEnd)
       right.searchPoint(point, result)
   }
@@ -289,8 +286,8 @@ export class Node<T = unknown> {
 
   public countIntervals(): number {
     let count = this.values.length
-    const left = this._left
-    const right = this._right
+    const left = this.#branch[LEFT]
+    const right = this.#branch[RIGHT]
     if (left) count += left.countIntervals()
     if (right) count += right.countIntervals()
     return count
@@ -298,23 +295,23 @@ export class Node<T = unknown> {
 
   /** Return the leftmost (minimum start) node */
   public min(): Node<T> {
-    const left = this._left
+    const left = this.#branch[LEFT]
     return left ? left.min() : this
   }
 
   /** Return the rightmost (maximum start) node */
   public max(): Node<T> {
-    const right = this._right
+    const right = this.#branch[RIGHT]
     return right ? right.max() : this
   }
 
   public toArray(result: Interval<T>[] = []): Interval<T>[] {
     // In-order traversal: left, self, right — produces sorted output
-    const left = this._left
+    const left = this.#branch[LEFT]
     if (left) left.toArray(result)
     for (let i = 0; i < this.values.length; i++)
       result.push(this.values[i])
-    const right = this._right
+    const right = this.#branch[RIGHT]
     if (right) right.toArray(result)
     return result
   }
@@ -324,12 +321,12 @@ export class Node<T = unknown> {
     let result: Node<T> = this
 
     if (interval.start < this.start) {
-      const left = this._left
-      this._left = left?.remove(interval, rebalance) ?? null
+      const left = this.#branch[LEFT]
+      this.#branch[LEFT] = left?.remove(interval, rebalance) ?? null
     }
     else if (interval.start > this.start) {
-      const right = this._right
-      this._right = right?.remove(interval, rebalance) ?? null
+      const right = this.#branch[RIGHT]
+      this.#branch[RIGHT] = right?.remove(interval, rebalance) ?? null
     }
     else {
       // Found the node — remove the specific interval
@@ -344,13 +341,13 @@ export class Node<T = unknown> {
 
       if (values.length === 0) {
         rebalance[0] = true
-        const left = this._left
-        const right = this._right
+        const left = this.#branch[LEFT]
+        const right = this.#branch[RIGHT]
         if (left && right) {
           // Find in-order successor
           let successor: Node<T> = right
-          while (successor._left)
-            successor = successor._left!
+          while (successor.#branch[LEFT])
+            successor = successor.#branch[LEFT]!
 
           successor = successor.clone()
           // Remove successor values from right subtree
@@ -358,8 +355,8 @@ export class Node<T = unknown> {
           for (const value of successor.values)
             rightNode = rightNode?.remove(value, rebalance) ?? null
 
-          successor._left = left
-          successor._right = rightNode
+          successor.#branch[LEFT] = left
+          successor.#branch[RIGHT] = rightNode
           result = successor
         }
         else {
@@ -377,10 +374,10 @@ export class Node<T = unknown> {
   public clone(): Node<T> {
     const node = new Node(this.values[0])
     node.values = this.values.slice()
-    const left = this._left
-    const right = this._right
-    node._left = left?.clone() ?? null
-    node._right = right?.clone() ?? null
+    const left = this.#branch[LEFT]
+    const right = this.#branch[RIGHT]
+    node.#branch[LEFT] = left?.clone() ?? null
+    node.#branch[RIGHT] = right?.clone() ?? null
     node.updateAttributes()
     return node
   }
@@ -459,7 +456,7 @@ export class Node<T = unknown> {
       return result
 
     // In-order traversal: left, self, right — produces sorted output
-    const left = this._left
+    const left = this.#branch[LEFT]
     if (left && left.maxEnd >= startingAt && left.maxLength >= minLength)
       left.searchByLengthStartingAt(minLength, startingAt, result)
 
@@ -476,7 +473,7 @@ export class Node<T = unknown> {
       }
     }
 
-    const right = this._right
+    const right = this.#branch[RIGHT]
     if (right && right.maxEnd >= startingAt && right.maxLength >= minLength)
       right.searchByLengthStartingAt(minLength, startingAt, result)
     return result
@@ -494,7 +491,7 @@ export class Node<T = unknown> {
       return undefined
 
     // Check left subtree first (in-order)
-    const left = this._left
+    const left = this.#branch[LEFT]
     if (left && left.maxEnd >= startingAt && left.maxLength >= minLength) {
       const found = left.findFirstByLengthStartingAt(minLength, startingAt)
       if (found) return found
@@ -514,7 +511,7 @@ export class Node<T = unknown> {
     }
 
     // Check right subtree
-    const right = this._right
+    const right = this.#branch[RIGHT]
     if (right && right.maxEnd >= startingAt && right.maxLength >= minLength) {
       return right.findFirstByLengthStartingAt(minLength, startingAt)
     }
@@ -528,7 +525,7 @@ export class Node<T = unknown> {
     result: Interval<T>[] = [],
   ): Interval<T>[] {
     // In-order traversal: left, self, right
-    const left = this._left
+    const left = this.#branch[LEFT]
     if (left && start <= left.maxEnd)
       left.searchOverlap(start, end, result)
 
@@ -541,7 +538,7 @@ export class Node<T = unknown> {
     }
 
     // Traverse right subtree if it might contain overlapping intervals
-    const right = this._right
+    const right = this.#branch[RIGHT]
     if (right && end >= right.minStart)
       right.searchOverlap(start, end, result)
 
@@ -678,8 +675,8 @@ export class Node<T = unknown> {
     }
 
     // Incorporate children
-    const left = this._left
-    const right = this._right
+    const left = this.#branch[LEFT]
+    const right = this.#branch[RIGHT]
     if (left) {
       if (left.minStart < minStart) minStart = left.minStart
       if (left.maxEnd > maxEnd) maxEnd = left.maxEnd
@@ -701,8 +698,8 @@ export class Node<T = unknown> {
   }
 
   private updateHeight() {
-    const lh = this._left?.height ?? 0
-    const rh = this._right?.height ?? 0
+    const lh = this.#branch[LEFT]?.height ?? 0
+    const rh = this.#branch[RIGHT]?.height ?? 0
     this.height = 1 + (lh > rh ? lh : rh)
   }
 
