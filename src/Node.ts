@@ -290,47 +290,49 @@ export class Node<T = unknown> {
   }
 
   public remove(interval: Interval<T>, rebalance: [boolean] = [false]): Node<T> | null {
-    // Navigate the tree to find the correct node
     // eslint-disable-next-line ts/no-this-alias
     let result: Node<T> = this
 
     if (interval.start < this.start) {
-      this.left = this.left?.remove(interval, rebalance) ?? null
+      const left = this.#branch[LEFT]
+      this.#branch[LEFT] = left?.remove(interval, rebalance) ?? null
     }
     else if (interval.start > this.start) {
-      this.right = this.right?.remove(interval, rebalance) ?? null
+      const right = this.#branch[RIGHT]
+      this.#branch[RIGHT] = right?.remove(interval, rebalance) ?? null
     }
     else {
-      // Found the node with the matching start value, now remove the specific interval
-      const index = this.values.findIndex(
-        iv => iv.end === interval.end && iv.data === interval.data,
-      )
-      if (index > -1) {
-        this.values.splice(index, 1) // Remove the interval from this node
+      // Found the node — remove the specific interval
+      const values = this.values
+      for (let i = 0; i < values.length; i++) {
+        if (values[i].end === interval.end && values[i].data === interval.data) {
+          values.splice(i, 1)
+          break
+        }
+      }
 
-        // If no more intervals are left in the node, handle node pruning
-        if (this.values.length === 0) {
-          rebalance[0] = true
-          if (this.left && this.right) {
-            // if both children are present, find the successor and remove it
-            let successor: Node<T> = this.right
-            while (successor.left)
-              successor = successor.left
+      if (values.length === 0) {
+        rebalance[0] = true
+        const left = this.#branch[LEFT]
+        const right = this.#branch[RIGHT]
+        if (left && right) {
+          // Find in-order successor
+          let successor: Node<T> = right
+          while (successor.#branch[LEFT])
+            successor = successor.#branch[LEFT]!
 
-            successor = successor.clone()
-            // filter the successor from the right node - possibly inefficient
-            for (const value of successor.values)
-              this.right = this.right?.remove(value, rebalance) ?? null
+          successor = successor.clone()
+          // Remove successor values from right subtree
+          let rightNode: Node<T> | null = right
+          for (const value of successor.values)
+            rightNode = rightNode?.remove(value, rebalance) ?? null
 
-            // replace the current node with the successor
-            successor.left = this.left
-            successor.right = this.right
-            result = successor
-          }
-          else {
-            // if only one child, return that child, otherwise null
-            return this.left ?? this.right ?? null
-          }
+          successor.#branch[LEFT] = left
+          successor.#branch[RIGHT] = rightNode
+          result = successor
+        }
+        else {
+          return left ?? right ?? null
         }
       }
     }
