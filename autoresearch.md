@@ -48,4 +48,9 @@ Optimize the IntervalTree library for Focuster's scheduling workload. The schedu
 - **In-order searchOverlap**: same pattern, 4.5% faster.
 - **findFirstByLengthStartingAt**: new API with early termination for when only first result needed. O(log n) best case.
 - **clone() optimization**: slice() instead of spread, direct #branch.
-- **Current**: 15.18ms (75x faster than 1146ms baseline). 87 unit tests + 200 property-based model check runs pass.
+- **Replaced #branch array with _left/_right direct fields**: slight schedule improvement.
+- **DEAD END**: In-place replaceInterval in chop — property test found duplicate bug, complexity not worth it.
+- **DEAD END**: chopKnownInterval to skip searchOverlap — within noise on small trees.
+- **DEAD END**: Replace assert with if-throw — no improvement.
+- **Current**: 15.08ms (76x faster than 1146ms baseline). 87 unit tests + 200 property-based model check runs pass.
+- **Analysis**: Schedule loop is 341 hits × ~37μs (findFirst+chop) + 1159 near-free misses. Each hit is ~4 tree walks on ~50-250 nodes. At ~150ns per node visit, we're near V8's JIT floor for pointer-chasing workloads.
