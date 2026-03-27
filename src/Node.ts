@@ -270,12 +270,13 @@ export class Node<T = unknown> {
   }
 
   public toArray(result: Interval<T>[] = []): Interval<T>[] {
+    // In-order traversal: left, self, right — produces sorted output
+    const left = this.#branch[LEFT]
+    if (left) left.toArray(result)
     for (let i = 0; i < this.values.length; i++)
       result.push(this.values[i])
-    if (this.left)
-      this.left.toArray(result)
-    if (this.right)
-      this.right.toArray(result)
+    const right = this.#branch[RIGHT]
+    if (right) right.toArray(result)
     return result
   }
 

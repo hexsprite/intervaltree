@@ -52,7 +52,8 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
     if (!this.root || !this._dirty)
       return
 
-    const intervals = this.toArray().toSorted(compareIntervals)
+    // toArray() already returns in-order (sorted by start)
+    const intervals = this.toArray()
 
     // start with first interval
     const merged = [intervals[0]]
@@ -181,7 +182,8 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
     }
 
     // Get all existing intervals sorted
-    const existing = this.toArray().toSorted(compareIntervals)
+    // toArray() already returns in-order (sorted by start)
+    const existing = this.toArray()
 
     // Linear sweep: subtract merged chop ranges from existing intervals
     const result: Interval<T>[] = []
@@ -342,7 +344,8 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
   }
 
   public toSorted(): Interval<T>[] {
-    return this.toArray().toSorted(compareIntervals)
+    // toArray() does in-order traversal, already sorted by start then end
+    return this.toArray()
   }
 
   public toTuples(): IntervalTuple<T>[] {
