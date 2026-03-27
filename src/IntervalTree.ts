@@ -113,19 +113,33 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
    */
   public chop(start: number, end: number): void {
     assert(start < end, 'start must be <= end')
-    const insertions: Interval<T>[] = []
-    const startHits = this.searchPoint(start).filter(iv => iv.start < start)
-    const endHits = this.searchPoint(end).filter(iv => iv.end > end)
-    startHits.forEach((iv) => {
-      insertions.push(new Interval(iv.start, start, iv.data))
-    })
-    endHits.forEach((iv) => {
-      insertions.push(new Interval(end, iv.end, iv.data))
-    })
-    this.removeEnveloped(start, end)
-    this.removeAll(startHits)
-    this.removeAll(endHits)
-    this.addAll(insertions)
+    if (!this.root) return
+
+    // Single searchOverlap to find all affected intervals
+    const overlapping = this.root.searchOverlap(start, end)
+    if (overlapping.length === 0) return
+
+    // Classify and compute replacements in one pass
+    const toRemove: Interval<T>[] = []
+    const toAdd: Interval<T>[] = []
+    for (const iv of overlapping) {
+      toRemove.push(iv)
+      // Keep the part before the chop range
+      if (iv.start < start) {
+        toAdd.push(new Interval(iv.start, start, iv.data))
+      }
+      // Keep the part after the chop range
+      if (iv.end > end) {
+        toAdd.push(new Interval(end, iv.end, iv.data))
+      }
+    }
+
+    for (const iv of toRemove) {
+      this.remove(iv)
+    }
+    for (const iv of toAdd) {
+      this.add(iv)
+    }
     this.verify()
   }
 
