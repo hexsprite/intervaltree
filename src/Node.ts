@@ -213,14 +213,13 @@ export class Node<T = unknown> {
       this.right.printStructure(indent + 1, (prefix = '> '))
   }
 
-  public toArray(): Interval<T>[] {
-    let result = [...this.values]
+  public toArray(result: Interval<T>[] = []): Interval<T>[] {
+    for (let i = 0; i < this.values.length; i++)
+      result.push(this.values[i])
     if (this.left)
-      result = result.concat(this.left.toArray())
-
+      this.left.toArray(result)
     if (this.right)
-      result = result.concat(this.right.toArray())
-
+      this.right.toArray(result)
     return result
   }
 
