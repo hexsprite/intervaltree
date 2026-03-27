@@ -71,57 +71,55 @@ export class Node<T = unknown> {
    */
   private static _buildBalanced<T>(sorted: Interval<T>[], lo: number, hi: number): Node<T> {
     if (lo === hi) {
-      const node = new Node(sorted[lo])
-      // height is already 1 from constructor
-      return node
+      // Leaf node — constructor handles attributes
+      return new Node(sorted[lo])
     }
     if (lo + 1 === hi) {
-      const node = new Node(sorted[lo])
-      // If same start, group into same node (skip if duplicate end)
+      // Two elements
       if (sorted[hi].start === sorted[lo].start) {
+        const node = new Node(sorted[lo])
         if (!node.values.some(v => v.end === sorted[hi].end))
           node.values.push(sorted[hi])
         node.updateAttributes()
         return node
       }
+      const node = new Node(sorted[lo])
       const right = new Node(sorted[hi])
-      node.setBranch(RIGHT as any, right)
+      node._right = right
       node.height = 2
       node.updateAttributes()
       return node
     }
-    const mid = (lo + hi) >> 1
-    const node = new Node(sorted[mid])
-    const midStart = sorted[mid].start
 
-    // Group intervals with the same start into this node, skipping duplicates
-    // Expand forwards
+    const mid = (lo + hi) >> 1
+    const iv = sorted[mid]
+    const node = new Node(iv)
+    const midStart = iv.start
+
+    // Group same-start intervals into this node
     let groupEnd = mid + 1
     while (groupEnd <= hi && sorted[groupEnd].start === midStart) {
-      const iv = sorted[groupEnd]
-      if (!node.values.some(v => v.end === iv.end))
-        node.values.push(iv)
+      const giv = sorted[groupEnd]
+      if (!node.values.some(v => v.end === giv.end))
+        node.values.push(giv)
       groupEnd++
     }
-    // Expand backwards
     let groupStart = mid - 1
     while (groupStart >= lo && sorted[groupStart].start === midStart) {
-      const iv = sorted[groupStart]
-      if (!node.values.some(v => v.end === iv.end))
-        node.values.push(iv)
+      const giv = sorted[groupStart]
+      if (!node.values.some(v => v.end === giv.end))
+        node.values.push(giv)
       groupStart--
     }
 
-    if (groupStart >= lo) {
-      node.setBranch(LEFT as any, Node._buildBalanced(sorted, lo, groupStart))
-    }
-    if (groupEnd <= hi) {
-      node.setBranch(RIGHT as any, Node._buildBalanced(sorted, groupEnd, hi))
-    }
+    if (groupStart >= lo)
+      node._left = Node._buildBalanced(sorted, lo, groupStart)
+    if (groupEnd <= hi)
+      node._right = Node._buildBalanced(sorted, groupEnd, hi)
 
-    const leftH = node.branch(LEFT as any)?.height ?? 0
-    const rightH = node.branch(RIGHT as any)?.height ?? 0
-    node.height = 1 + Math.max(leftH, rightH)
+    const lh = node._left?.height ?? 0
+    const rh = node._right?.height ?? 0
+    node.height = 1 + (lh > rh ? lh : rh)
     node.updateAttributes()
     return node
   }
