@@ -61,5 +61,7 @@ Optimize the IntervalTree library for Focuster's scheduling workload. The schedu
 - **DEAD END**: Shared scratch array for remove rebalance — within noise.
 - **DEAD END**: Swap-pop in remove values — regression.
 - **DEAD END**: Inline constructor attributes — within noise.
-- **Current**: 11.81ms (97x faster than 1146ms baseline). 87 unit tests + 200 property-based model check runs pass.
-- **Analysis**: Schedule loop is 341 hits × ~28μs (findFirst+chop) + 1159 near-free misses. Each hit is ~4 tree walks on ~50-250 nodes. At ~120ns per node visit, we're at V8's JIT floor for pointer-chasing workloads.
+- **Preserve dirty flag in chop/chopAll**: chop never creates overlaps, so don't set dirty. Eliminated 341 unnecessary mergeOverlaps rebuilds per schedule loop — **2.6x schedule improvement** (11.81→4.60ms).
+- **DEAD END**: In-place replaceValue in chop — property tests found duplicate bug 3 times. Fundamentally unsafe without dedup.
+- **Current**: 4.60ms (249x faster than 1146ms baseline). 87 unit tests + 200 property-based model check runs pass.
+- **Analysis**: Schedule loop is 341 hits × ~7μs (findFirst+chop) + 1159 near-free misses. Init is ~2.2ms (chopAll). Near V8 JIT floor.
