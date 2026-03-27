@@ -59,6 +59,12 @@ export class Node<T = unknown> {
     return Node._buildBalanced(sortedIntervals, 0, sortedIntervals.length - 1)
   }
 
+  /** Like fromIntervals but skips sorting — caller guarantees sorted input. */
+  static fromSortedIntervals<T>(sorted: Interval<T>[]): Node<T> {
+    assert(sorted.length > 0, 'Error: intervals must not be empty')
+    return Node._buildBalanced(sorted, 0, sorted.length - 1)
+  }
+
   /**
    * Build a balanced AVL tree from a sorted array in O(n).
    * Recursively splits at midpoint, creating a balanced structure directly.

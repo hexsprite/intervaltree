@@ -98,7 +98,7 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
         merged.push(current)
       }
     }
-    this.root = Node.fromIntervals(merged)
+    this.root = Node.fromSortedIntervals(merged)
     this._size = merged.length
     this._dirty = false
     this.verify()
@@ -241,7 +241,7 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
       }
     }
 
-    this.root = result.length > 0 ? Node.fromIntervals(result) : null
+    this.root = result.length > 0 ? Node.fromSortedIntervals(result) : null
     this._size = result.length
     this._dirty = true
     this.verify()
