@@ -151,26 +151,18 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
     // doesn't unnecessarily rebuild after every chop
     const wasDirty = this._dirty
 
-    // Classify and compute replacements in one pass
-    const toRemove: Interval<T>[] = []
-    const toAdd: Interval<T>[] = []
-    for (const iv of overlapping) {
-      toRemove.push(iv)
-      // Keep the part before the chop range
+    // Remove all overlapping, then add trimmed flanks
+    for (let i = 0; i < overlapping.length; i++) {
+      this.remove(overlapping[i])
+    }
+    for (let i = 0; i < overlapping.length; i++) {
+      const iv = overlapping[i]
       if (iv.start < start) {
-        toAdd.push(new Interval(iv.start, start, iv.data))
+        this.add(new Interval(iv.start, start, iv.data))
       }
-      // Keep the part after the chop range
       if (iv.end > end) {
-        toAdd.push(new Interval(end, iv.end, iv.data))
+        this.add(new Interval(end, iv.end, iv.data))
       }
-    }
-
-    for (const iv of toRemove) {
-      this.remove(iv)
-    }
-    for (const iv of toAdd) {
-      this.add(iv)
     }
 
     // Restore dirty state — chop only splits intervals, never creates overlaps
