@@ -406,51 +406,29 @@ export class Node<T = unknown> {
     if (this.shouldSkipBranch(minLength, startingAt))
       return
 
-    // Filter `this.sCenter` before finding the minimum to ensure only eligible intervals are considered.
-    const eligibleIntervals = this.values.filter((iv) => {
-      if (iv.end < startingAt)
-        return false // Skip intervals ending before `startingAt`
+    // Find best (earliest start, smallest end) among eligible intervals
+    let best: Interval<T> | undefined
 
-      const adjustedLength = iv.length - Math.max(0, startingAt - iv.start)
-      if (adjustedLength < minLength)
-        return false // Skip intervals shorter than `minLength` after adjustment
+    for (let i = 0; i < this.values.length; i++) {
+      const iv = this.values[i]
+      if (iv.end < startingAt) continue
+      const adjustedLength = iv.end - iv.start - Math.max(0, startingAt - iv.start)
+      if (adjustedLength < minLength) continue
+      if (!filterFn(iv)) continue
+      if (!best || iv.start < best.start || (iv.start === best.start && iv.end < best.end))
+        best = iv
+    }
 
-      return filterFn(iv) // Apply custom filter function if provided
-    })
+    // Check children
+    const leftCandidate = this._left?.findOneByLengthStartingAt(minLength, startingAt, filterFn)
+    if (leftCandidate && (!best || leftCandidate.start < best.start || (leftCandidate.start === best.start && leftCandidate.end < best.end)))
+      best = leftCandidate
 
-    // Include eligible intervals from left and right children, if any
-    const leftCandidate = this.branch(0)?.findOneByLengthStartingAt(
-      minLength,
-      startingAt,
-      filterFn,
-    )
+    const rightCandidate = this._right?.findOneByLengthStartingAt(minLength, startingAt, filterFn)
+    if (rightCandidate && (!best || rightCandidate.start < best.start || (rightCandidate.start === best.start && rightCandidate.end < best.end)))
+      best = rightCandidate
 
-    const rightCandidate = this.branch(1)?.findOneByLengthStartingAt(
-      minLength,
-      startingAt,
-      filterFn,
-    )
-
-    // Add child candidates to the list of eligible intervals
-    if (leftCandidate)
-      eligibleIntervals.push(leftCandidate)
-    if (rightCandidate)
-      eligibleIntervals.push(rightCandidate)
-
-    // Find the interval with the minimum start (and end as a tiebreaker) from the filtered list
-    return eligibleIntervals.reduce(
-      (minInterval: Interval<T> | undefined, currentInterval) => {
-        if (!minInterval)
-          return currentInterval // If first comparison, return current interval
-
-        return currentInterval.start < minInterval.start
-          || (currentInterval.start === minInterval.start
-            && currentInterval.end < minInterval.end)
-          ? currentInterval
-          : minInterval
-      },
-      undefined,
-    ) // Initial value is the first eligible interval
+    return best
   }
 
   public searchByLengthStartingAt(
