@@ -1,21 +1,26 @@
 # Autoresearch Ideas
 
-## Dead Ends (confirmed, don't retry)
-- Removing assert from Interval constructor — no effect
-- Replacing #private with readonly public on Interval — V8 optimizes private+getters better (confirmed 2x)
-- Insertion sort for searchByLengthStartingAt — V8 Timsort is faster
-- Fast-path chop for single overlap — no improvement
-- Eliminate intermediate arrays in chop — no improvement
-- Optimize rotation methods with direct #branch — too infrequent
-- Optimize _buildBalanced dedup — regression
-- chopKnownInterval + findFirstRaw to skip searchOverlap — within noise
-- Replace assert with if-throw — no improvement
-- In-place replaceInterval in chop — correctness issues (duplicates), complexity not worth ~5%
+## Exhausted — at V8 JIT floor
 
-## Remaining Ideas (diminishing returns territory)
+After 45 experiments, we've reached 97x faster than baseline (1,146ms → 11.81ms). The last 10+ experiments have all been noise-level or regressions. The schedule loop runs at ~28μs per hit (~120ns per node visit), which is at V8's JIT floor for pointer-chasing tree workloads.
 
-### Structural (bigger, riskier changes)
-- **Node pooling / recycling**: Avoid GC pressure by reusing removed nodes. Would need a free list.
-- **Flat array-based tree**: Store nodes in contiguous typed arrays for cache locality. Major rewrite.
-- **Lazy augmented attributes**: Only recompute maxEnd/maxLength when queried, not on every modification. Could defer updates until search.
-- **Interval deduplication at chop time**: The chop creates new Interval objects. Could reuse the original interval's data reference.
+### Confirmed dead ends (don't retry)
+- Removing/guarding assert in Interval constructor
+- Replacing #private with readonly public on Interval (V8 prefers private+getters)
+- Insertion sort vs V8 Timsort
+- Fast-path/single-overlap chop
+- Eliminating intermediate arrays in chop
+- Rotation method optimization (too infrequent)
+- _buildBalanced dedup optimization
+- chopKnownInterval / findFirstRaw
+- In-place replaceInterval (correctness issues)
+- Shared scratch arrays for remove
+- Swap-pop vs splice in remove
+- Inline constructor attributes
+- Derive maxLength from maxEnd
+- searchOverlap early termination
+
+### Theoretically possible but impractical
+- **Flat array-based tree**: Would improve cache locality but requires complete rewrite.
+- **WASM/Rust**: FFI overhead would eat gains at this workload size. Only viable for 10K+ intervals.
+- **Node pooling**: Minimal GC pressure at this scale.

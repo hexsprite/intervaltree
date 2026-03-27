@@ -52,5 +52,14 @@ Optimize the IntervalTree library for Focuster's scheduling workload. The schedu
 - **DEAD END**: In-place replaceInterval in chop — property test found duplicate bug, complexity not worth it.
 - **DEAD END**: chopKnownInterval to skip searchOverlap — within noise on small trees.
 - **DEAD END**: Replace assert with if-throw — no improvement.
-- **Current**: 15.08ms (76x faster than 1146ms baseline). 87 unit tests + 200 property-based model check runs pass.
-- **Analysis**: Schedule loop is 341 hits × ~37μs (findFirst+chop) + 1159 near-free misses. Each hit is ~4 tree walks on ~50-250 nodes. At ~150ns per node visit, we're near V8's JIT floor for pointer-chasing workloads.
+- **fromSortedIntervals for mergeOverlaps/chopAll**: skips redundant toSorted on already-sorted data — 9% faster.
+- **Simplified updateAttributes**: skip minStart scan (all values share same start) — marginal.
+- **DEAD END**: Inline remove+add in chop (no intermediate arrays) — regression.
+- **DEAD END**: Derive maxLength from maxEnd — regression.
+- **DEAD END**: searchOverlap early termination on this.start >= end — regression.
+- **DEAD END**: Guard Interval asserts with DEBUG — net regression (init better, schedule worse).
+- **DEAD END**: Shared scratch array for remove rebalance — within noise.
+- **DEAD END**: Swap-pop in remove values — regression.
+- **DEAD END**: Inline constructor attributes — within noise.
+- **Current**: 11.81ms (97x faster than 1146ms baseline). 87 unit tests + 200 property-based model check runs pass.
+- **Analysis**: Schedule loop is 341 hits × ~28μs (findFirst+chop) + 1159 near-free misses. Each hit is ~4 tree walks on ~50-250 nodes. At ~120ns per node visit, we're at V8's JIT floor for pointer-chasing workloads.
