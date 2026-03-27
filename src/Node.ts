@@ -373,9 +373,11 @@ export class Node<T = unknown> {
 
   public clone(): Node<T> {
     const node = new Node(this.values[0])
-    node.values = [...this.values]
-    node.left = this.left?.clone() ?? null
-    node.right = this.right?.clone() ?? null
+    node.values = this.values.slice()
+    const left = this.#branch[LEFT]
+    const right = this.#branch[RIGHT]
+    node.#branch[LEFT] = left?.clone() ?? null
+    node.#branch[RIGHT] = right?.clone() ?? null
     node.updateAttributes()
     return node
   }

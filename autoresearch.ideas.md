@@ -27,4 +27,5 @@
 
 ### Structural
 - **Flatten node values array**: Most nodes have exactly 1 value. Store single interval directly, only use array for multi-value nodes.
-- **Avoid Interval object allocation in chop**: chop creates new Interval objects for trimmed flanks. Could use inline start/end pairs.
+- **In-place interval replacement in chop**: For single-interval chop where the left piece shares the same start, replace in-place instead of remove+add. Requires mutable intervals or node-level support.
+- **Node pooling / recycling**: avoid GC pressure by reusing removed nodes
