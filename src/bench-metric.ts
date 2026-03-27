@@ -92,15 +92,11 @@ const initStart = performance.now()
 let tree = new IntervalTree<string>()
 tree.addInterval(periodStart, periodEnd)
 
-// Phase 2: Chop busy events
-for (const [start, end] of busyEvents) {
-  tree.chop(start, end)
-}
+// Phase 2: Chop busy events (batch)
+tree.chopAll(busyEvents)
 
-// Phase 3: Chop non-work hours
-for (const [start, end] of nonWorkHours) {
-  tree.chop(start, end)
-}
+// Phase 3: Chop non-work hours (batch)
+tree.chopAll(nonWorkHours)
 
 const initEnd = performance.now()
 
