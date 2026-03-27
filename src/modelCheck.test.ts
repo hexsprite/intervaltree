@@ -113,6 +113,76 @@ class FindOneByLengthStartingAtCommand implements fc.Command<ArrayIntervalCollec
   toString = () => `findOneByLengthStartingAt(${this.minLength}, ${this.startingAt})`
 }
 
+class SearchByLengthStartingAtCommand implements fc.Command<ArrayIntervalCollection, IntervalTree> {
+  minLength: number
+  startingAt: number
+
+  constructor(minLength: number, startingAt: number) {
+    this.minLength = minLength
+    this.startingAt = startingAt
+  }
+
+  check = () => true
+
+  run(m: ArrayIntervalCollection, r: IntervalTree): void {
+    const rResult = r.searchByLengthStartingAt(this.minLength, this.startingAt)
+    const mResult = m.searchByLengthStartingAt(this.minLength, this.startingAt)
+    // Tree adjusts intervals starting before startingAt; array returns originals.
+    // Compare by end values and count, since that's what both agree on.
+    const rEnds = rResult.map(iv => iv.end).sort((a, b) => a - b)
+    const mEnds = mResult.map(iv => iv.end).sort((a, b) => a - b)
+    expect(rEnds).toEqual(mEnds)
+  }
+
+  toString = () => `searchByLengthStartingAt(${this.minLength}, ${this.startingAt})`
+}
+
+class SizeConsistencyCommand implements fc.Command<ArrayIntervalCollection, IntervalTree> {
+  check = () => true
+
+  run(m: ArrayIntervalCollection, r: IntervalTree): void {
+    expect(r.size).toEqual(m.size)
+  }
+
+  toString = () => `sizeCheck()`
+}
+
+class MergeOverlapsCommand implements fc.Command<ArrayIntervalCollection, IntervalTree> {
+  check(m: ArrayIntervalCollection) {
+    return m.size > 0
+  }
+
+  run(m: ArrayIntervalCollection, r: IntervalTree): void {
+    r.mergeOverlaps()
+    m.mergeOverlaps()
+    expect(r.toString()).toEqual(m.toString())
+    expect(r.size).toEqual(m.size)
+  }
+
+  toString = () => `mergeOverlaps()`
+}
+
+class SearchOverlapCommand implements fc.Command<ArrayIntervalCollection, IntervalTree> {
+  start: number
+  end: number
+
+  constructor(value: { start: number, end: number }) {
+    this.start = value.start
+    this.end = value.end
+  }
+
+  check = () => true
+
+  run(m: ArrayIntervalCollection, r: IntervalTree): void {
+    const rResult = r.searchOverlap(this.start, this.end).toSorted(compareIntervals)
+    // ArrayIntervalCollection doesn't have searchOverlap, use filter
+    const mResult = m.toArray().filter(iv => iv.start < this.end && iv.end > this.start).toSorted(compareIntervals)
+    expect(rResult).toEqual(mResult)
+  }
+
+  toString = () => `searchOverlap(${this.start}, ${this.end})`
+}
+
 const intervalArbitrary = fc.integer({ max: 2147483647 - 1 }).chain(start =>
   fc.record({
     start: fc.constant(start),
@@ -128,6 +198,12 @@ const allCommands = [
   fc.tuple(fc.integer({ min: 1 }), fc.integer()).map(
     ([minLength, startingAt]) => new FindOneByLengthStartingAtCommand(minLength, startingAt),
   ),
+  fc.tuple(fc.integer({ min: 1 }), fc.integer()).map(
+    ([minLength, startingAt]) => new SearchByLengthStartingAtCommand(minLength, startingAt),
+  ),
+  fc.constant(new SizeConsistencyCommand()),
+  fc.constant(new MergeOverlapsCommand()),
+  intervalArbitrary.map(v => new SearchOverlapCommand(v)),
 ]
 
 describe('model checking', () => {
@@ -141,7 +217,7 @@ describe('model checking', () => {
         fc.modelRun(s, cmds)
       }),
       {
-        numRuns: 100,
+        numRuns: 200,
         endOnFailure: true,
       },
     )

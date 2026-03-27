@@ -107,10 +107,10 @@ export class ArrayIntervalCollection implements IntervalCollection {
       if (iv.end < start)
         return false
 
-      // Calculate the effective length of the interval considering the 'start' parameter
-      const effectiveLength
-        = Math.min(iv.end, start + length) - Math.max(iv.start, start)
-      return effectiveLength >= length
+      // Calculate the available length from `start` onwards
+      const adjustedLength
+        = iv.end - iv.start - Math.max(0, start - iv.start)
+      return adjustedLength >= length
     })
   }
 
@@ -128,7 +128,24 @@ export class ArrayIntervalCollection implements IntervalCollection {
 
   // Merges overlapping intervals in the tree
   mergeOverlaps(): void {
-    // Implementation
+    if (this.intervals.length <= 1) return
+    const sorted = this.intervals.toSorted(compareIntervals)
+    const merged: Interval[] = [sorted[0]]
+    for (let i = 1; i < sorted.length; i++) {
+      const current = sorted[i]
+      const last = merged[merged.length - 1]
+      if (current.start <= last.end) {
+        merged[merged.length - 1] = new Interval(
+          last.start,
+          Math.max(last.end, current.end),
+          last.data,
+        )
+      }
+      else {
+        merged.push(current)
+      }
+    }
+    this.intervals = merged
   }
 
   // Updates the tree with given intervals
