@@ -12,10 +12,13 @@ const DEBUG = process.env.NODE_ENV !== 'production'
 
 export class IntervalTree<T = unknown> implements IntervalCollection<T> {
   private root: Node<T> | null = null
+  private _dirty = false
 
   constructor(intervals: Interval<T>[] = []) {
-    if (intervals.length > 0)
+    if (intervals.length > 0) {
       this.root = Node.fromIntervals(intervals)
+      this._dirty = true
+    }
   }
 
   public get size(): number {
@@ -41,11 +44,12 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
     else
       this.root = this.root.insert(interval)
 
+    this._dirty = true
     this.verify()
   }
 
   public mergeOverlaps(): void {
-    if (!this.root)
+    if (!this.root || !this._dirty)
       return
 
     const intervals = this.toArray().toSorted(compareIntervals)
@@ -68,6 +72,7 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
       }
     }
     this.root = Node.fromIntervals(merged)
+    this._dirty = false
     this.verify()
   }
 
@@ -194,6 +199,7 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
     }
 
     this.root = result.length > 0 ? Node.fromIntervals(result) : null
+    this._dirty = true
     this.verify()
   }
 
@@ -219,6 +225,7 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
     if (!this.root)
       return
     this.root = this.root.remove(interval)
+    this._dirty = true
     this.verify()
   }
 
