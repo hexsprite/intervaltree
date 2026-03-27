@@ -95,14 +95,13 @@ const enveloped = tree.searchEnvelop(0, 100)
 const byLength = tree.searchByLengthStartingAt(3, 5)
 // Returns: All intervals of length >= 3 starting at position 5 or later
 
-// Find first interval of minimum length
+// Find first interval of minimum length — O(log n) with early termination
 const first = tree.findOneByLengthStartingAt(3, 5)
 // Returns: First interval of length >= 3 starting at/after position 5
 // If found interval starts before 5, it's adjusted to start at 5
 
-// Faster alternative when you only need the first result
-const fastest = tree.findFirstByLengthStartingAt(3, 5)
-// O(log n) early termination vs O(n) full scan
+// With optional filter function
+const filtered = tree.findOneByLengthStartingAt(3, 5, iv => iv.data?.priority === 'high')
 ```
 
 ### Tree Navigation
@@ -277,8 +276,7 @@ const available = schedule.findOneByLengthStartingAt(minDuration, dayStart)
 - `searchOverlap(start: number, end: number)` - Find all intervals overlapping a range
 - `searchEnvelop(start: number, end: number)` - Find intervals completely within a range
 - `searchByLengthStartingAt(length: number, start: number)` - Find intervals by minimum length
-- `findOneByLengthStartingAt(minLength: number, startingAt: number, filterFn?: (iv: Interval<T>) => boolean)` - Find first matching interval
-- `findFirstByLengthStartingAt(minLength: number, startingAt: number)` - O(log n) early-terminating first match
+- `findOneByLengthStartingAt(minLength: number, startingAt: number, filterFn?: (iv: Interval<T>) => boolean)` - O(log n) first matching interval with optional filter
 
 **Navigation:**
 - `first(): Interval<T> | null` - Get the earliest interval by start (O(log n))

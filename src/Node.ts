@@ -441,38 +441,42 @@ export class Node<T = unknown> {
   public findOneByLengthStartingAt(
     minLength: number,
     startingAt: number,
-    filterFn: (iv: Interval<T>) => boolean = () => true,
+    filterFn?: (iv: Interval<T>) => boolean,
   ): Interval<T> | undefined {
-    // Skip this branch if it cannot contain a qualifying interval
-    if (this.shouldSkipBranch(minLength, startingAt))
-      return
+    if (this.maxEnd < startingAt || this.maxLength < minLength)
+      return undefined
 
-    // Find best (earliest start, smallest end) among eligible intervals
-    let best: Interval<T> | undefined
-
-    for (let i = 0; i < this.values.length; i++) {
-      const iv = this.values[i]
-      if (iv.end < startingAt)
-        continue
-      const adjustedLength = iv.end - iv.start - Math.max(0, startingAt - iv.start)
-      if (adjustedLength < minLength)
-        continue
-      if (!filterFn(iv))
-        continue
-      if (!best || iv.start < best.start || (iv.start === best.start && iv.end < best.end))
-        best = iv
+    // Check left subtree first (in-order — earliest start wins)
+    const left = this._left
+    if (left && left.maxEnd >= startingAt && left.maxLength >= minLength) {
+      const found = left.findOneByLengthStartingAt(minLength, startingAt, filterFn)
+      if (found)
+        return found
     }
 
-    // Check children
-    const leftCandidate = this._left?.findOneByLengthStartingAt(minLength, startingAt, filterFn)
-    if (leftCandidate && (!best || leftCandidate.start < best.start || (leftCandidate.start === best.start && leftCandidate.end < best.end)))
-      best = leftCandidate
+    // Check self
+    for (let i = 0; i < this.values.length; i++) {
+      const interval = this.values[i]
+      if (interval.end < startingAt)
+        continue
+      const adjustedLength
+        = interval.end - interval.start - Math.max(0, startingAt - interval.start)
+      if (adjustedLength < minLength)
+        continue
+      if (filterFn && !filterFn(interval))
+        continue
+      return interval.start < startingAt
+        ? new Interval(startingAt, interval.end, interval.data)
+        : interval
+    }
 
-    const rightCandidate = this._right?.findOneByLengthStartingAt(minLength, startingAt, filterFn)
-    if (rightCandidate && (!best || rightCandidate.start < best.start || (rightCandidate.start === best.start && rightCandidate.end < best.end)))
-      best = rightCandidate
+    // Check right subtree
+    const right = this._right
+    if (right && right.maxEnd >= startingAt && right.maxLength >= minLength) {
+      return right.findOneByLengthStartingAt(minLength, startingAt, filterFn)
+    }
 
-    return best
+    return undefined
   }
 
   public searchByLengthStartingAt(
@@ -506,48 +510,6 @@ export class Node<T = unknown> {
     if (right && right.maxEnd >= startingAt && right.maxLength >= minLength)
       right.searchByLengthStartingAt(minLength, startingAt, result)
     return result
-  }
-
-  /**
-   * Find the first interval (in sorted order) that meets the length and start criteria.
-   * Uses in-order traversal with early termination — O(log n) best case.
-   */
-  public findFirstByLengthStartingAt(
-    minLength: number,
-    startingAt: number,
-  ): Interval<T> | undefined {
-    if (this.maxEnd < startingAt || this.maxLength < minLength)
-      return undefined
-
-    // Check left subtree first (in-order)
-    const left = this._left
-    if (left && left.maxEnd >= startingAt && left.maxLength >= minLength) {
-      const found = left.findFirstByLengthStartingAt(minLength, startingAt)
-      if (found)
-        return found
-    }
-
-    // Check self
-    for (let i = 0; i < this.values.length; i++) {
-      const interval = this.values[i]
-      if (interval.end < startingAt)
-        continue
-      const adjustedLength
-        = interval.end - interval.start - Math.max(0, startingAt - interval.start)
-      if (adjustedLength >= minLength) {
-        return interval.start < startingAt
-          ? new Interval(startingAt, interval.end)
-          : interval
-      }
-    }
-
-    // Check right subtree
-    const right = this._right
-    if (right && right.maxEnd >= startingAt && right.maxLength >= minLength) {
-      return right.findFirstByLengthStartingAt(minLength, startingAt)
-    }
-
-    return undefined
   }
 
   public searchOverlap(

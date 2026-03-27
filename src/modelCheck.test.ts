@@ -247,7 +247,7 @@ class SearchEnvelopCommand implements fc.Command<ArrayIntervalCollection, Interv
   toString = () => `searchEnvelop(${this.start}, ${this.end})`
 }
 
-class FindFirstByLengthCommand implements fc.Command<ArrayIntervalCollection, IntervalTree> {
+class FindOneWithFilterCommand implements fc.Command<ArrayIntervalCollection, IntervalTree> {
   minLength: number
   startingAt: number
 
@@ -259,22 +259,27 @@ class FindFirstByLengthCommand implements fc.Command<ArrayIntervalCollection, In
   check = () => true
 
   run(m: ArrayIntervalCollection, r: IntervalTree): void {
-    const rResult = r.findFirstByLengthStartingAt(this.minLength, this.startingAt)
-    // findFirst should return same result as findOne (both find earliest qualifying)
-    const rOneResult = r.findOneByLengthStartingAt(this.minLength, this.startingAt)
-    // Both should agree on finding/not finding a result, and on the start
-    // (end may differ for same-start intervals since findFirst takes first in values,
-    //  findOne picks smallest end)
-    if (rResult && rOneResult) {
-      expect(rResult.start).toEqual(rOneResult.start)
+    // Verify findOneByLengthStartingAt against model: find qualifying intervals manually
+    const result = r.findOneByLengthStartingAt(this.minLength, this.startingAt)
+    const qualifying = m.toArray()
+      .filter((iv) => {
+        const adjustedLength = iv.end - Math.max(iv.start, this.startingAt)
+        return iv.end > this.startingAt && adjustedLength >= this.minLength
+      })
+      .sort((a, b) => a.start - b.start || a.end - b.end)
+
+    if (qualifying.length === 0) {
+      expect(result).toBeUndefined()
     }
     else {
-      // Both undefined or both defined
-      expect(!!rResult).toEqual(!!rOneResult)
+      expect(result).toBeDefined()
+      // Result start should be adjusted to startingAt if interval begins earlier
+      const expectedStart = Math.max(qualifying[0].start, this.startingAt)
+      expect(result!.start).toEqual(expectedStart)
     }
   }
 
-  toString = () => `findFirst(${this.minLength}, ${this.startingAt})`
+  toString = () => `findOneWithFilter(${this.minLength}, ${this.startingAt})`
 }
 
 class FirstLastCommand implements fc.Command<ArrayIntervalCollection, IntervalTree> {
@@ -375,7 +380,7 @@ const allCommands = [
   fc.constant(new CloneCommand()),
   intervalArbitrary.map(v => new SearchEnvelopCommand(v)),
   fc.tuple(fc.integer({ min: 1 }), fc.integer()).map(
-    ([minLength, startingAt]) => new FindFirstByLengthCommand(minLength, startingAt),
+    ([minLength, startingAt]) => new FindOneWithFilterCommand(minLength, startingAt),
   ),
   fc.constant(new FirstLastCommand()),
   fc.tuple(fc.integer(), intervalArbitrary).map(

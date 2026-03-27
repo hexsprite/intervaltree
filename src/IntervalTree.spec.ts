@@ -1042,7 +1042,7 @@ describe('first() and last()', () => {
   })
 })
 
-describe('O(1) size tracking', () => {
+describe('o(1) size tracking', () => {
   it('tracks size through add/remove', () => {
     const tree = new IntervalTree<string>()
     expect(tree.size).toBe(0)
@@ -1136,15 +1136,14 @@ describe('bulk construction correctness', () => {
 
   it('bulk-built tree passes verification in debug mode', () => {
     const intervals = Array.from({ length: 100 }, (_, i) =>
-      new Interval(i * 10, i * 10 + 15),
-    )
+      new Interval(i * 10, i * 10 + 15))
     const tree = new IntervalTree(intervals)
     // verify() is called automatically in non-production, but call explicitly
     expect(tree.toArray().length).toBe(100)
   })
 })
 
-describe('findFirstByLengthStartingAt', () => {
+describe('findOneByLengthStartingAt', () => {
   it('returns the first qualifying interval', () => {
     const tree = IntervalTree.fromTuples([
       [0, 5], // length 5
@@ -1152,7 +1151,7 @@ describe('findFirstByLengthStartingAt', () => {
       [20, 30], // length 10
       [60, 100], // length 40
     ])
-    const result = tree.findFirstByLengthStartingAt(10, 0)
+    const result = tree.findOneByLengthStartingAt(10, 0)
     expect(result).toBeDefined()
     expect(result!.start).toBe(10)
     expect(result!.end).toBe(50)
@@ -1160,7 +1159,7 @@ describe('findFirstByLengthStartingAt', () => {
 
   it('adjusts start when interval begins before startingAt', () => {
     const tree = IntervalTree.fromTuples([[0, 100]])
-    const result = tree.findFirstByLengthStartingAt(30, 50)
+    const result = tree.findOneByLengthStartingAt(30, 50)
     expect(result).toBeDefined()
     expect(result!.start).toBe(50)
     expect(result!.end).toBe(100)
@@ -1171,12 +1170,12 @@ describe('findFirstByLengthStartingAt', () => {
       [0, 5],
       [10, 12],
     ])
-    expect(tree.findFirstByLengthStartingAt(10, 0)).toBeUndefined()
+    expect(tree.findOneByLengthStartingAt(10, 0)).toBeUndefined()
   })
 
   it('returns undefined on empty tree', () => {
     const tree = new IntervalTree()
-    expect(tree.findFirstByLengthStartingAt(1, 0)).toBeUndefined()
+    expect(tree.findOneByLengthStartingAt(1, 0)).toBeUndefined()
   })
 
   it('returns earliest match when multiple qualify', () => {
@@ -1185,31 +1184,25 @@ describe('findFirstByLengthStartingAt', () => {
       [50, 150],
       [200, 300],
     ])
-    const result = tree.findFirstByLengthStartingAt(50, 0)
+    const result = tree.findOneByLengthStartingAt(50, 0)
     expect(result!.start).toBe(50)
   })
 
   it('handles startingAt beyond all intervals', () => {
     const tree = IntervalTree.fromTuples([[0, 10], [20, 30]])
-    expect(tree.findFirstByLengthStartingAt(1, 100)).toBeUndefined()
+    expect(tree.findOneByLengthStartingAt(1, 100)).toBeUndefined()
   })
-})
 
-describe('findOneByLengthStartingAt', () => {
-  it('returns adjusted interval when start < startingAt', () => {
-    const tree = IntervalTree.fromTuples([
-      [0, 100],
-      [50, 200],
+  it('returns adjusted interval preserving data', () => {
+    const tree = new IntervalTree([
+      new Interval(0, 100, 'keep-me'),
+      new Interval(50, 200, 'other'),
     ])
     const result = tree.findOneByLengthStartingAt(30, 60)
     expect(result).toBeDefined()
     expect(result!.start).toBe(60)
     expect(result!.end).toBeGreaterThan(60)
-  })
-
-  it('returns undefined when nothing qualifies', () => {
-    const tree = IntervalTree.fromTuples([[0, 5]])
-    expect(tree.findOneByLengthStartingAt(10, 0)).toBeUndefined()
+    expect(result!.data).toBeDefined()
   })
 
   it('respects filterFn', () => {
@@ -1220,6 +1213,27 @@ describe('findOneByLengthStartingAt', () => {
     const result = tree.findOneByLengthStartingAt(30, 0, iv => iv.data === 'b')
     expect(result).toBeDefined()
     expect(result!.data).toBe('b')
+  })
+
+  it('filterFn skips non-matching and finds next', () => {
+    const tree = new IntervalTree([
+      new Interval(0, 50, 'skip'),
+      new Interval(10, 80, 'skip'),
+      new Interval(20, 100, 'match'),
+    ])
+    const result = tree.findOneByLengthStartingAt(10, 0, iv => iv.data === 'match')
+    expect(result).toBeDefined()
+    expect(result!.data).toBe('match')
+    expect(result!.start).toBe(20)
+  })
+
+  it('filterFn returns undefined when no interval passes filter', () => {
+    const tree = new IntervalTree([
+      new Interval(0, 100, 'a'),
+      new Interval(50, 200, 'b'),
+    ])
+    const result = tree.findOneByLengthStartingAt(10, 0, iv => iv.data === 'nonexistent')
+    expect(result).toBeUndefined()
   })
 })
 

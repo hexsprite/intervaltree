@@ -326,13 +326,17 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
   }
 
   /**
-   * Finds the first interval in the tree that has a length greater than or equal to the specified minimum length,
-   * starting at the specified starting time.
+   * Find the first (earliest start) interval with at least `minLength` available
+   * starting at or after `startingAt`. O(log n) best case via in-order traversal
+   * with early termination.
+   *
+   * If the found interval starts before `startingAt`, the returned interval is
+   * adjusted to begin at `startingAt`.
    *
    * @param minLength - The minimum length of the interval to search for.
-   * @param startingAt - The starting time of the interval to search for.
+   * @param startingAt - The earliest start position to consider.
    * @param filterFn - An optional filter function to further refine the search.
-   * @returns The first interval that matches the search criteria, or undefined if no such interval is found.
+   * @returns The first matching interval, or undefined if none found.
    */
   public findOneByLengthStartingAt(
     minLength: number,
@@ -340,16 +344,7 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
     filterFn?: (iv: Interval<T>) => boolean,
   ): Interval<T> | undefined {
     assert(minLength > 0, 'minLength must be > 0')
-    const foundInterval = this.root?.findOneByLengthStartingAt(
-      minLength,
-      startingAt,
-      filterFn,
-    )
-    // adjust returned interval to match the requested start time
-    if (foundInterval && foundInterval.start < startingAt)
-      return new Interval(startingAt, foundInterval.end, foundInterval.data)
-
-    return foundInterval
+    return this.root?.findOneByLengthStartingAt(minLength, startingAt, filterFn)
   }
 
   /**
@@ -363,22 +358,6 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
       return []
     // In-order traversal with per-child pruning produces sorted results
     return this.root.searchByLengthStartingAt(length, start, [])
-  }
-
-  /**
-   * Find the first (earliest start) interval that has at least `minLength`
-   * available starting at or after `startingAt`.
-   * Much faster than searchByLengthStartingAt when only the first result is needed.
-   * O(log n) best case via early termination during in-order traversal.
-   */
-  public findFirstByLengthStartingAt(minLength: number, startingAt: number): Interval<T> | undefined {
-    if (!this.root)
-      return undefined
-    const found = this.root.findFirstByLengthStartingAt(minLength, startingAt)
-    // Adjust start when interval begins before startingAt
-    if (found && found.start < startingAt)
-      return new Interval(startingAt, found.end, found.data)
-    return found
   }
 
   public clone(): IntervalTree<T> {
