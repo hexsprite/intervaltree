@@ -11,6 +11,10 @@ type Direction = 0 | 1 | true | false
 // Shared mutable flags to avoid allocating [boolean] arrays per insert call
 const _rebalancingDone = [false]
 const _updateRequired = [false]
+/** Set to true by insert() when a duplicate was detected and nothing was added */
+export let _insertWasDuplicate = false
+/** Set to true by remove() when the interval was actually found and removed */
+export let _removeSucceeded = false
 
 export class Node<T = unknown> {
   values: Interval<T>[] = []
@@ -123,13 +127,16 @@ export class Node<T = unknown> {
     this.#branch[direction ? RIGHT : LEFT] = node
   }
 
-  insert(interval: Interval<T>, rebalancingDone: [boolean] = (_rebalancingDone[0] = false, _rebalancingDone), updateRequired: [boolean] = (_updateRequired[0] = false, _updateRequired)): Node<T> {
+  insert(interval: Interval<T>, rebalancingDone: [boolean] = (_rebalancingDone[0] = false, _insertWasDuplicate = false, _rebalancingDone), updateRequired: [boolean] = (_updateRequired[0] = false, _updateRequired)): Node<T> {
     // if the interval starts at the same point as this node, add it to the values
     if (this.start === interval.start) {
       // don't add a duplicate
       const end = interval.end
       for (let i = 0; i < this.values.length; i++) {
-        if (this.values[i].end === end) return this
+        if (this.values[i].end === end) {
+          _insertWasDuplicate = true
+          return this
+        }
       }
 
       this.values.push(interval)
@@ -277,6 +284,27 @@ export class Node<T = unknown> {
       this.right.printStructure(indent + 1, (prefix = '> '))
   }
 
+  public countIntervals(): number {
+    let count = this.values.length
+    const left = this.#branch[LEFT]
+    const right = this.#branch[RIGHT]
+    if (left) count += left.countIntervals()
+    if (right) count += right.countIntervals()
+    return count
+  }
+
+  /** Return the leftmost (minimum start) node */
+  public min(): Node<T> {
+    const left = this.#branch[LEFT]
+    return left ? left.min() : this
+  }
+
+  /** Return the rightmost (maximum start) node */
+  public max(): Node<T> {
+    const right = this.#branch[RIGHT]
+    return right ? right.max() : this
+  }
+
   public toArray(result: Interval<T>[] = []): Interval<T>[] {
     // In-order traversal: left, self, right — produces sorted output
     const left = this.#branch[LEFT]
@@ -288,7 +316,7 @@ export class Node<T = unknown> {
     return result
   }
 
-  public remove(interval: Interval<T>, rebalance: [boolean] = [false]): Node<T> | null {
+  public remove(interval: Interval<T>, rebalance: [boolean] = (_removeSucceeded = false, [false])): Node<T> | null {
     // eslint-disable-next-line ts/no-this-alias
     let result: Node<T> = this
 
@@ -306,6 +334,7 @@ export class Node<T = unknown> {
       for (let i = 0; i < values.length; i++) {
         if (values[i].end === interval.end && values[i].data === interval.data) {
           values.splice(i, 1)
+          _removeSucceeded = true
           break
         }
       }

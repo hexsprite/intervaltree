@@ -6,23 +6,25 @@ import assert from 'node:assert'
 import crypto from 'node:crypto'
 import { compareIntervals } from './compareIntervals'
 import { Interval } from './Interval'
-import { Node } from './Node'
+import { _insertWasDuplicate, _removeSucceeded, Node } from './Node'
 
 const DEBUG = process.env.NODE_ENV !== 'production'
 
 export class IntervalTree<T = unknown> implements IntervalCollection<T> {
   private root: Node<T> | null = null
   private _dirty = false
+  private _size = 0
 
   constructor(intervals: Interval<T>[] = []) {
     if (intervals.length > 0) {
       this.root = Node.fromIntervals(intervals)
       this._dirty = true
+      this._size = this.root.countIntervals()
     }
   }
 
   public get size(): number {
-    return this.toArray().length
+    return this._size
   }
 
   /**
@@ -32,6 +34,26 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
     return this.root === null
   }
 
+  /**
+   * Returns the interval(s) with the smallest start value, or null if empty.
+   * O(log n) — walks left branch without materializing the full tree.
+   */
+  public first(): Interval<T> | null {
+    if (!this.root) return null
+    const node = this.root.min()
+    return node.values[0] ?? null
+  }
+
+  /**
+   * Returns the interval(s) with the largest start value, or null if empty.
+   * O(log n) — walks right branch without materializing the full tree.
+   */
+  public last(): Interval<T> | null {
+    if (!this.root) return null
+    const node = this.root.max()
+    return node.values[0] ?? null
+  }
+
   static fromTuples<T = unknown>(allIntervals: Array<[number, number] | [number, number, T]>): IntervalTree<T> {
     return new IntervalTree(
       allIntervals.map(([start, end, data]) => new Interval(start, end, data)),
@@ -39,11 +61,15 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
   }
 
   public add(interval: Interval<T>): void {
-    if (!this.root)
+    if (!this.root) {
       this.root = new Node(interval)
-    else
+      this._size = 1
+    }
+    else {
       this.root = this.root.insert(interval)
-
+      if (!_insertWasDuplicate)
+        this._size++
+    }
     this._dirty = true
     this.verify()
   }
@@ -73,6 +99,7 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
       }
     }
     this.root = Node.fromIntervals(merged)
+    this._size = merged.length
     this._dirty = false
     this.verify()
   }
@@ -215,6 +242,7 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
     }
 
     this.root = result.length > 0 ? Node.fromIntervals(result) : null
+    this._size = result.length
     this._dirty = true
     this.verify()
   }
@@ -241,6 +269,8 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
     if (!this.root)
       return
     this.root = this.root.remove(interval)
+    if (_removeSucceeded)
+      this._size--
     this._dirty = true
     this.verify()
   }
