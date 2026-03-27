@@ -61,11 +61,32 @@ export class Node<T = unknown> {
     return Node._buildFromGroups(groups, 0, groups.length - 1)
   }
 
-  /** Like fromIntervals but skips sorting — caller guarantees sorted input. */
+  /** Like fromIntervals but skips sorting — caller guarantees sorted, non-overlapping input. */
   static fromSortedIntervals<T>(sorted: Interval<T>[]): Node<T> {
     assert(sorted.length > 0, 'Error: intervals must not be empty')
-    const groups = Node._groupByStart(sorted)
-    return Node._buildFromGroups(groups, 0, groups.length - 1)
+    // Fast path: sorted non-overlapping intervals have unique starts — skip grouping
+    return Node._buildSimple(sorted, 0, sorted.length - 1)
+  }
+
+  /** Build balanced tree from sorted intervals with unique starts (no grouping needed). */
+  private static _buildSimple<T>(sorted: Interval<T>[], lo: number, hi: number): Node<T> {
+    if (lo === hi) return new Node(sorted[lo])
+    if (lo + 1 === hi) {
+      const node = new Node(sorted[lo])
+      node._right = new Node(sorted[hi])
+      node.height = 2
+      node.updateAttributes()
+      return node
+    }
+    const mid = (lo + hi) >> 1
+    const node = new Node(sorted[mid])
+    node._left = Node._buildSimple(sorted, lo, mid - 1)
+    node._right = Node._buildSimple(sorted, mid + 1, hi)
+    const lh = node._left?.height ?? 0
+    const rh = node._right?.height ?? 0
+    node.height = 1 + (lh > rh ? lh : rh)
+    node.updateAttributes()
+    return node
   }
 
   /** Group sorted intervals by start, deduplicating same start+end. */

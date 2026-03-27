@@ -195,6 +195,9 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
       return
     }
 
+    // Preserve dirty state to choose correct rebuild path
+    const wasDirty = this._dirty
+
     // Sort and merge overlapping chop ranges
     const sorted = ranges.slice().sort((a, b) => a[0] - b[0])
     const merged: Array<[number, number]> = [sorted[0]]
@@ -241,9 +244,18 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
       }
     }
 
-    this.root = result.length > 0 ? Node.fromIntervals(result) : null
-    this._size = this.root ? this.root.countIntervals() : 0
-    this._dirty = true
+    if (result.length > 0) {
+      // If tree was clean (no overlaps), result is sorted — use fast path.
+      // If dirty (had overlaps), result may be unsorted — use full sort.
+      this.root = wasDirty ? Node.fromIntervals(result) : Node.fromSortedIntervals(result)
+      this._size = wasDirty ? this.root.countIntervals() : result.length
+    }
+    else {
+      this.root = null
+      this._size = 0
+    }
+    // Preserve dirty state — chopAll doesn't merge overlaps
+    this._dirty = wasDirty
     this.verify()
   }
 
