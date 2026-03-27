@@ -127,8 +127,10 @@ export class Node<T = unknown> {
     // if the interval starts at the same point as this node, add it to the values
     if (this.start === interval.start) {
       // don't add a duplicate
-      if (this.values.some(iv => iv.end === interval.end))
-        return this
+      const end = interval.end
+      for (let i = 0; i < this.values.length; i++) {
+        if (this.values[i].end === end) return this
+      }
 
       this.values.push(interval)
       // no rebalancing needed because the height of this node doesn't change
@@ -139,19 +141,16 @@ export class Node<T = unknown> {
     }
 
     // search for the correct branch to insert the interval
-    const direction = this.start < interval.start // true = right
-    const branchNode = this.branch(direction)
+    const dir = this.start < interval.start ? RIGHT : LEFT
+    const branchNode = this.#branch[dir]
 
     if (branchNode) {
-      this.setBranch(
-        direction,
-        branchNode.insert(interval, rebalancingDone, updateRequired),
-      )
+      this.#branch[dir] = branchNode.insert(interval, rebalancingDone, updateRequired)
       if (updateRequired[0])
         this.updateAttributes()
     }
     else {
-      this.setBranch(direction, new Node(interval))
+      this.#branch[dir] = new Node(interval)
       updateRequired[0] = this.updateAttributes()
     }
 
