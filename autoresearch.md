@@ -67,5 +67,10 @@ Optimize the IntervalTree library for Focuster's scheduling workload. The schedu
 - **Optimized findOneByLengthStartingAt**: eliminated filter/reduce allocations (helps Focuster).
 - **Simplified chop**: eliminated toRemove/toAdd arrays, overlapping IS the remove list.
 - **Optimized chopAll sweep**: index loops, avoid destructuring — 5% init improvement.
-- **Current**: 4.38ms (261x faster than 1146ms baseline). 87 unit tests + 200 property-based model check runs pass.
-- **Analysis**: 59 experiments. Schedule loop: 341 hits × ~7μs + 1159 free misses. Init: ~2.0ms. At V8 JIT floor. Last 20+ experiments all noise.
+- **BUG FIX**: _buildBalanced created unbalanced trees when same-start groups shifted the midpoint. Fixed with _groupByStart pre-processing.
+- **BUG FIX**: chopAll incorrectly cleared dirty flag when pre-existing overlaps existed.
+- **BUG FIX**: clone() didn't copy _size and _dirty.
+- **BUG FIX**: findFirstByLengthStartingAt didn't adjust start like findOneByLengthStartingAt.
+- **New tests**: 24 new unit tests (clone, searchEnvelop, removeEnveloped, findFirst, chopAll dirty flag, dirty flag correctness). 4 new model check commands (ChopAll, Clone, SearchEnvelop, FindFirst).
+- **Current**: 4.85ms (236x faster than 1146ms baseline). 111 unit tests + 200 property-based model check runs pass (13 model check commands).
+- **Analysis**: 61 experiments. Schedule: ~2.4ms. Init: ~2.5ms. At V8 JIT floor.
