@@ -99,6 +99,23 @@ const byLength = tree.searchByLengthStartingAt(3, 5)
 const first = tree.findOneByLengthStartingAt(3, 5)
 // Returns: First interval of length >= 3 starting at/after position 5
 // If found interval starts before 5, it's adjusted to start at 5
+
+// Faster alternative when you only need the first result
+const fastest = tree.findFirstByLengthStartingAt(3, 5)
+// O(log n) early termination vs O(n) full scan
+```
+
+### Tree Navigation
+
+```js
+// Get the earliest interval (by start)
+const earliest = tree.first()   // O(log n)
+
+// Get the latest interval (by start)
+const latest = tree.last()      // O(log n)
+
+// O(1) size check (no traversal needed)
+console.log(tree.size)  // Number of intervals
 ```
 
 ### Accessing Interval Properties
@@ -261,6 +278,11 @@ const available = schedule.findOneByLengthStartingAt(minDuration, dayStart)
 - `searchEnvelop(start: number, end: number)` - Find intervals completely within a range
 - `searchByLengthStartingAt(length: number, start: number)` - Find intervals by minimum length
 - `findOneByLengthStartingAt(minLength: number, startingAt: number, filterFn?: (iv: Interval<T>) => boolean)` - Find first matching interval
+- `findFirstByLengthStartingAt(minLength: number, startingAt: number)` - O(log n) early-terminating first match
+
+**Navigation:**
+- `first(): Interval<T> | null` - Get the earliest interval by start (O(log n))
+- `last(): Interval<T> | null` - Get the latest interval by start (O(log n))
 
 **Boolean Checks:**
 - `contains(point: number): boolean` - Check if any interval contains a point
