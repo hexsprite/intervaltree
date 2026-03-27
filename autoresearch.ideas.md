@@ -1,13 +1,28 @@
 # Autoresearch Ideas
 
-## Status: 236x improvement (1,146ms → 4.85ms), 61 experiments, COMPLETE
+## Status: COMPLETE — 236x improvement (1,146ms → 4.85ms)
 
-Optimization limit reached. 111 unit tests + 200 property-based model checks (13 commands) all pass.
-Schedule loop: ~2.4ms for 1500 iters (341 hits × ~7μs). Init: ~2.5ms. At V8 JIT floor.
+62 experiments across 11+ sessions. 111 unit tests + 200 property-based model checks (16 commands).
+At V8 JIT floor (~7μs per schedule hit, ~120ns per node visit).
 
-## All confirmed dead ends (don't retry — 20+ attempts, all noise/regression)
-See autoresearch.md "What's Been Tried" for full list.
+## Summary of wins (in order of impact)
+1. updateAttributes for-loops (5.2x) — eliminated spread+map allocations  
+2. mergeOverlaps dirty flag (3.2x) — skip rebuild when unchanged
+3. Dirty flag preserved in chop (2.6x) — chop never creates overlaps
+4. O(n) balanced bulk build (1.8x) — midpoint split vs sequential inserts
+5. fromSortedIntervals (9%) — skip redundant sort
+6. In-order traversals with per-child pruning — eliminate sorts in searches
+7. findFirstByLengthStartingAt — early termination for first match
+8. Micro-opts: for-loops, direct field access, inline computations
 
-## Only theoretical paths remaining (impractical)
-- **Flat array-based tree**: Cache-friendly layout. Complete rewrite, uncertain gains.
-- **WASM/Rust**: FFI overhead negates gains at this scale (<5ms total).
+## New APIs added for Focuster
+- `first()` / `last()` — O(log n) min/max access
+- `findFirstByLengthStartingAt()` — O(log n) with early termination  
+- `size` — O(1) counter
+
+## Confirmed dead ends (20+ attempts)
+See autoresearch.md for exhaustive list.
+
+## Only theoretical paths remaining
+- Flat array-based tree (complete rewrite)
+- WASM/Rust (FFI overhead negates gains at <5ms scale)
