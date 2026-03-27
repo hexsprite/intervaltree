@@ -105,9 +105,8 @@ const scheduleStart = performance.now()
 let earliest = periodStart
 for (const duration of actionDurations) {
   tree.mergeOverlaps()
-  const slots = tree.searchByLengthStartingAt(duration, earliest)
-  if (slots.length > 0) {
-    const slot = slots[0]
+  const slot = tree.findFirstByLengthStartingAt(duration, earliest)
+  if (slot) {
     const actionStart = Math.max(slot.start, earliest)
     const actionEnd = actionStart + duration
     tree.chop(actionStart, actionEnd)

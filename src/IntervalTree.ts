@@ -348,6 +348,17 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
     return this.root.searchByLengthStartingAt(length, start, [])
   }
 
+  /**
+   * Find the first (earliest start) interval that has at least `minLength`
+   * available starting at or after `startingAt`.
+   * Much faster than searchByLengthStartingAt when only the first result is needed.
+   * O(log n) best case via early termination during in-order traversal.
+   */
+  public findFirstByLengthStartingAt(minLength: number, startingAt: number): Interval<T> | undefined {
+    if (!this.root) return undefined
+    return this.root.findFirstByLengthStartingAt(minLength, startingAt)
+  }
+
   public clone(): IntervalTree<T> {
     const clone = new IntervalTree<T>()
     if (this.root)

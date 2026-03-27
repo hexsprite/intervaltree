@@ -477,6 +477,46 @@ export class Node<T = unknown> {
     return result
   }
 
+  /**
+   * Find the first interval (in sorted order) that meets the length and start criteria.
+   * Uses in-order traversal with early termination — O(log n) best case.
+   */
+  public findFirstByLengthStartingAt(
+    minLength: number,
+    startingAt: number,
+  ): Interval<T> | undefined {
+    if (this.maxEnd < startingAt || this.maxLength < minLength)
+      return undefined
+
+    // Check left subtree first (in-order)
+    const left = this.#branch[LEFT]
+    if (left && left.maxEnd >= startingAt && left.maxLength >= minLength) {
+      const found = left.findFirstByLengthStartingAt(minLength, startingAt)
+      if (found) return found
+    }
+
+    // Check self
+    for (let i = 0; i < this.values.length; i++) {
+      const interval = this.values[i]
+      if (interval.end < startingAt) continue
+      const adjustedLength
+        = interval.end - interval.start - Math.max(0, startingAt - interval.start)
+      if (adjustedLength >= minLength) {
+        return interval.start < startingAt
+          ? new Interval(startingAt, interval.end)
+          : interval
+      }
+    }
+
+    // Check right subtree
+    const right = this.#branch[RIGHT]
+    if (right && right.maxEnd >= startingAt && right.maxLength >= minLength) {
+      return right.findFirstByLengthStartingAt(minLength, startingAt)
+    }
+
+    return undefined
+  }
+
   public searchOverlap(
     start: number,
     end: number,
