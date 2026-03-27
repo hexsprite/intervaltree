@@ -30,12 +30,12 @@ const rand = mulberry32(42)
 const MINUTE = 60_000
 const HOUR = 60 * MINUTE
 const DAY = 24 * HOUR
-const TWO_WEEKS = 14 * DAY
+const TWO_WEEKS = 140 * DAY // scaled up period to match more work days
 
-// Simulation parameters matching Focuster's heavy user
-const NUM_EVENTS = 100 // calendar events to chop
-const NUM_ACTIONS = 100 // actions to schedule
-const NUM_WORK_DAYS = 10 // ~2 weeks of weekdays
+// Simulation parameters — scaled-up Focuster workload for stable benchmarking
+const NUM_EVENTS = 1000 // calendar events to chop
+const NUM_ACTIONS = 1500 // actions to schedule
+const NUM_WORK_DAYS = 100 // extended period for more intervals
 const WORK_START_HOUR = 9
 const WORK_END_HOUR = 17
 

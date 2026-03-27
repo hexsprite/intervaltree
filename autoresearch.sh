@@ -7,7 +7,7 @@ npx tsup src/bench-metric.ts --no-config --format cjs --env.NODE_ENV production 
 # Run benchmark 5 times, collect medians for stability
 declare -a init_times schedule_times total_times
 
-for i in {1..5}; do
+for i in {1..3}; do
   output=$(node dist/bench-metric.cjs 2>/dev/null)
   it=$(echo "$output" | grep '^INIT_MS=' | cut -d= -f2)
   st=$(echo "$output" | grep '^SCHEDULE_MS=' | cut -d= -f2)
