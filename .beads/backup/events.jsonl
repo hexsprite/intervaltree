@@ -17,3 +17,4 @@
 {"actor":"Jordan Baker","comment":null,"created_at":"2026-03-26T23:21:50Z","event_type":"closed","id":17,"issue_id":"intervaltree-2v6","new_value":"O(1) size counter with insert/remove tracking","old_value":""}
 {"actor":"Jordan Baker","comment":null,"created_at":"2026-03-26T23:21:50Z","event_type":"closed","id":18,"issue_id":"intervaltree-anm","new_value":"first()/last() O(log n) via min()/max() tree walk","old_value":""}
 {"actor":"Jordan Baker","comment":null,"created_at":"2026-03-26T23:22:01Z","event_type":"closed","id":19,"issue_id":"intervaltree-u7x","new_value":"Tested: no measurable performance difference. assert cost is negligible.","old_value":""}
+{"actor":"Jordan Baker","comment":null,"created_at":"2026-03-27T00:25:29Z","event_type":"closed","id":20,"issue_id":"intervaltree-rjs","new_value":"Low value: chopAll sort is O(n log n) on 1000 items (~50μs), negligible vs total. Pre-sorted callers get O(n) from Timsort anyway.","old_value":""}
