@@ -42,4 +42,6 @@ Optimize the IntervalTree library for Focuster's scheduling workload. The schedu
 - **DEAD END**: Removing assert from Interval constructor — no measurable difference.
 - **DEAD END**: Replacing #private fields with readonly public — actually slower.
 - **BUG FIX**: searchByLengthStartingAt traversal is NOT in-order (due to shouldSkipBranch pruning) — sort is required. Previous 15ms result was incorrect (unsorted results).
-- **Current**: 22.37ms (51.3x faster than 1146ms baseline)
+- **Restored sort in searchByLengthStartingAt**: in-order traversal doesn't work with shouldSkipBranch pruning — sort required for correctness.
+- **Property-based tests**: Found bugs in ArrayIntervalCollection (searchByLengthStartingAt wrong formula, mergeOverlaps was no-op). Added 4 new model check commands.
+- **Current**: 18.10ms (63x faster than 1146ms baseline). All 87 unit tests + 200 property-based model check runs pass.

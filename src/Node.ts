@@ -450,8 +450,13 @@ export class Node<T = unknown> {
     result: Interval<T>[],
   ) {
     // Skip this entire subtree if it cannot contain a qualifying interval
-    if (this.shouldSkipBranch(minLength, startingAt))
+    if (this.maxEnd < startingAt || this.maxLength < minLength)
       return result
+
+    // In-order traversal: left, self, right — produces sorted output
+    const left = this.#branch[LEFT]
+    if (left && left.maxEnd >= startingAt && left.maxLength >= minLength)
+      left.searchByLengthStartingAt(minLength, startingAt, result)
 
     for (let i = 0; i < this.values.length; i++) {
       const interval = this.values[i]
@@ -466,10 +471,9 @@ export class Node<T = unknown> {
       }
     }
 
-    const left = this.#branch[LEFT]
     const right = this.#branch[RIGHT]
-    if (left) left.searchByLengthStartingAt(minLength, startingAt, result)
-    if (right) right.searchByLengthStartingAt(minLength, startingAt, result)
+    if (right && right.maxEnd >= startingAt && right.maxLength >= minLength)
+      right.searchByLengthStartingAt(minLength, startingAt, result)
     return result
   }
 
