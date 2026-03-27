@@ -241,10 +241,9 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
       }
     }
 
-    this.root = result.length > 0 ? Node.fromSortedIntervals(result) : null
-    this._size = result.length
-    // chopAll rebuilds from non-overlapping sorted intervals — tree is clean
-    this._dirty = false
+    this.root = result.length > 0 ? Node.fromIntervals(result) : null
+    this._size = this.root ? this.root.countIntervals() : 0
+    this._dirty = true
     this.verify()
   }
 
@@ -357,7 +356,11 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
    */
   public findFirstByLengthStartingAt(minLength: number, startingAt: number): Interval<T> | undefined {
     if (!this.root) return undefined
-    return this.root.findFirstByLengthStartingAt(minLength, startingAt)
+    const found = this.root.findFirstByLengthStartingAt(minLength, startingAt)
+    // Adjust start when interval begins before startingAt
+    if (found && found.start < startingAt)
+      return new Interval(startingAt, found.end, found.data)
+    return found
   }
 
   public clone(): IntervalTree<T> {
@@ -365,6 +368,8 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
     if (this.root)
       clone.root = this.root.clone()
 
+    clone._size = this._size
+    clone._dirty = this._dirty
     clone.verify()
     return clone
   }

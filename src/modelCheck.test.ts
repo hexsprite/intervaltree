@@ -190,6 +190,93 @@ const intervalArbitrary = fc.integer({ max: 2147483647 - 1 }).chain(start =>
   }),
 )
 
+class ChopAllCommand implements fc.Command<ArrayIntervalCollection, IntervalTree> {
+  ranges: Array<[number, number]>
+
+  constructor(ranges: Array<{ start: number, end: number }>) {
+    this.ranges = ranges.map(r => [r.start, r.end])
+  }
+
+  check(m: ArrayIntervalCollection) {
+    return m.size > 0
+  }
+
+  run(m: ArrayIntervalCollection, r: IntervalTree): void {
+    r.chopAll(this.ranges)
+    for (const [start, end] of this.ranges) {
+      m.chop(start, end)
+    }
+    expect(r.toString()).toEqual(m.toString())
+    expect(r.size).toEqual(m.size)
+  }
+
+  toString = () => `chopAll(${this.ranges.length} ranges)`
+}
+
+class CloneCommand implements fc.Command<ArrayIntervalCollection, IntervalTree> {
+  check = () => true
+
+  run(_m: ArrayIntervalCollection, r: IntervalTree): void {
+    const cloned = r.clone()
+    expect(cloned.toString()).toEqual(r.toString())
+    expect(cloned.size).toEqual(r.size)
+  }
+
+  toString = () => `clone()`
+}
+
+class SearchEnvelopCommand implements fc.Command<ArrayIntervalCollection, IntervalTree> {
+  start: number
+  end: number
+
+  constructor(value: { start: number, end: number }) {
+    this.start = value.start
+    this.end = value.end
+  }
+
+  check = () => true
+
+  run(m: ArrayIntervalCollection, r: IntervalTree): void {
+    const rResult = r.searchEnvelop(this.start, this.end).toSorted(compareIntervals)
+    const mResult = m.toArray()
+      .filter(iv => iv.start >= this.start && iv.end <= this.end)
+      .toSorted(compareIntervals)
+    expect(rResult).toEqual(mResult)
+  }
+
+  toString = () => `searchEnvelop(${this.start}, ${this.end})`
+}
+
+class FindFirstByLengthCommand implements fc.Command<ArrayIntervalCollection, IntervalTree> {
+  minLength: number
+  startingAt: number
+
+  constructor(minLength: number, startingAt: number) {
+    this.minLength = minLength
+    this.startingAt = startingAt
+  }
+
+  check = () => true
+
+  run(m: ArrayIntervalCollection, r: IntervalTree): void {
+    const rResult = r.findFirstByLengthStartingAt(this.minLength, this.startingAt)
+    // findFirst should return same result as findOne (both find earliest qualifying)
+    const rOneResult = r.findOneByLengthStartingAt(this.minLength, this.startingAt)
+    // Both should agree on finding/not finding a result, and on the start
+    // (end may differ for same-start intervals since findFirst takes first in values,
+    //  findOne picks smallest end)
+    if (rResult && rOneResult) {
+      expect(rResult.start).toEqual(rOneResult.start)
+    }
+    else {
+      // Both undefined or both defined
+      expect(!!rResult).toEqual(!!rOneResult)
+    }
+  }
+
+  toString = () => `findFirst(${this.minLength}, ${this.startingAt})`
+}
+
 const allCommands = [
   intervalArbitrary.map(v => new AddCommand(v)),
   fc.integer().map(seed => new RemoveCommand(seed)),
@@ -204,6 +291,12 @@ const allCommands = [
   fc.constant(new SizeConsistencyCommand()),
   fc.constant(new MergeOverlapsCommand()),
   intervalArbitrary.map(v => new SearchOverlapCommand(v)),
+  fc.array(intervalArbitrary, { minLength: 1, maxLength: 5 }).map(v => new ChopAllCommand(v)),
+  fc.constant(new CloneCommand()),
+  intervalArbitrary.map(v => new SearchEnvelopCommand(v)),
+  fc.tuple(fc.integer({ min: 1 }), fc.integer()).map(
+    ([minLength, startingAt]) => new FindFirstByLengthCommand(minLength, startingAt),
+  ),
 ]
 
 describe('model checking', () => {

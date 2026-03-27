@@ -1143,3 +1143,222 @@ describe('bulk construction correctness', () => {
     expect(tree.toArray().length).toBe(100)
   })
 })
+
+describe('findFirstByLengthStartingAt', () => {
+  it('returns the first qualifying interval', () => {
+    const tree = IntervalTree.fromTuples([
+      [0, 5], // length 5
+      [10, 50], // length 40
+      [20, 30], // length 10
+      [60, 100], // length 40
+    ])
+    const result = tree.findFirstByLengthStartingAt(10, 0)
+    expect(result).toBeDefined()
+    expect(result!.start).toBe(10)
+    expect(result!.end).toBe(50)
+  })
+
+  it('adjusts start when interval begins before startingAt', () => {
+    const tree = IntervalTree.fromTuples([[0, 100]])
+    const result = tree.findFirstByLengthStartingAt(30, 50)
+    expect(result).toBeDefined()
+    expect(result!.start).toBe(50)
+    expect(result!.end).toBe(100)
+  })
+
+  it('returns undefined when no interval qualifies', () => {
+    const tree = IntervalTree.fromTuples([
+      [0, 5],
+      [10, 12],
+    ])
+    expect(tree.findFirstByLengthStartingAt(10, 0)).toBeUndefined()
+  })
+
+  it('returns undefined on empty tree', () => {
+    const tree = new IntervalTree()
+    expect(tree.findFirstByLengthStartingAt(1, 0)).toBeUndefined()
+  })
+
+  it('returns earliest match when multiple qualify', () => {
+    const tree = IntervalTree.fromTuples([
+      [100, 200],
+      [50, 150],
+      [200, 300],
+    ])
+    const result = tree.findFirstByLengthStartingAt(50, 0)
+    expect(result!.start).toBe(50)
+  })
+
+  it('handles startingAt beyond all intervals', () => {
+    const tree = IntervalTree.fromTuples([[0, 10], [20, 30]])
+    expect(tree.findFirstByLengthStartingAt(1, 100)).toBeUndefined()
+  })
+})
+
+describe('findOneByLengthStartingAt', () => {
+  it('returns adjusted interval when start < startingAt', () => {
+    const tree = IntervalTree.fromTuples([
+      [0, 100],
+      [50, 200],
+    ])
+    const result = tree.findOneByLengthStartingAt(30, 60)
+    expect(result).toBeDefined()
+    expect(result!.start).toBe(60)
+    expect(result!.end).toBeGreaterThan(60)
+  })
+
+  it('returns undefined when nothing qualifies', () => {
+    const tree = IntervalTree.fromTuples([[0, 5]])
+    expect(tree.findOneByLengthStartingAt(10, 0)).toBeUndefined()
+  })
+
+  it('respects filterFn', () => {
+    const tree = new IntervalTree([
+      new Interval(0, 100, 'a'),
+      new Interval(50, 200, 'b'),
+    ])
+    const result = tree.findOneByLengthStartingAt(30, 0, iv => iv.data === 'b')
+    expect(result).toBeDefined()
+    expect(result!.data).toBe('b')
+  })
+})
+
+describe('searchEnvelop', () => {
+  it('returns intervals completely contained within range', () => {
+    const tree = IntervalTree.fromTuples([
+      [5, 10],
+      [15, 25],
+      [30, 50],
+      [0, 100],
+    ])
+    const result = tree.searchEnvelop(0, 30)
+    const tuples = result.map(iv => [iv.start, iv.end]).sort((a, b) => a[0] - b[0])
+    expect(tuples).toEqual([[5, 10], [15, 25]])
+  })
+
+  it('returns empty for no matches', () => {
+    const tree = IntervalTree.fromTuples([[0, 100]])
+    expect(tree.searchEnvelop(10, 50)).toEqual([])
+  })
+
+  it('returns empty on empty tree', () => {
+    const tree = new IntervalTree()
+    expect(tree.searchEnvelop(0, 100)).toEqual([])
+  })
+})
+
+describe('removeEnveloped', () => {
+  it('removes only intervals completely within range', () => {
+    const tree = IntervalTree.fromTuples([
+      [5, 10],
+      [15, 25],
+      [0, 100],
+    ])
+    tree.removeEnveloped(0, 30)
+    const remaining = tree.toTuples()
+    expect(remaining).toEqual([[0, 100]])
+  })
+
+  it('does nothing on empty tree', () => {
+    const tree = new IntervalTree()
+    tree.removeEnveloped(0, 100)
+    expect(tree.size).toBe(0)
+  })
+})
+
+describe('clone', () => {
+  it('creates a deep copy', () => {
+    const tree = IntervalTree.fromTuples([[1, 5], [10, 20], [30, 40]])
+    const cloned = tree.clone()
+    expect(cloned.toTuples()).toEqual(tree.toTuples())
+    expect(cloned.size).toBe(tree.size)
+  })
+
+  it('cloned tree is independent of original', () => {
+    const tree = IntervalTree.fromTuples([[1, 5], [10, 20]])
+    const cloned = tree.clone()
+    tree.chop(1, 5)
+    // Original changed, clone should not
+    expect(tree.size).toBe(1)
+    expect(cloned.size).toBe(2)
+  })
+
+  it('cloning empty tree works', () => {
+    const tree = new IntervalTree()
+    const cloned = tree.clone()
+    expect(cloned.isEmpty).toBe(true)
+    expect(cloned.size).toBe(0)
+  })
+})
+
+describe('chopAll correctness', () => {
+  it('chopAll produces same result as sequential chops', () => {
+    const ranges: [number, number][] = [
+      [100, 200],
+      [300, 400],
+      [500, 600],
+    ]
+    const tree1 = IntervalTree.fromTuples([[0, 1000]])
+    tree1.chopAll(ranges)
+
+    const tree2 = IntervalTree.fromTuples([[0, 1000]])
+    for (const [s, e] of ranges) tree2.chop(s, e)
+
+    expect(tree1.toTuples()).toEqual(tree2.toTuples())
+  })
+
+  it('mergeOverlaps is no-op after chopAll', () => {
+    const tree = IntervalTree.fromTuples([[0, 1000]])
+    tree.chopAll([[100, 200], [300, 400]])
+    const before = tree.toTuples()
+    tree.mergeOverlaps()
+    expect(tree.toTuples()).toEqual(before)
+  })
+
+  it('mergeOverlaps is no-op after chop', () => {
+    const tree = IntervalTree.fromTuples([[0, 1000]])
+    tree.chop(100, 200)
+    const before = tree.toTuples()
+    tree.mergeOverlaps()
+    expect(tree.toTuples()).toEqual(before)
+  })
+
+  it('size is correct after chopAll', () => {
+    const tree = IntervalTree.fromTuples([[0, 1000]])
+    tree.chopAll([[100, 200], [300, 400], [500, 600]])
+    expect(tree.size).toBe(tree.toArray().length)
+  })
+})
+
+describe('dirty flag correctness', () => {
+  it('mergeOverlaps does work when tree has overlaps from add', () => {
+    const tree = new IntervalTree()
+    tree.addInterval(0, 15)
+    tree.addInterval(10, 25)
+    // Tree should be dirty — two overlapping intervals
+    tree.mergeOverlaps()
+    expect(tree.toTuples()).toEqual([[0, 25]])
+  })
+
+  it('mergeOverlaps is idempotent — second call is no-op', () => {
+    const tree = new IntervalTree()
+    tree.addInterval(0, 15)
+    tree.addInterval(10, 25)
+    tree.mergeOverlaps()
+    const first = tree.toTuples()
+    tree.mergeOverlaps()
+    expect(tree.toTuples()).toEqual(first)
+  })
+
+  it('chop followed by add marks dirty correctly', () => {
+    const tree = IntervalTree.fromTuples([[0, 100]])
+    tree.chop(40, 60) // [0,40] + [60,100] — not dirty (chop preserves)
+    tree.addInterval(35, 65) // overlaps both pieces — should mark dirty
+    tree.mergeOverlaps()
+    // After merge: [0, 100] (all three merge together)
+    const tuples = tree.toTuples()
+    expect(tuples.length).toBe(1)
+    expect(tuples[0][0]).toBe(0)
+    expect(tuples[0][1]).toBe(100)
+  })
+})

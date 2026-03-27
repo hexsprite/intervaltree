@@ -55,67 +55,73 @@ export class Node<T = unknown> {
 
   static fromIntervals<T>(intervals: Interval<T>[]): Node<T> {
     assert(intervals.length > 0, 'Error: intervals must not be empty')
-    const sortedIntervals = intervals.toSorted(compareIntervals)
-    return Node._buildBalanced(sortedIntervals, 0, sortedIntervals.length - 1)
+    const sorted = intervals.toSorted(compareIntervals)
+    // Group same-start intervals and dedup, then build balanced tree from groups
+    const groups = Node._groupByStart(sorted)
+    return Node._buildFromGroups(groups, 0, groups.length - 1)
   }
 
   /** Like fromIntervals but skips sorting — caller guarantees sorted input. */
   static fromSortedIntervals<T>(sorted: Interval<T>[]): Node<T> {
     assert(sorted.length > 0, 'Error: intervals must not be empty')
-    return Node._buildBalanced(sorted, 0, sorted.length - 1)
+    const groups = Node._groupByStart(sorted)
+    return Node._buildFromGroups(groups, 0, groups.length - 1)
+  }
+
+  /** Group sorted intervals by start, deduplicating same start+end. */
+  private static _groupByStart<T>(sorted: Interval<T>[]): Array<{ start: number, values: Interval<T>[] }> {
+    const groups: Array<{ start: number, values: Interval<T>[] }> = []
+    let i = 0
+    while (i < sorted.length) {
+      const s = sorted[i].start
+      const values: Interval<T>[] = [sorted[i]]
+      i++
+      while (i < sorted.length && sorted[i].start === s) {
+        // Dedup by end
+        if (!values.some(v => v.end === sorted[i].end))
+          values.push(sorted[i])
+        i++
+      }
+      groups.push({ start: s, values })
+    }
+    return groups
   }
 
   /**
-   * Build a balanced AVL tree from a sorted array in O(n).
-   * Recursively splits at midpoint, creating a balanced structure directly.
+   * Build a balanced AVL tree from pre-grouped intervals in O(n).
+   * Each group has a unique start and 1+ intervals.
    */
-  private static _buildBalanced<T>(sorted: Interval<T>[], lo: number, hi: number): Node<T> {
+  private static _buildFromGroups<T>(groups: Array<{ start: number, values: Interval<T>[] }>, lo: number, hi: number): Node<T> {
     if (lo === hi) {
-      // Leaf node — constructor handles attributes
-      return new Node(sorted[lo])
+      const g = groups[lo]
+      const node = new Node(g.values[0])
+      for (let i = 1; i < g.values.length; i++)
+        node.values.push(g.values[i])
+      node.updateAttributes()
+      return node
     }
     if (lo + 1 === hi) {
-      // Two elements
-      if (sorted[hi].start === sorted[lo].start) {
-        const node = new Node(sorted[lo])
-        if (!node.values.some(v => v.end === sorted[hi].end))
-          node.values.push(sorted[hi])
-        node.updateAttributes()
-        return node
-      }
-      const node = new Node(sorted[lo])
-      const right = new Node(sorted[hi])
+      const node = new Node(groups[lo].values[0])
+      for (let i = 1; i < groups[lo].values.length; i++)
+        node.values.push(groups[lo].values[i])
+      const right = new Node(groups[hi].values[0])
+      for (let i = 1; i < groups[hi].values.length; i++)
+        right.values.push(groups[hi].values[i])
       node._right = right
+      right.updateAttributes()
       node.height = 2
       node.updateAttributes()
       return node
     }
 
     const mid = (lo + hi) >> 1
-    const iv = sorted[mid]
-    const node = new Node(iv)
-    const midStart = iv.start
+    const g = groups[mid]
+    const node = new Node(g.values[0])
+    for (let i = 1; i < g.values.length; i++)
+      node.values.push(g.values[i])
 
-    // Group same-start intervals into this node
-    let groupEnd = mid + 1
-    while (groupEnd <= hi && sorted[groupEnd].start === midStart) {
-      const giv = sorted[groupEnd]
-      if (!node.values.some(v => v.end === giv.end))
-        node.values.push(giv)
-      groupEnd++
-    }
-    let groupStart = mid - 1
-    while (groupStart >= lo && sorted[groupStart].start === midStart) {
-      const giv = sorted[groupStart]
-      if (!node.values.some(v => v.end === giv.end))
-        node.values.push(giv)
-      groupStart--
-    }
-
-    if (groupStart >= lo)
-      node._left = Node._buildBalanced(sorted, lo, groupStart)
-    if (groupEnd <= hi)
-      node._right = Node._buildBalanced(sorted, groupEnd, hi)
+    node._left = Node._buildFromGroups(groups, lo, mid - 1)
+    node._right = Node._buildFromGroups(groups, mid + 1, hi)
 
     const lh = node._left?.height ?? 0
     const rh = node._right?.height ?? 0
