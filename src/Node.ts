@@ -482,6 +482,11 @@ export class Node<T = unknown> {
     end: number,
     result: Interval<T>[] = [],
   ): Interval<T>[] {
+    // In-order traversal: left, self, right
+    const left = this.#branch[LEFT]
+    if (left && start <= left.maxEnd)
+      left.searchOverlap(start, end, result)
+
     // Check current node's intervals for overlap
     // Using strict inequalities for half-open interval semantics [start, end)
     for (let i = 0; i < this.values.length; i++) {
@@ -489,11 +494,6 @@ export class Node<T = unknown> {
       if (iv.end > start && iv.start < end)
         result.push(iv)
     }
-
-    // Traverse left subtree if it might contain overlapping intervals
-    const left = this.#branch[LEFT]
-    if (left && start <= left.maxEnd)
-      left.searchOverlap(start, end, result)
 
     // Traverse right subtree if it might contain overlapping intervals
     const right = this.#branch[RIGHT]
