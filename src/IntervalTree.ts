@@ -251,7 +251,7 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
 
     this.root = result.length > 0 ? Node.fromSortedIntervals(result) : null
     this._size = result.length
-    this._dirty = true
+    // chopAll only splits intervals, never creates overlaps — don't set dirty
     this.verify()
   }
 
