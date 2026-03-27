@@ -8,6 +8,10 @@ type Direction = 0 | 1 | true | false
 
 // const debug = (...args: any[]) => console.log(...args)
 
+// Shared mutable flags to avoid allocating [boolean] arrays per insert call
+const _rebalancingDone = [false]
+const _updateRequired = [false]
+
 export class Node<T = unknown> {
   values: Interval<T>[] = []
   start: number
@@ -110,7 +114,7 @@ export class Node<T = unknown> {
     this.#branch[direction ? RIGHT : LEFT] = node
   }
 
-  insert(interval: Interval<T>, rebalancingDone: [boolean] = [false], updateRequired: [boolean] = [false]): Node<T> {
+  insert(interval: Interval<T>, rebalancingDone: [boolean] = (_rebalancingDone[0] = false, _rebalancingDone), updateRequired: [boolean] = (_updateRequired[0] = false, _updateRequired)): Node<T> {
     // if the interval starts at the same point as this node, add it to the values
     if (this.start === interval.start) {
       // don't add a duplicate
