@@ -2,6 +2,11 @@ import type { IntervalCollection } from './IntervalCollection'
 import { compareIntervals } from './compareIntervals'
 import { Interval } from './Interval'
 
+/**
+ * Naive array-based reference implementation used as the oracle model in
+ * property-based tests. Optimized for readability, clarity and correctness
+ * — not performance. Do not use in production.
+ */
 export class ArrayIntervalCollection implements IntervalCollection {
   private intervals: Interval[]
 
@@ -128,7 +133,8 @@ export class ArrayIntervalCollection implements IntervalCollection {
 
   // Merges overlapping intervals in the tree
   mergeOverlaps(): void {
-    if (this.intervals.length <= 1) return
+    if (this.intervals.length <= 1)
+      return
     const sorted = this.intervals.toSorted(compareIntervals)
     const merged: Interval[] = [sorted[0]]
     for (let i = 1; i < sorted.length; i++) {

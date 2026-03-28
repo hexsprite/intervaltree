@@ -100,11 +100,13 @@ export class Node<T = unknown> {
     while (i < sorted.length) {
       const s = sorted[i].start
       const values: Interval<T>[] = [sorted[i]]
+      const endsSeen = new Set([sorted[i].end])
       i++
       while (i < sorted.length && sorted[i].start === s) {
-        // Dedup by end
-        if (!values.some(v => v.end === sorted[i].end))
+        if (!endsSeen.has(sorted[i].end)) {
           values.push(sorted[i])
+          endsSeen.add(sorted[i].end)
+        }
         i++
       }
       groups.push({ start: s, values })

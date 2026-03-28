@@ -253,7 +253,7 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
       // If tree was clean (no overlaps), result is sorted — use fast path.
       // If dirty (had overlaps), result may be unsorted — use full sort.
       this.root = wasDirty ? Node.fromIntervals(result) : Node.fromSortedIntervals(result)
-      this._size = wasDirty ? this.root.countIntervals() : result.length
+      this._size = result.length
     }
     else {
       this.root = null
