@@ -26,15 +26,15 @@ export class ArrayIntervalCollection<T = unknown> implements IntervalCollection<
   findOneByLengthStartingAt(
     minLength: number,
     startingAt: number,
-    _filterFn?: ((iv: Interval<T>) => boolean) | undefined,
+    filterFn?: (iv: Interval<T>) => boolean,
   ): Interval<T> | undefined {
     for (const interval of this.toSorted()) {
-      const intervalLength
-        = interval.end - interval.start - Math.max(0, startingAt - interval.start)
-      if (intervalLength >= minLength) {
-        if (interval.start < startingAt && interval.end >= startingAt)
-          return new Interval(startingAt, interval.end, interval.data)
-        return interval
+      if (interval.availableLength(startingAt) >= minLength) {
+        const candidate = interval.start < startingAt && interval.end >= startingAt
+          ? new Interval<T>(startingAt, interval.end, interval.data)
+          : interval
+        if (!filterFn || filterFn(candidate))
+          return candidate
       }
     }
     return undefined
@@ -96,15 +96,18 @@ export class ArrayIntervalCollection<T = unknown> implements IntervalCollection<
       if (iv.end < startingAt)
         return false
 
-      const adjustedLength
-        = iv.end - iv.start - Math.max(0, startingAt - iv.start)
-      return adjustedLength >= minLength
+      return iv.availableLength(startingAt) >= minLength
     })
   }
 
   first(): Interval<T> | null {
     const sorted = this.toSorted()
     return sorted[0] ?? null
+  }
+
+  last(): Interval<T> | null {
+    const sorted = this.toSorted()
+    return sorted.at(-1) ?? null
   }
 
   hash(): string {

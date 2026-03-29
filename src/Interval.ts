@@ -56,14 +56,17 @@ export class Interval<T = unknown> {
     return `Interval(${this.start}, ${this.end}, length=${this.length}${this.data !== undefined ? `, data=${this.data}` : ''})`
   }
 
+  /** Half-open containment check: start <= point < end. */
   public containsPoint(point: number): boolean {
-    /*
-      Whether the Interval contains point.
-    */
     return this.start <= point && point < this.end
   }
 
   overlapsWith(start: number, end: number): boolean {
     return this.start < end && this.end > start
+  }
+
+  /** Available length from `startingAt` onwards within this interval. */
+  availableLength(startingAt: number): number {
+    return this.end - this.start - Math.max(0, startingAt - this.start)
   }
 }

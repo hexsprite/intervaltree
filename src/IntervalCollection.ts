@@ -2,6 +2,8 @@ import type { Interval } from './Interval'
 
 export interface IntervalCollection<T = unknown> {
   size: number
+  first: () => Interval<T> | null
+  last: () => Interval<T> | null
   addInterval: (start: number, end: number, data?: T) => void
   clone: () => IntervalCollection<T>
   chop: (start: number, end: number) => void
@@ -17,4 +19,5 @@ export interface IntervalCollection<T = unknown> {
   toArray: () => Interval<T>[]
   toSorted: () => Interval<T>[]
   remove: (interval: Interval<T>) => void
+  searchByLengthStartingAt: (minLength: number, startingAt: number) => Interval<T>[]
 }

@@ -271,15 +271,12 @@ export class Node<T = unknown> {
 
     const heavyChild = this.branch(pivotNodeDirection)!
 
-    // Adjusting branches for rotation
     this.setBranch(pivotNodeDirection, heavyChild.branch(oppositeDirection))
     heavyChild.setBranch(oppositeDirection, this)
 
-    // Update heights
     this.updateHeight()
     heavyChild.updateHeight()
 
-    // Update Max
     this.updateAttributes()
     heavyChild.updateAttributes()
 
@@ -454,9 +451,7 @@ export class Node<T = unknown> {
       const interval = this.values[i]
       if (interval.end < startingAt)
         continue
-      const adjustedLength
-        = interval.end - interval.start - Math.max(0, startingAt - interval.start)
-      if (adjustedLength < minLength)
+      if (interval.availableLength(startingAt) < minLength)
         continue
       if (filterFn && !filterFn(interval))
         continue
@@ -492,9 +487,7 @@ export class Node<T = unknown> {
       const interval = this.values[i]
       if (interval.end < startingAt)
         continue
-      const adjustedLength
-        = interval.end - interval.start - Math.max(0, startingAt - interval.start)
-      if (adjustedLength >= minLength) {
+      if (interval.availableLength(startingAt) >= minLength) {
         result.push(interval.start < startingAt
           ? new Interval(startingAt, interval.end)
           : interval)

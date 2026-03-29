@@ -27,9 +27,7 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
     return this._size
   }
 
-  /**
-   * Returns true if the tree is empty, false otherwise.
-   */
+  /** Whether the tree contains zero intervals. */
   public get isEmpty(): boolean {
     return this.root === null
   }
@@ -124,11 +122,7 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
     return result
   }
 
-  /**
-   * Checks if any interval in the tree contains the given point.
-   * @param point The point to check
-   * @returns true if any interval contains the point, false otherwise
-   */
+  /** Whether any interval in the tree contains the given point. */
   public contains(point: number): boolean {
     return this.searchPoint(point).length > 0
   }
@@ -380,12 +374,7 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
     return this.root.searchOverlap(start, end, [])
   }
 
-  /**
-   * Checks if any interval in the tree overlaps with the given range.
-   * @param start The start of the range
-   * @param end The end of the range
-   * @returns true if any interval overlaps with the range, false otherwise
-   */
+  /** Whether any interval in the tree overlaps with [start, end). */
   public overlaps(start: number, end: number): boolean {
     return this.searchOverlap(start, end).length > 0
   }
