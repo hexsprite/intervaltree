@@ -84,10 +84,7 @@ function writeFailure(type: string, allIntervals: Interval[]) {
   const date = new Date()
   const filename = `failure_${type}_${date.getTime()}.json`
   // write to file
-  fs.writeFile(filename, JSON.stringify(allIntervals), (err: any) => {
-    if (err)
-      console.error(err)
-  })
+  fs.writeFileSync(filename, JSON.stringify(allIntervals))
 }
 
 main()
