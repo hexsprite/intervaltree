@@ -312,10 +312,10 @@ export class Node<T = unknown> {
       }${prefix}Node(${this.values}, maxEnd=${this.maxEnd} height=${this.height} balance=${this.balance})`,
     )
     if (this._left)
-      this._left.printStructure(indent + 1, (prefix = '< '))
+      this._left.printStructure(indent + 1, '< ')
 
     if (this._right)
-      this._right.printStructure(indent + 1, (prefix = '> '))
+      this._right.printStructure(indent + 1, '> ')
   }
 
   public countIntervals(): number {
@@ -533,7 +533,7 @@ export class Node<T = unknown> {
     return result
   }
 
-  public verify(parents: Set<number> = new Set()) {
+  public verify() {
     // Node is balanced
     const bal = this.balance
     if (Math.abs(bal) > 1)
@@ -557,11 +557,10 @@ export class Node<T = unknown> {
     assert(startValues.length === 1, `different start values: ${startValues}`)
 
     // verify this.start is equal to the start of the first interval
-    const actualStart = this.values?.[0].start ?? 0
     assert.strictEqual(
       this.start,
-      actualStart,
-      `start incorrect (this.start=${this.start}, actual=${actualStart})`,
+      this.values[0].start,
+      `start incorrect (this.start=${this.start}, actual=${this.values[0].start})`,
     )
 
     // verify maxLength
@@ -572,24 +571,18 @@ export class Node<T = unknown> {
     )
 
     const actualMaxEnd = this.calcMaxEnd()
-    // if (this.maxEnd !== actualMaxEnd) {
-    //   this.printStructure()
-    // }
     assert(
       this.maxEnd === actualMaxEnd,
       `(${this.start}) maxEnd incorrect, this.maxEnd=${this.maxEnd}, actual=${actualMaxEnd}`,
     )
 
     // recursively verify branches
-    const newParents = new Set(parents)
-    newParents.add(this.start)
-
     if (this._left) {
       assert(
         this._left.start <= this.start,
         `(${this.start}) left child out of order (${this._left.start} < ${this.start})`,
       )
-      this._left.verify(newParents)
+      this._left.verify()
     }
 
     if (this._right) {
@@ -597,7 +590,7 @@ export class Node<T = unknown> {
         this._right.start > this.start,
         `(${this.start}) right child out of order (${this._right.start} > ${this.start})`,
       )
-      this._right.verify(newParents)
+      this._right.verify()
     }
   }
 

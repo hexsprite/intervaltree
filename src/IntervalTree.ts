@@ -238,7 +238,7 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
         const cStart = merged[ci][0]
         const cEnd = merged[ci][1]
         if (ivStart < cStart) {
-          result.push(new Interval(ivStart, cStart < ivEnd ? cStart : ivEnd, iv.data))
+          result.push(new Interval(ivStart, cStart, iv.data))
         }
         ivStart = cEnd > ivStart ? cEnd : ivStart
         ci++
