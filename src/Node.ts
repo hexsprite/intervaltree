@@ -489,7 +489,7 @@ export class Node<T = unknown> {
         continue
       if (interval.availableLength(startingAt) >= minLength) {
         result.push(interval.start < startingAt
-          ? new Interval(startingAt, interval.end)
+          ? new Interval(startingAt, interval.end, interval.data)
           : interval)
       }
     }

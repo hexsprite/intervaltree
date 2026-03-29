@@ -104,10 +104,7 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
     this.verify()
   }
 
-  /**
-   * Calculates the hash value of the IntervalTree instance.
-   * @returns The hash value as a hexadecimal string.
-   */
+  /** SHA-256 hash of the serialized tree, for change detection. */
   public hash(): string {
     const hash = crypto.createHash('sha256')
     hash.update(JSON.stringify(this))
@@ -234,7 +231,7 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
         if (ivStart < cStart) {
           result.push(new Interval(ivStart, cStart, iv.data))
         }
-        ivStart = cEnd > ivStart ? cEnd : ivStart
+        ivStart = cEnd
         ci++
       }
 
@@ -394,47 +391,26 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
     return this.toSorted().map(iv => iv.toTuple())
   }
 
-  /**
-   * Implements the iterator protocol, allowing the tree to be iterated with for...of loops.
-   */
   [Symbol.iterator](): Iterator<Interval<T>> {
     return this.toArray()[Symbol.iterator]()
   }
 
-  /**
-   * Executes a callback function for each interval in the tree.
-   * @param callback Function to execute for each interval
-   */
   public forEach(callback: (interval: Interval<T>, index: number) => void): void {
     this.toArray().forEach(callback)
   }
 
-  /**
-   * Creates a new tree with intervals transformed by the callback function.
-   * @param callback Function that transforms each interval
-   * @returns A new IntervalTree with transformed intervals
-   */
   public map<U>(callback: (interval: Interval<T>) => Interval<U>): IntervalTree<U> {
     const transformed = this.toArray().map(callback)
     return new IntervalTree<U>(transformed)
   }
 
-  /**
-   * Returns the union of this tree with another tree (all intervals from both trees).
-   * @param other The other interval tree
-   * @returns A new IntervalTree containing all intervals from both trees
-   */
+  /** Returns a new tree with all intervals from both trees. */
   public union(other: IntervalTree<T>): IntervalTree<T> {
     const allIntervals = [...this.toArray(), ...other.toArray()]
     return new IntervalTree<T>(allIntervals)
   }
 
-  /**
-   * Returns the intersection of this tree with another tree.
-   * Returns a new tree containing only the overlapping regions between intervals in both trees.
-   * @param other The other interval tree
-   * @returns A new IntervalTree containing intersecting regions
-   */
+  /** Returns a new tree containing only the overlapping regions between intervals in both trees. */
   public intersection(other: IntervalTree<T>): IntervalTree<T> {
     const result: Interval<T>[] = []
 
@@ -452,12 +428,7 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
     return new IntervalTree<T>(result)
   }
 
-  /**
-   * Returns the difference of this tree with another tree.
-   * Returns a new tree containing intervals from this tree that don't overlap with the other tree.
-   * @param other The other interval tree
-   * @returns A new IntervalTree containing non-overlapping intervals from this tree
-   */
+  /** Returns a new tree with regions from this tree that don't overlap with the other. */
   public difference(other: IntervalTree<T>): IntervalTree<T> {
     const result = this.clone()
 
