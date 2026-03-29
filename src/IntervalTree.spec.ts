@@ -1237,7 +1237,7 @@ describe('findOneByLengthStartingAt', () => {
   })
 })
 
-describe('searchEnvelop', () => {
+describe('searchEnveloped', () => {
   it('returns intervals completely contained within range', () => {
     const tree = IntervalTree.fromTuples([
       [5, 10],
@@ -1245,19 +1245,19 @@ describe('searchEnvelop', () => {
       [30, 50],
       [0, 100],
     ])
-    const result = tree.searchEnvelop(0, 30)
+    const result = tree.searchEnveloped(0, 30)
     const tuples = result.map(iv => [iv.start, iv.end]).sort((a, b) => a[0] - b[0])
     expect(tuples).toEqual([[5, 10], [15, 25]])
   })
 
   it('returns empty for no matches', () => {
     const tree = IntervalTree.fromTuples([[0, 100]])
-    expect(tree.searchEnvelop(10, 50)).toEqual([])
+    expect(tree.searchEnveloped(10, 50)).toEqual([])
   })
 
   it('returns empty on empty tree', () => {
     const tree = new IntervalTree()
-    expect(tree.searchEnvelop(0, 100)).toEqual([])
+    expect(tree.searchEnveloped(0, 100)).toEqual([])
   })
 })
 

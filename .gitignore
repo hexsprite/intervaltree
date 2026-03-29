@@ -181,3 +181,6 @@ dist
 
 # Beads backup state (auto-generated)
 .beads/backup/
+
+# Desloppify local state
+.desloppify/

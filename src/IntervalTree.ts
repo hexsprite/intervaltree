@@ -268,14 +268,14 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
     if (!this.root)
       return
     // FIXME: This is not efficient, but it works.
-    const toRemove = this.searchEnvelop(start, end)
+    const toRemove = this.searchEnveloped(start, end)
     this.removeAll(toRemove)
   }
 
   /**
    * Searches for intervals that are completely enveloped by the specified range.
    */
-  public searchEnvelop(start: number, end: number): Interval<T>[] {
+  public searchEnveloped(start: number, end: number): Interval<T>[] {
     if (!this.root)
       return []
     // quick and dirty, but works
@@ -298,9 +298,11 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
     })
   }
 
-  public printStructure() {
-    if (!this.root)
-      return 'IntervalTree(<empty>)'
+  public printStructure(): void {
+    if (!this.root) {
+      console.error('IntervalTree(<empty>)')
+      return
+    }
 
     this.root.printStructure()
   }
@@ -348,16 +350,16 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
   }
 
   /**
-   * Searches for intervals of a specific length starting at a given position.
-   * @param length The length of the intervals to search for.
-   * @param start The starting position to search from.
-   * @returns An array of intervals that match the specified length and starting position.
+   * Searches for intervals with at least `minLength` available starting at or after `startingAt`.
+   * @param minLength The minimum length of the intervals to search for.
+   * @param startingAt The earliest start position to consider.
+   * @returns An array of matching intervals.
    */
-  public searchByLengthStartingAt(length: number, start: number): Interval<T>[] {
+  public searchByLengthStartingAt(minLength: number, startingAt: number): Interval<T>[] {
     if (!this.root)
       return []
     // In-order traversal with per-child pruning produces sorted results
-    return this.root.searchByLengthStartingAt(length, start, [])
+    return this.root.searchByLengthStartingAt(minLength, startingAt, [])
   }
 
   public clone(): IntervalTree<T> {

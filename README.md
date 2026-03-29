@@ -88,7 +88,7 @@ const overlapResult = tree.searchOverlap(5, 10)
 // Returns: All intervals that overlap with [5, 10)
 
 // Find intervals completely enveloped by a range
-const enveloped = tree.searchEnvelop(0, 100)
+const enveloped = tree.searchEnveloped(0, 100)
 // Returns: All intervals where start >= 0 and end <= 100
 
 // Find intervals by minimum length starting at/after a point
@@ -274,7 +274,7 @@ const available = schedule.findOneByLengthStartingAt(minDuration, dayStart)
 **Searching:**
 - `searchPoint(point: number)` - Find all intervals containing a point
 - `searchOverlap(start: number, end: number)` - Find all intervals overlapping a range
-- `searchEnvelop(start: number, end: number)` - Find intervals completely within a range
+- `searchEnveloped(start: number, end: number)` - Find intervals completely within a range
 - `searchByLengthStartingAt(length: number, start: number)` - Find intervals by minimum length
 - `findOneByLengthStartingAt(minLength: number, startingAt: number, filterFn?: (iv: Interval<T>) => boolean)` - O(log n) first matching interval with optional filter
 
@@ -318,7 +318,10 @@ const available = schedule.findOneByLengthStartingAt(minDuration, dayStart)
 - `containsPoint(point: number)` - Check if interval contains a point
 - `overlapsWith(start: number, end: number)` - Check if interval overlaps with range
 - `equals(other: Interval)` - Check equality with another interval
-- `static compare(a: Interval, b: Interval)` - Comparator function for sorting
+
+### `compareIntervals(a: Interval, b: Interval)`
+
+Standalone comparator function for sorting intervals (by start, then by end).
 
 ## TypeScript Generics
 

@@ -59,7 +59,7 @@ npx eslint .         # Run ESLint (uses @antfu/eslint-config)
 - **remove/removeAll**: Remove specific intervals from tree
 - **searchPoint**: Find all intervals containing a specific point
 - **searchOverlap**: Find all intervals overlapping with a range [start, end)
-- **searchEnvelop**: Find intervals completely contained within a range
+- **searchEnveloped**: Find intervals completely contained within a range
 
 ### Advanced Operations
 - **chop(start, end)**: Removes a region from all intervals, splitting those that partially overlap

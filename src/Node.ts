@@ -2,15 +2,14 @@ import { strict as assert } from 'node:assert'
 import { compareIntervals } from './compareIntervals'
 import { Interval } from './Interval'
 
-const LEFT = 0
-const RIGHT = 1
-type Direction = 0 | 1 | true | false
+const LEFT = false
+const RIGHT = true
+type Direction = boolean
 
-// const debug = (...args: any[]) => console.log(...args)
-
-// Shared mutable flags to avoid allocating [boolean] arrays per insert call
+// Shared mutable flags to avoid allocating [boolean] arrays per recursive call
 const _rebalancingDone = [false]
 const _updateRequired = [false]
+const _rebalance = [false]
 /** Set to true by insert() when a duplicate was detected and nothing was added */
 export const _flags = {
   /** Set to true by insert() when a duplicate was detected and nothing was added */
@@ -38,22 +37,6 @@ export class Node<T = unknown> {
 
   public get balance() {
     return (this._right?.height ?? 0) - (this._left?.height ?? 0)
-  }
-
-  private get left() {
-    return this._left
-  }
-
-  private get right() {
-    return this._right
-  }
-
-  private set left(node: Node<T> | null) {
-    this._left = node
-  }
-
-  private set right(node: Node<T> | null) {
-    this._right = node
   }
 
   static fromIntervals<T>(intervals: Interval<T>[]): Node<T> {
@@ -118,22 +101,22 @@ export class Node<T = unknown> {
    * Build a balanced AVL tree from pre-grouped intervals in O(n).
    * Each group has a unique start and 1+ intervals.
    */
+  private static _nodeFromGroup<T>(g: { start: number, values: Interval<T>[] }): Node<T> {
+    const node = new Node(g.values[0])
+    for (let i = 1; i < g.values.length; i++)
+      node.values.push(g.values[i])
+    return node
+  }
+
   private static _buildFromGroups<T>(groups: Array<{ start: number, values: Interval<T>[] }>, lo: number, hi: number): Node<T> {
     if (lo === hi) {
-      const g = groups[lo]
-      const node = new Node(g.values[0])
-      for (let i = 1; i < g.values.length; i++)
-        node.values.push(g.values[i])
+      const node = Node._nodeFromGroup(groups[lo])
       node.updateAttributes()
       return node
     }
     if (lo + 1 === hi) {
-      const node = new Node(groups[lo].values[0])
-      for (let i = 1; i < groups[lo].values.length; i++)
-        node.values.push(groups[lo].values[i])
-      const right = new Node(groups[hi].values[0])
-      for (let i = 1; i < groups[hi].values.length; i++)
-        right.values.push(groups[hi].values[i])
+      const node = Node._nodeFromGroup(groups[lo])
+      const right = Node._nodeFromGroup(groups[hi])
       node._right = right
       right.updateAttributes()
       node.height = 2
@@ -142,10 +125,7 @@ export class Node<T = unknown> {
     }
 
     const mid = (lo + hi) >> 1
-    const g = groups[mid]
-    const node = new Node(g.values[0])
-    for (let i = 1; i < g.values.length; i++)
-      node.values.push(g.values[i])
+    const node = Node._nodeFromGroup(groups[mid])
 
     node._left = Node._buildFromGroups(groups, lo, mid - 1)
     node._right = Node._buildFromGroups(groups, mid + 1, hi)
@@ -167,7 +147,15 @@ export class Node<T = unknown> {
     else this._left = node
   }
 
-  insert(interval: Interval<T>, rebalancingDone: [boolean] = (_rebalancingDone[0] = false, _flags.insertWasDuplicate = false, _rebalancingDone), updateRequired: [boolean] = (_updateRequired[0] = false, _updateRequired)): Node<T> {
+  insert(interval: Interval<T>, rebalancingDone: [boolean] = _rebalancingDone, updateRequired: [boolean] = _updateRequired): Node<T> {
+    // Reset shared state on top-level call (recursive calls pass explicit refs)
+    if (rebalancingDone === _rebalancingDone) {
+      _rebalancingDone[0] = false
+      _flags.insertWasDuplicate = false
+    }
+    if (updateRequired === _updateRequired)
+      _updateRequired[0] = false
+
     // if the interval starts at the same point as this node, add it to the values
     if (this.start === interval.start) {
       // don't add a duplicate
@@ -323,11 +311,11 @@ export class Node<T = unknown> {
       `${'  '.repeat(indent)
       }${prefix}Node(${this.values}, maxEnd=${this.maxEnd} height=${this.height} balance=${this.balance})`,
     )
-    if (this.left)
-      this.left.printStructure(indent + 1, (prefix = '< '))
+    if (this._left)
+      this._left.printStructure(indent + 1, (prefix = '< '))
 
-    if (this.right)
-      this.right.printStructure(indent + 1, (prefix = '> '))
+    if (this._right)
+      this._right.printStructure(indent + 1, (prefix = '> '))
   }
 
   public countIntervals(): number {
@@ -366,7 +354,12 @@ export class Node<T = unknown> {
     return result
   }
 
-  public remove(interval: Interval<T>, rebalance: [boolean] = (_flags.removeSucceeded = false, [false])): Node<T> | null {
+  public remove(interval: Interval<T>, rebalance: [boolean] = _rebalance): Node<T> | null {
+    // Reset shared state on top-level call
+    if (rebalance === _rebalance) {
+      _rebalance[0] = false
+      _flags.removeSucceeded = false
+    }
     // eslint-disable-next-line ts/no-this-alias
     let result: Node<T> = this
 
@@ -591,20 +584,20 @@ export class Node<T = unknown> {
     const newParents = new Set(parents)
     newParents.add(this.start)
 
-    if (this.left) {
+    if (this._left) {
       assert(
-        this.left.start <= this.start,
-        `(${this.start}) left child out of order (${this.left.start} < ${this.start})`,
+        this._left.start <= this.start,
+        `(${this.start}) left child out of order (${this._left.start} < ${this.start})`,
       )
-      this.left.verify(newParents)
+      this._left.verify(newParents)
     }
 
-    if (this.right) {
+    if (this._right) {
       assert(
-        this.right.start > this.start,
-        `(${this.start}) right child out of order (${this.right.start} > ${this.start})`,
+        this._right.start > this.start,
+        `(${this.start}) right child out of order (${this._right.start} > ${this.start})`,
       )
-      this.right.verify(newParents)
+      this._right.verify(newParents)
     }
   }
 
@@ -614,8 +607,8 @@ export class Node<T = unknown> {
     parentDir?: number,
   ) {
     callback(this, parent, parentDir)
-    this.left?.walkNodes(callback, this, 0)
-    this.right?.walkNodes(callback, this, 1)
+    this._left?.walkNodes(callback, this, 0)
+    this._right?.walkNodes(callback, this, 1)
   }
 
   public reduceNodes<U>(
@@ -633,16 +626,16 @@ export class Node<T = unknown> {
   private calcMaxLength(): number {
     return Math.max(
       ...this.values.map(iv => iv.length),
-      this.left?.calcMaxLength() ?? 0,
-      this.right?.calcMaxLength() ?? 0,
+      this._left?.calcMaxLength() ?? 0,
+      this._right?.calcMaxLength() ?? 0,
     )
   }
 
   private calcMaxEnd(): number {
     return Math.max(
       ...this.values.map(iv => iv.end),
-      this.left?.calcMaxEnd() ?? Number.NEGATIVE_INFINITY,
-      this.right?.calcMaxEnd() ?? Number.NEGATIVE_INFINITY,
+      this._left?.calcMaxEnd() ?? Number.NEGATIVE_INFINITY,
+      this._right?.calcMaxEnd() ?? Number.NEGATIVE_INFINITY,
     )
   }
 
@@ -702,21 +695,5 @@ export class Node<T = unknown> {
     const lh = this._left?.height ?? 0
     const rh = this._right?.height ?? 0
     this.height = 1 + (lh > rh ? lh : rh)
-  }
-
-  private shouldSkipBranch(minLength: number, startingAt: number) {
-    if (this.maxEnd < startingAt) {
-      // debug(
-      //   `${this.toString()} searchPoint: maxEnd skipping subtree (maxEnd=${
-      //     this.maxEnd
-      //   }`
-      // );
-      return true // Skip this subtree
-    }
-    else if (this.maxLength < minLength) {
-      // debug(`${this.toString()} searchPoint: maxLength skipping subtree`);
-      return true // Skip this subtree
-    }
-    return false
   }
 }

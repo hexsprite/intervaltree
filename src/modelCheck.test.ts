@@ -237,14 +237,14 @@ class SearchEnvelopCommand implements fc.Command<ArrayIntervalCollection, Interv
   check = () => true
 
   run(m: ArrayIntervalCollection, r: IntervalTree): void {
-    const rResult = r.searchEnvelop(this.start, this.end).toSorted(compareIntervals)
+    const rResult = r.searchEnveloped(this.start, this.end).toSorted(compareIntervals)
     const mResult = m.toArray()
       .filter(iv => iv.start >= this.start && iv.end <= this.end)
       .toSorted(compareIntervals)
     expect(rResult).toEqual(mResult)
   }
 
-  toString = () => `searchEnvelop(${this.start}, ${this.end})`
+  toString = () => `searchEnveloped(${this.start}, ${this.end})`
 }
 
 class FindOneWithFilterCommand implements fc.Command<ArrayIntervalCollection, IntervalTree> {

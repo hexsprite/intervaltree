@@ -18,7 +18,7 @@ it('should add a new interval to the node', () => {
   expect(node.maxEnd).toEqual(iv2.end)
   expect(node.minStart).toEqual(iv.start)
   // @ts-expect-error - private member
-  expect(node.left).toBeNull()
+  expect(node._left).toBeNull()
   // @ts-expect-error - private member
-  expect(node.right).toBeDefined()
+  expect(node._right).toBeDefined()
 })
