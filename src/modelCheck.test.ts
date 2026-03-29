@@ -400,7 +400,7 @@ describe('model checking', () => {
         fc.modelRun(s, cmds)
       }),
       {
-        numRuns: 200,
+        numRuns: Number(process.env.NUM_RUNS) || 200,
         endOnFailure: true,
       },
     )
