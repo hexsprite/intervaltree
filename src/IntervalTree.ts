@@ -286,7 +286,7 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
     this.verify()
   }
 
-  public removeAll(intervals: Interval<T>[]) {
+  public removeAll(intervals: Interval<T>[]): void {
     intervals.forEach((iv) => {
       this.remove(iv)
     })
@@ -301,17 +301,17 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
     this.root.printStructure()
   }
 
-  public toArray() {
+  public toArray(): Interval<T>[] {
     if (!this.root)
       return []
     return this.root.toArray()
   }
 
-  public addInterval(start: number, end: number, data?: T) {
+  public addInterval(start: number, end: number, data?: T): void {
     this.add(new Interval(start, end, data))
   }
 
-  public toString() {
+  public toString(): string {
     return `IntervalTree([ ${this.toSorted()
       .map(iv => iv.toString())
       .join(', ')} ])`
@@ -463,7 +463,7 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
     return result
   }
 
-  public verify() {
+  public verify(): void {
     if (!DEBUG)
       return
     if (!this.root)

@@ -283,7 +283,7 @@ export class Node<T = unknown> {
     return heavyChild
   }
 
-  public searchPoint(point: number, result: Interval<T>[]) {
+  public searchPoint(point: number, result: Interval<T>[]): void {
     if (point < this.minStart || point > this.maxEnd)
       return
 
@@ -473,7 +473,7 @@ export class Node<T = unknown> {
     minLength: number,
     startingAt: number,
     result: Interval<T>[],
-  ) {
+  ): Interval<T>[] {
     // Skip this entire subtree if it cannot contain a qualifying interval
     if (this.maxEnd < startingAt || this.maxLength < minLength)
       return result
@@ -526,7 +526,7 @@ export class Node<T = unknown> {
     return result
   }
 
-  public verify() {
+  public verify(): void {
     // Node is balanced
     const bal = this.balance
     if (Math.abs(bal) > 1)
