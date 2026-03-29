@@ -244,10 +244,16 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
     }
 
     if (result.length > 0) {
-      // If tree was clean (no overlaps), result is sorted — use fast path.
-      // If dirty (had overlaps), result may be unsorted — use full sort.
-      this.root = wasDirty ? Node.fromIntervals(result) : Node.fromSortedIntervals(result)
-      this._size = result.length
+      if (wasDirty) {
+        // Dirty tree may produce unsorted/duplicate fragments — full rebuild with dedup
+        this.root = Node.fromIntervals(result)
+        this._size = this.root.countIntervals()
+      }
+      else {
+        // Clean tree produces sorted, unique fragments — fast path
+        this.root = Node.fromSortedIntervals(result)
+        this._size = result.length
+      }
     }
     else {
       this.root = null
