@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.4.0] (2026-04-17)
+
+### Features
+
+* add `equals(other)` for semantic tree equality (sorted intervals + data), insensitive to internal topology
+* add `toJSON()` returning canonical `[start, end, data][]` form — `JSON.stringify(tree)` now returns sorted intervals instead of the raw object graph
+
+### Bug Fixes
+
+* `hash()` is now semantic: same intervals ⇒ same hash, regardless of op sequence or construction order. Previously digested `JSON.stringify(this)` which included internal tree topology, so a tree built via `fromTuples` and a tree built via `addInterval`s of the same intervals could produce different hashes — surfacing as false-positive drift in callers using `hash()` for cross-tree equality
+
 ## [1.3.0](https://github.com/hexsprite/intervaltree/compare/v1.2.0...v1.3.0) (2026-03-29)
 
 

@@ -104,11 +104,39 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
     this.verify()
   }
 
-  /** SHA-256 hash of the serialized tree, for change detection. */
+  /**
+   * SHA-256 hash of the canonical interval list. Same hash ⇔ same sorted
+   * intervals (insensitive to internal tree topology because it's computed
+   * over `toJSON()`, not the raw object graph). Suitable for both
+   * single-tree change detection and cross-tree equality.
+   */
   public hash(): string {
     const hash = crypto.createHash('sha256')
     hash.update(JSON.stringify(this))
     return hash.digest('hex')
+  }
+
+  /**
+   * True when two trees represent the same set of (start, end, data)
+   * intervals in sorted order. Short-circuits on size, then compares
+   * element-wise — faster than hashing both trees when inequality is
+   * likely (early exit on first mismatch).
+   */
+  public equals(other: IntervalTree<T>): boolean {
+    if (this === other) return true
+    if (this._size !== other._size) return false
+    const a = this.toArray()
+    const b = other.toArray()
+    for (let i = 0; i < a.length; i++) {
+      if (
+        a[i].start !== b[i].start ||
+        a[i].end !== b[i].end ||
+        a[i].data !== b[i].data
+      ) {
+        return false
+      }
+    }
+    return true
   }
 
   public searchPoint(point: number): Interval<T>[] {
@@ -322,6 +350,20 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
 
   [Symbol.toPrimitive]() {
     return this.toString()
+  }
+
+  /**
+   * Canonical JSON serialization: sorted intervals as [start, end, data]
+   * tuples. `JSON.stringify(tree)` will produce this form.
+   *
+   * Why this matters: hash() digests JSON.stringify(this). Without toJSON,
+   * JSON.stringify would serialize the raw {root, _size, _dirty} object
+   * graph — making hash() sensitive to internal tree topology, so two
+   * trees with byte-identical intervals built via different op sequences
+   * produced different hashes. With toJSON, hash() becomes semantic.
+   */
+  public toJSON(): Array<[number, number, T | undefined]> {
+    return this.toSorted().map(iv => [iv.start, iv.end, iv.data])
   }
 
   /**

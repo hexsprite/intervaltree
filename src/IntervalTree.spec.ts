@@ -1376,3 +1376,80 @@ describe('dirty flag correctness', () => {
     expect(tuples[0][1]).toBe(100)
   })
 })
+
+describe('equality and serialization', () => {
+  it('toJSON returns sorted [start, end, data] tuples', () => {
+    const tree = IntervalTree.fromTuples([
+      [5, 10],
+      [0, 3],
+      [20, 30],
+    ])
+    expect(tree.toJSON()).toEqual([
+      [0, 3, undefined],
+      [5, 10, undefined],
+      [20, 30, undefined],
+    ])
+  })
+
+  it('JSON.stringify uses toJSON', () => {
+    const tree = IntervalTree.fromTuples([[0, 10], [20, 30]])
+    expect(JSON.parse(JSON.stringify(tree))).toEqual([
+      [0, 10, null],
+      [20, 30, null],
+    ])
+  })
+
+  it('hash is insensitive to construction order (fromTuples vs addInterval)', () => {
+    const a = IntervalTree.fromTuples([[0, 10], [20, 30]])
+    const b = new IntervalTree()
+    b.addInterval(20, 30)
+    b.addInterval(0, 10)
+    expect(a.hash()).toBe(b.hash())
+  })
+
+  it('hash is insensitive to op sequence when intervals end up equal', () => {
+    const a = IntervalTree.fromTuples([[0, 10], [20, 30]])
+    const b = IntervalTree.fromTuples([[0, 30]])
+    b.chop(10, 20)
+    b.mergeOverlaps()
+    expect(a.toJSON()).toEqual(b.toJSON())
+    expect(a.hash()).toBe(b.hash())
+  })
+
+  it('hash differs when intervals differ', () => {
+    const a = IntervalTree.fromTuples([[0, 10]])
+    const b = IntervalTree.fromTuples([[0, 11]])
+    expect(a.hash()).not.toBe(b.hash())
+  })
+
+  it('equals returns true for same intervals, false otherwise', () => {
+    const a = IntervalTree.fromTuples([[0, 10], [20, 30]])
+    const b = new IntervalTree()
+    b.addInterval(0, 10)
+    b.addInterval(20, 30)
+    expect(a.equals(b)).toBe(true)
+
+    const c = IntervalTree.fromTuples([[0, 10], [20, 31]])
+    expect(a.equals(c)).toBe(false)
+  })
+
+  it('equals short-circuits on size mismatch', () => {
+    const a = IntervalTree.fromTuples([[0, 10]])
+    const b = IntervalTree.fromTuples([[0, 10], [20, 30]])
+    expect(a.equals(b)).toBe(false)
+    expect(b.equals(a)).toBe(false)
+  })
+
+  it('equals: self-reference is trivially true', () => {
+    const a = IntervalTree.fromTuples([[0, 10]])
+    expect(a.equals(a)).toBe(true)
+  })
+
+  it('equals compares data payload', () => {
+    const a = new IntervalTree<string>()
+    a.addInterval(0, 10, 'x')
+    const b = new IntervalTree<string>()
+    b.addInterval(0, 10, 'y')
+    expect(a.equals(b)).toBe(false)
+  })
+})
