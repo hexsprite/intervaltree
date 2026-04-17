@@ -233,6 +233,35 @@ console.log(tree.toString())
 tree.verify()
 ```
 
+### Equality, Serialization, and Hashing
+
+Comparing two trees, detecting changes, and serializing to JSON all use
+the same canonical form (sorted intervals + data). Construction order
+doesn't matter:
+
+```js
+const a = IntervalTree.fromTuples([[0, 10], [20, 30]])
+
+const b = new IntervalTree()
+b.addInterval(20, 30)
+b.addInterval(0, 10)
+
+a.equals(b)     // true — same intervals, regardless of insertion order
+a.hash() === b.hash()  // true — hash is semantic
+```
+
+`JSON.stringify` emits the canonical form too, so hashes and diffs are
+stable across serialize/deserialize cycles:
+
+```js
+JSON.stringify(a)
+// → '[[0,10,null],[20,30,null]]'
+```
+
+Use `equals()` when you expect inequality and want an early exit; use
+`hash()` when you want a cacheable fingerprint (e.g. memoization keys,
+cross-request change detection).
+
 ### Working with Dates
 
 Since intervals work with numbers, you can use timestamps for date-based intervals:
@@ -307,6 +336,11 @@ const available = schedule.findOneByLengthStartingAt(minDuration, dayStart)
 - `toSorted(): Interval<T>[]` - Get all intervals sorted by start then end
 - `toTuples(): IntervalTuple<T>[]` - Get intervals as tuple array
 - `size: number` - Get the number of intervals in the tree (getter)
+
+**Equality & Serialization:**
+- `equals(other: IntervalTree<T>): boolean` - Semantic tree equality by sorted intervals + data (short-circuits on size mismatch). Use this instead of comparing hashes when inequality is likely — it exits on the first mismatch.
+- `hash(): string` - SHA-256 of the canonical interval list. Same intervals ⇒ same hash, regardless of construction order or op sequence. Useful for change detection and memoization cache keys.
+- `toJSON(): Array<[number, number, T | undefined]>` - Sorted intervals as `[start, end, data]` tuples. `JSON.stringify(tree)` uses this, so serialized trees are stable and topology-independent.
 
 ### Interval
 
