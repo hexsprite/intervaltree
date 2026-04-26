@@ -418,6 +418,7 @@ export class Node<T = unknown> {
     const right = this._right
     node._left = left?.clone() ?? null
     node._right = right?.clone() ?? null
+    node.height = this.height
     node.updateAttributes()
     return node
   }

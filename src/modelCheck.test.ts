@@ -220,6 +220,14 @@ class CloneCommand implements fc.Command<ArrayIntervalCollection, IntervalTree> 
     const cloned = r.clone()
     expect(cloned.toString()).toEqual(r.toString())
     expect(cloned.size).toEqual(r.size)
+    cloned.verify()
+    // Mutation on clone must not corrupt invariants — guards against missing
+    // height propagation in clone() (regression: see cloneHeight.spec.ts).
+    if (cloned.size > 0) {
+      const first = cloned.first()!
+      cloned.chop(first.start, first.start + 1)
+      cloned.verify()
+    }
   }
 
   toString = () => `clone()`
@@ -388,6 +396,14 @@ class DifferenceCommand implements fc.Command<ArrayIntervalCollection, IntervalT
     expect(fast.toString()).toEqual(expected.toString())
     expect(fast.size).toEqual(expected.size)
 
+    // Also exercise tree-side chop loop on a clone — surfaces rotation bugs
+    const naive = r.clone()
+    for (const [s, e] of this.others) {
+      if (s < e)
+        naive.chop(s, e)
+    }
+    expect(naive.toString()).toEqual(expected.toString())
+
     // Inputs unchanged
     expect(r.toString()).toEqual(m.toString())
   }
@@ -423,6 +439,70 @@ const allCommands = [
   fc.array(intervalArbitrary, { minLength: 0, maxLength: 8 }).map(v => new DifferenceCommand(v)),
 ]
 
+describe('sequential chops stress', () => {
+  it('mixed ops + chop loop preserves tree invariants', () => {
+    type Op
+      = | { kind: 'add', iv: { start: number, end: number } }
+        | { kind: 'remove', seed: number }
+        | { kind: 'chop', iv: { start: number, end: number } }
+        | { kind: 'chopAll', ranges: Array<{ start: number, end: number }> }
+        | { kind: 'merge' }
+        | { kind: 'cloneChop', ranges: Array<{ start: number, end: number }> }
+
+    const opArb: fc.Arbitrary<Op> = fc.oneof(
+      intervalArbitrary.map(iv => ({ kind: 'add' as const, iv })),
+      fc.integer().map(seed => ({ kind: 'remove' as const, seed })),
+      intervalArbitrary.map(iv => ({ kind: 'chop' as const, iv })),
+      fc.array(intervalArbitrary, { minLength: 1, maxLength: 6 }).map(ranges => ({ kind: 'chopAll' as const, ranges })),
+      fc.constant({ kind: 'merge' as const }),
+      fc.array(intervalArbitrary, { minLength: 1, maxLength: 8 }).map(ranges => ({ kind: 'cloneChop' as const, ranges })),
+    )
+
+    fc.assert(
+      fc.property(fc.array(opArb, { minLength: 10, maxLength: 60 }), (ops) => {
+        const tree = new IntervalTree()
+        for (const op of ops) {
+          switch (op.kind) {
+            case 'add':
+              tree.add(new Interval(op.iv.start, op.iv.end))
+              break
+            case 'remove':
+              if (tree.size > 0) {
+                const arr = tree.toSorted()
+                const idx = ((op.seed % arr.length) + arr.length) % arr.length
+                tree.remove(arr[idx])
+              }
+              break
+            case 'chop':
+              tree.chop(op.iv.start, op.iv.end)
+              break
+            case 'chopAll':
+              tree.chopAll(op.ranges.map(r => [r.start, r.end]))
+              break
+            case 'merge':
+              tree.mergeOverlaps()
+              break
+            case 'cloneChop': {
+              const cloned = tree.clone()
+              for (const r of op.ranges) {
+                cloned.chop(r.start, r.end)
+              }
+              break
+            }
+          }
+        }
+        return true
+      }),
+      {
+        numRuns: Number(process.env.STRESS_RUNS) || 500,
+        endOnFailure: true,
+        seed: process.env.FC_SEED ? Number(process.env.FC_SEED) : undefined,
+        path: process.env.FC_PATH,
+      },
+    )
+  })
+})
+
 describe('model checking', () => {
   it('intervalTree matches ArrayIntervalCollection behavior', () => {
     fc.assert(
@@ -435,7 +515,9 @@ describe('model checking', () => {
       }),
       {
         numRuns: Number(process.env.NUM_RUNS) || 200,
-        endOnFailure: true,
+        endOnFailure: !process.env.FC_SHRINK,
+        seed: process.env.FC_SEED ? Number(process.env.FC_SEED) : undefined,
+        path: process.env.FC_PATH,
       },
     )
   })
