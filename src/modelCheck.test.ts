@@ -362,6 +362,39 @@ class RemoveEnvelopedCommand implements fc.Command<ArrayIntervalCollection, Inte
   toString = () => `removeEnveloped(${this.start}, ${this.end})`
 }
 
+class DifferenceCommand implements fc.Command<ArrayIntervalCollection, IntervalTree> {
+  others: Array<[number, number]>
+
+  constructor(others: Array<{ start: number, end: number }>) {
+    this.others = others.map(r => [r.start, r.end])
+  }
+
+  check = () => true
+
+  run(m: ArrayIntervalCollection, r: IntervalTree): void {
+    const otherTree = IntervalTree.fromTuples(this.others)
+    const fast = r.difference(otherTree)
+
+    // Expected: chop on Array model (avoids hitting tree rotation paths)
+    const expected = new ArrayIntervalCollection()
+    for (const iv of m.toArray()) {
+      expected.add(iv)
+    }
+    for (const [s, e] of this.others) {
+      if (s < e)
+        expected.chop(s, e)
+    }
+
+    expect(fast.toString()).toEqual(expected.toString())
+    expect(fast.size).toEqual(expected.size)
+
+    // Inputs unchanged
+    expect(r.toString()).toEqual(m.toString())
+  }
+
+  toString = () => `difference(${this.others.length} ranges)`
+}
+
 const allCommands = [
   intervalArbitrary.map(v => new AddCommand(v)),
   fc.integer().map(seed => new RemoveCommand(seed)),
@@ -387,6 +420,7 @@ const allCommands = [
     ([point, range]) => new ContainsOverlapsCommand(point, range),
   ),
   intervalArbitrary.map(v => new RemoveEnvelopedCommand(v)),
+  fc.array(intervalArbitrary, { minLength: 0, maxLength: 8 }).map(v => new DifferenceCommand(v)),
 ]
 
 describe('model checking', () => {

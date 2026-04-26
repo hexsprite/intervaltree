@@ -123,15 +123,17 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
    * likely (early exit on first mismatch).
    */
   public equals(other: IntervalTree<T>): boolean {
-    if (this === other) return true
-    if (this._size !== other._size) return false
+    if (this === other)
+      return true
+    if (this._size !== other._size)
+      return false
     const a = this.toArray()
     const b = other.toArray()
     for (let i = 0; i < a.length; i++) {
       if (
-        a[i].start !== b[i].start ||
-        a[i].end !== b[i].end ||
-        a[i].data !== b[i].data
+        a[i].start !== b[i].start
+        || a[i].end !== b[i].end
+        || a[i].data !== b[i].data
       ) {
         return false
       }
@@ -472,14 +474,83 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
 
   /** Returns a new tree with regions from this tree that don't overlap with the other. */
   public difference(other: IntervalTree<T>): IntervalTree<T> {
-    const result = this.clone()
+    // Fast path: empty trees
+    if (!this.root || !other.root)
+      return this.clone()
 
-    // For each interval in the other tree, chop it out of our result
-    for (const interval of other.toArray()) {
-      result.chop(interval.start, interval.end)
+    // When other is much smaller than this, the sweep's O(this.size) cost
+    // dominates. Fall back to per-chop loop, which is O(other.size × log this.size).
+    // Threshold tuned via bench: naive wins when other.size * 20 < this.size.
+    if (other._size * 20 < this._size) {
+      const result = this.clone()
+      for (const iv of other.toArray()) {
+        result.chop(iv.start, iv.end)
+      }
+      return result
     }
 
-    return result
+    const existing = this.toArray()
+    const otherIntervals = other.toArray()
+
+    // Merge overlapping chop ranges from the other tree
+    const sorted = otherIntervals.map(iv => [iv.start, iv.end] as [number, number])
+    sorted.sort((a, b) => a[0] - b[0])
+    const merged: Array<[number, number]> = [sorted[0]]
+    for (let i = 1; i < sorted.length; i++) {
+      const last = merged[merged.length - 1]
+      if (sorted[i][0] <= last[1]) {
+        last[1] = Math.max(last[1], sorted[i][1])
+      }
+      else {
+        merged.push(sorted[i])
+      }
+    }
+
+    // Single linear sweep: subtract merged chop ranges from existing intervals
+    const result: Interval<T>[] = []
+    let chopIdx = 0
+
+    for (let ei = 0; ei < existing.length; ei++) {
+      const iv = existing[ei]
+      let ivStart = iv.start
+      const ivEnd = iv.end
+
+      while (chopIdx < merged.length && merged[chopIdx][1] <= ivStart) {
+        chopIdx++
+      }
+
+      let ci = chopIdx
+      while (ci < merged.length && merged[ci][0] < ivEnd) {
+        const cStart = merged[ci][0]
+        const cEnd = merged[ci][1]
+        if (ivStart < cStart) {
+          result.push(new Interval(ivStart, cStart, iv.data))
+        }
+        ivStart = cEnd
+        ci++
+      }
+
+      if (ivStart < ivEnd) {
+        result.push(new Interval(ivStart, ivEnd, iv.data))
+      }
+    }
+
+    // Build new tree from remaining fragments
+    const diff = new IntervalTree<T>()
+    if (result.length > 0) {
+      if (this._dirty) {
+        diff.root = Node.fromIntervals(result)
+        diff._size = diff.root.countIntervals()
+      }
+      else {
+        // Clean input → fragments are sorted with unique starts
+        diff.root = Node.fromSortedIntervals(result)
+        diff._size = result.length
+      }
+    }
+    diff._dirty = this._dirty
+    diff.verify()
+    return diff
   }
 
   public verify(): void {

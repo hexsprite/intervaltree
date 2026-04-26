@@ -1,0 +1,33 @@
+name: CodSpeed
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  benchmarks:
+    name: Run benchmarks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - run: pnpm install
+
+      - name: Run benchmarks under CodSpeed
+        uses: CodSpeedHQ/action@v3
+        with:
+          run: pnpm vitest bench --run --config vitest.bench.config.ts
+          token: ${{ secrets.CODSPEED_TOKEN }}
+        env:
+          NODE_ENV: production

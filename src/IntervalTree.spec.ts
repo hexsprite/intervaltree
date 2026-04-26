@@ -721,6 +721,95 @@ describe('set Operations', () => {
       const result = tree1.difference(tree2)
       expect(result.toArray()[0].data).toBe('keep')
     })
+
+    it('handles empty this tree', () => {
+      const tree1 = new IntervalTree()
+      const tree2 = IntervalTree.fromTuples([[1, 5]])
+      expect(tree1.difference(tree2).isEmpty).toBe(true)
+    })
+
+    it('handles empty other tree', () => {
+      const tree1 = IntervalTree.fromTuples([[1, 5], [10, 20]])
+      const tree2 = new IntervalTree()
+      const result = tree1.difference(tree2)
+      expect(result.toTuples()).toEqual([[1, 5], [10, 20]])
+    })
+
+    it('merges overlapping chop ranges from other', () => {
+      const tree1 = IntervalTree.fromTuples([[0, 100]])
+      const tree2 = IntervalTree.fromTuples([
+        [10, 30],
+        [20, 50],
+        [40, 60],
+        [70, 80],
+      ])
+      const result = tree1.difference(tree2)
+      expect(result.toTuples()).toEqual([
+        [0, 10],
+        [60, 70],
+        [80, 100],
+      ])
+    })
+
+    it('handles many existing intervals against many chop ranges', () => {
+      const existing: Array<[number, number]> = []
+      for (let i = 0; i < 50; i++) existing.push([i * 10, i * 10 + 8])
+      const chops: Array<[number, number]> = []
+      for (let i = 0; i < 50; i++) chops.push([i * 10 + 2, i * 10 + 6])
+      const tree1 = IntervalTree.fromTuples(existing)
+      const tree2 = IntervalTree.fromTuples(chops)
+      const result = tree1.difference(tree2)
+      const tuples = result.toTuples()
+      expect(tuples).toHaveLength(100)
+      expect(tuples[0]).toEqual([0, 2])
+      expect(tuples[1]).toEqual([6, 8])
+    })
+
+    it('does not mutate inputs', () => {
+      const tree1 = IntervalTree.fromTuples([[1, 20]])
+      const tree2 = IntervalTree.fromTuples([[5, 10]])
+      const before1 = tree1.toTuples()
+      const before2 = tree2.toTuples()
+      tree1.difference(tree2)
+      expect(tree1.toTuples()).toEqual(before1)
+      expect(tree2.toTuples()).toEqual(before2)
+    })
+
+    it('handles dirty this tree (overlapping intervals via add)', () => {
+      const tree1 = new IntervalTree()
+      tree1.add(new Interval(0, 50))
+      tree1.add(new Interval(20, 80))
+      const tree2 = IntervalTree.fromTuples([[30, 40]])
+      const result = tree1.difference(tree2)
+      const tuples = result.toTuples()
+      expect(tuples.some(([s, e]) => s <= 30 && e === 30)).toBe(true)
+      expect(tuples.some(([s, e]) => s === 40 && e <= 80)).toBe(true)
+      for (const [s, e] of tuples) {
+        expect(s >= 40 || e <= 30).toBe(true)
+      }
+    })
+
+    it('matches naive chop loop for arbitrary inputs', () => {
+      const cases: Array<{ a: Array<[number, number]>, b: Array<[number, number]> }> = [
+        { a: [[0, 10], [5, 15], [20, 30]], b: [[3, 7], [12, 25]] },
+        { a: [[0, 100]], b: [[10, 20], [30, 40], [25, 35]] },
+        { a: [[0, 5], [5, 10], [10, 15]], b: [[7, 12]] },
+        { a: [[0, 10]], b: [[0, 10]] },
+        { a: [[0, 10]], b: [[-5, 0]] },
+        { a: [[0, 10]], b: [[10, 20]] },
+      ]
+      for (const { a, b } of cases) {
+        const tree1 = IntervalTree.fromTuples(a)
+        const tree2 = IntervalTree.fromTuples(b)
+        const fast = tree1.difference(tree2).toTuples()
+
+        const naive = tree1.clone()
+        for (const [s, e] of tree2.toArray().map(iv => [iv.start, iv.end] as [number, number])) {
+          naive.chop(s, e)
+        }
+        expect(fast).toEqual(naive.toTuples())
+      }
+    })
   })
 })
 
@@ -1391,7 +1480,7 @@ describe('equality and serialization', () => {
     ])
   })
 
-  it('JSON.stringify uses toJSON', () => {
+  it('jSON.stringify uses toJSON', () => {
     const tree = IntervalTree.fromTuples([[0, 10], [20, 30]])
     expect(JSON.parse(JSON.stringify(tree))).toEqual([
       [0, 10, null],
