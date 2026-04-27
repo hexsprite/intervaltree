@@ -55,6 +55,21 @@ describe('chop: 10k tree, single range', () => {
   })
 })
 
+describe('removeEnveloped: 10k tree', () => {
+  bench('dense (envelope covers ~80%)', () => {
+    const tree = buildTree(10000)
+    tree.removeEnveloped(10000, 90000)
+  })
+  bench('sparse (envelope covers ~1%)', () => {
+    const tree = buildTree(10000)
+    tree.removeEnveloped(50000, 51000)
+  })
+  bench('miss (envelope covers nothing)', () => {
+    const tree = buildTree(10000)
+    tree.removeEnveloped(-1000, -100)
+  })
+})
+
 describe('chopAll: 10k tree, 100 ranges', () => {
   bench('clean tree', () => {
     const tree = buildTree(10000)

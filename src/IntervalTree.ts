@@ -291,22 +291,52 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
     this.verify()
   }
 
+  /**
+   * Remove all intervals fully enveloped by [start, end] in a single tree
+   * walk. Branches by removed/kept ratio:
+   *   - All removed → drop root.
+   *   - Dense (M ≥ N/8) → second walk collects survivors, rebuild via fromIntervals (O(N)).
+   *   - Sparse → per-remove path (O(M log N) with rebalancing amortized).
+   * Removing intervals never creates overlaps, so `_dirty` is preserved.
+   */
   public removeEnveloped(start: number, end: number): void {
     if (!this.root)
       return
-    // FIXME: This is not efficient, but it works.
-    const toRemove = this.searchEnveloped(start, end)
-    this.removeAll(toRemove)
+
+    const removed = this.root.searchEnveloped(start, end, [])
+    if (removed.length === 0)
+      return
+
+    const wasDirty = this._dirty
+
+    if (removed.length === this._size) {
+      this.root = null
+      this._size = 0
+    }
+    else if (removed.length * 8 >= this._size) {
+      const kept: Interval<T>[] = []
+      this.root.collectNonEnveloped(start, end, kept)
+      this.root = Node.fromIntervals(kept)
+      this._size = wasDirty ? this.root.countIntervals() : kept.length
+    }
+    else {
+      for (let i = 0; i < removed.length; i++) {
+        this.remove(removed[i])
+      }
+    }
+
+    this._dirty = wasDirty
+    this.verify()
   }
 
   /**
    * Searches for intervals that are completely enveloped by the specified range.
+   * Single tree walk with subtree pruning — see Node.searchEnveloped.
    */
   public searchEnveloped(start: number, end: number): Interval<T>[] {
     if (!this.root)
       return []
-    // quick and dirty, but works
-    return this.searchOverlap(start, end).filter(iv => iv.start >= start && iv.end <= end)
+    return this.root.searchEnveloped(start, end, [])
   }
 
   public remove(interval: Interval<T>): void {

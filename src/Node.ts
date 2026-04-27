@@ -527,6 +527,72 @@ export class Node<T = unknown> {
     return result
   }
 
+  /**
+   * Collect intervals fully enveloped by [qs, qe] — `iv.start >= qs && iv.end <= qe`.
+   * Pruning rules (qs/qe fixed, this is the recursive subtree):
+   *   - Whole subtree enveloped: `minStart >= qs && maxEnd <= qe` → emit toArray.
+   *   - Skip left iff `this.start <= qs` (BST: left starts < this.start ≤ qs ⇒ iv.start < qs)
+   *     or `left.maxEnd <= qs` (left ends ≤ qs and iv.start ≤ iv.end ≤ qs forces non-envelopment).
+   *   - Self contributes only when `this.start >= qs` (all values share this.start).
+   *   - Skip right iff `right.minStart >= qe` (iv.start ≥ qe ⇒ iv.end > qe ⇒ not enveloped).
+   */
+  public searchEnveloped(qs: number, qe: number, result: Interval<T>[]): Interval<T>[] {
+    if (this.minStart >= qs && this.maxEnd <= qe)
+      return this.toArray(result)
+
+    const left = this._left
+    if (left && this.start > qs && left.maxEnd > qs)
+      left.searchEnveloped(qs, qe, result)
+
+    if (this.start >= qs) {
+      const values = this.values
+      for (let i = 0; i < values.length; i++) {
+        const iv = values[i]
+        if (iv.end <= qe)
+          result.push(iv)
+      }
+    }
+
+    const right = this._right
+    if (right && right.minStart < qe)
+      right.searchEnveloped(qs, qe, result)
+
+    return result
+  }
+
+  /**
+   * Inverse of searchEnveloped: collect intervals NOT enveloped by [qs, qe], in-order.
+   * Whole-subtree envelopment lets us skip dense regions in O(1).
+   */
+  public collectNonEnveloped(qs: number, qe: number, result: Interval<T>[]): Interval<T>[] {
+    if (this.minStart >= qs && this.maxEnd <= qe)
+      return result
+
+    const left = this._left
+    if (left)
+      left.collectNonEnveloped(qs, qe, result)
+
+    if (this.start < qs) {
+      const values = this.values
+      for (let i = 0; i < values.length; i++)
+        result.push(values[i])
+    }
+    else {
+      const values = this.values
+      for (let i = 0; i < values.length; i++) {
+        const iv = values[i]
+        if (iv.end > qe)
+          result.push(iv)
+      }
+    }
+
+    const right = this._right
+    if (right)
+      right.collectNonEnveloped(qs, qe, result)
+
+    return result
+  }
+
   public verify(): void {
     // Node is balanced
     const bal = this.balance
