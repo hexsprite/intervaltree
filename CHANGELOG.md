@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.4.1](https://github.com/hexsprite/intervaltree/compare/v1.4.0...v1.4.1) (2026-04-27)
+
+
+### Bug Fixes
+
+* **node:** clone() must preserve height for AVL balance ([e582ebc](https://github.com/hexsprite/intervaltree/commit/e582ebcc97deb67e4099ed40e5b6451523a593bb))
+
+
+### Performance Improvements
+
+* **difference:** O(N+M) sweep-line replaces N×chop loop ([81a4b7d](https://github.com/hexsprite/intervaltree/commit/81a4b7dba61518ce2ead64bc8bc77bfc1301b098))
+* **removeEnveloped:** single-pass walk with subtree pruning ([4e36c89](https://github.com/hexsprite/intervaltree/commit/4e36c89b1d521b143fc8f3d62c7b4f57cdef8b02))
+
 ## [1.4.0] (2026-04-17)
 
 ### Features
