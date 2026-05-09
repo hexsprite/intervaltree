@@ -2,7 +2,7 @@
 
 A mutable, self-balancing interval tree for JavaScript/TypeScript.
 
-Written in TypeScript with no external dependencies. Uses a red-black tree under the hood for O(log n) operations.
+Written in TypeScript with no external dependencies. Uses an augmented AVL tree under the hood for O(log n) operations.
 
 ## Install
 
@@ -71,9 +71,10 @@ tree.addAll([
 ])
 
 // Note: Duplicate intervals (same start, end, and data) are ignored
-tree.addInterval(1, 5)
-tree.addInterval(1, 5)  // This is a no-op
-console.log(tree.size)  // 1
+tree.addInterval(1, 5, 'a')
+tree.addInterval(1, 5, 'a')  // This is a no-op
+tree.addInterval(1, 5, 'b')  // Distinct data: this is added
+console.log(tree.size)  // 2
 ```
 
 ### Querying the Tree
@@ -317,7 +318,8 @@ const available = schedule.findOneByLengthStartingAt(minDuration, dayStart)
 - `isEmpty: boolean` - Check if the tree is empty (getter)
 
 **Set Operations:**
-- `union(other: IntervalTree<T>): IntervalTree<T>` - Combine all intervals from both trees
+- `union(other: IntervalTree<T>): IntervalTree<T>` - Combine interval records from both trees, deduplicating only exact same start, end, and data
+- `rangeUnion(other: IntervalTree<T>): IntervalTree<T>` - Combine trees and merge overlapping or adjacent ranges
 - `intersection(other: IntervalTree<T>): IntervalTree<T>` - Find overlapping regions between trees
 - `difference(other: IntervalTree<T>): IntervalTree<T>` - Remove overlapping intervals from other tree
 
@@ -488,7 +490,7 @@ Combine and compare interval trees with set-like operations:
 
 ### union
 
-Combine all intervals from two trees:
+Combine interval records from two trees:
 
 ```typescript
 const schedule1 = IntervalTree.fromTuples([
@@ -502,7 +504,15 @@ const schedule2 = IntervalTree.fromTuples([
 ])
 
 const combined = schedule1.union(schedule2)
-// Contains all intervals from both trees
+// Contains all interval records from both trees.
+// Overlapping ranges are not merged automatically.
+```
+
+Use `rangeUnion()` when you want mathematical union of ranges:
+
+```typescript
+const combinedRanges = schedule1.rangeUnion(schedule2)
+// Overlapping or adjacent ranges are merged.
 ```
 
 ### intersection

@@ -1,4 +1,4 @@
-import { strict as assert } from 'node:assert'
+import { assert, assertEqual } from './assert'
 import { compareIntervals } from './compareIntervals'
 import { Interval } from './Interval'
 
@@ -76,19 +76,24 @@ export class Node<T = unknown> {
     return node
   }
 
-  /** Group sorted intervals by start, deduplicating same start+end. */
+  /** Group sorted intervals by start, deduplicating same start+end+data. */
   private static _groupByStart<T>(sorted: Interval<T>[]): Array<{ start: number, values: Interval<T>[] }> {
     const groups: Array<{ start: number, values: Interval<T>[] }> = []
     let i = 0
     while (i < sorted.length) {
       const s = sorted[i].start
       const values: Interval<T>[] = [sorted[i]]
-      const endsSeen = new Set([sorted[i].end])
+      const byEnd = new Map<number, Interval<T>[]>([[sorted[i].end, [sorted[i]]]])
       i++
       while (i < sorted.length && sorted[i].start === s) {
-        if (!endsSeen.has(sorted[i].end)) {
+        const bucket = byEnd.get(sorted[i].end)
+        if (!bucket) {
+          byEnd.set(sorted[i].end, [sorted[i]])
           values.push(sorted[i])
-          endsSeen.add(sorted[i].end)
+        }
+        else if (!bucket.some(iv => iv.data === sorted[i].data)) {
+          bucket.push(sorted[i])
+          values.push(sorted[i])
         }
         i++
       }
@@ -158,10 +163,9 @@ export class Node<T = unknown> {
 
     // if the interval starts at the same point as this node, add it to the values
     if (this.start === interval.start) {
-      // don't add a duplicate
-      const end = interval.end
+      // don't add a duplicate with the same start, end, and data reference
       for (let i = 0; i < this.values.length; i++) {
-        if (this.values[i].end === end) {
+        if (this.values[i].equals(interval)) {
           _flags.insertWasDuplicate = true
           return this
         }
@@ -606,7 +610,7 @@ export class Node<T = unknown> {
 
     // balance is up-to-date
     this.updateHeight()
-    assert.equal(
+    assertEqual(
       bal,
       this.balance,
       `Error: (x=${this.start}) balance not set correctly!`,
@@ -617,7 +621,7 @@ export class Node<T = unknown> {
     assert(startValues.length === 1, `different start values: ${startValues}`)
 
     // verify this.start is equal to the start of the first interval
-    assert.strictEqual(
+    assertEqual(
       this.start,
       this.values[0].start,
       `start incorrect (this.start=${this.start}, actual=${this.values[0].start})`,

@@ -2,11 +2,11 @@
 import type { IntervalCollection } from './IntervalCollection'
 import type { IntervalTuple } from './types'
 
-import assert from 'node:assert'
-import crypto from 'node:crypto'
+import { assert } from './assert'
 import { compareIntervals } from './compareIntervals'
 import { Interval } from './Interval'
 import { _flags, Node } from './Node'
+import { sha256 } from './sha256'
 
 const DEBUG = process.env.NODE_ENV !== 'production'
 
@@ -111,9 +111,7 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
    * single-tree change detection and cross-tree equality.
    */
   public hash(): string {
-    const hash = crypto.createHash('sha256')
-    hash.update(JSON.stringify(this))
-    return hash.digest('hex')
+    return sha256(JSON.stringify(this))
   }
 
   /**
@@ -482,6 +480,13 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
   public union(other: IntervalTree<T>): IntervalTree<T> {
     const allIntervals = [...this.toArray(), ...other.toArray()]
     return new IntervalTree<T>(allIntervals)
+  }
+
+  /** Returns a new tree with all overlapping or adjacent ranges merged. */
+  public rangeUnion(other: IntervalTree<T>): IntervalTree<T> {
+    const result = this.union(other)
+    result.mergeOverlaps()
+    return result
   }
 
   /** Returns a new tree containing only the overlapping regions between intervals in both trees. */

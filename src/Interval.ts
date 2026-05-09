@@ -1,5 +1,5 @@
 import type { IntervalTuple } from './types'
-import assert from 'node:assert'
+import { assert, assertEqual } from './assert'
 
 export class Interval<T = unknown> {
   #start: number
@@ -7,8 +7,8 @@ export class Interval<T = unknown> {
   #data: T | undefined
 
   public constructor(start: number, end: number, data?: T) {
-    assert.equal(typeof start, 'number', `start not number: ${start}`)
-    assert.equal(typeof end, 'number', `end not number: ${end}`)
+    assertEqual(typeof start, 'number', `start not number: ${start}`)
+    assertEqual(typeof end, 'number', `end not number: ${end}`)
     assert(start < end, 'invalid null range')
 
     this.#start = start

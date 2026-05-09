@@ -26,6 +26,19 @@ it('duplicate intervals are ignored', () => {
   expect(tree.toArray().length).toBe(1)
 })
 
+it('same range with different data are distinct intervals', () => {
+  const tree = new IntervalTree<string>()
+  tree.addInterval(0, 1, 'a')
+  tree.addInterval(0, 1, 'b')
+  tree.addInterval(0, 1, 'a')
+
+  expect(tree.size).toBe(2)
+  expect(tree.toTuples()).toEqual([
+    [0, 1, 'a'],
+    [0, 1, 'b'],
+  ])
+})
+
 it('merges overlapping intervals', () => {
   const tree = IntervalTree.fromTuples(
     [
@@ -603,6 +616,25 @@ describe('set Operations', () => {
 
       const result = tree1.union(tree2)
       expect(result.size).toBe(1) // Duplicates are ignored
+    })
+
+    it('preserves same-range intervals with different data', () => {
+      const tree1 = IntervalTree.fromTuples<string>([[1, 5, 'a']])
+      const tree2 = IntervalTree.fromTuples<string>([[1, 5, 'b']])
+
+      const result = tree1.union(tree2)
+      expect(result.toTuples()).toEqual([
+        [1, 5, 'a'],
+        [1, 5, 'b'],
+      ])
+    })
+
+    it('rangeUnion merges overlapping ranges', () => {
+      const tree1 = IntervalTree.fromTuples<string>([[1, 5, 'a']])
+      const tree2 = IntervalTree.fromTuples<string>([[4, 8, 'b']])
+
+      const result = tree1.rangeUnion(tree2)
+      expect(result.toTuples()).toEqual([[1, 8, 'a']])
     })
 
     it('works with typed data', () => {
@@ -1195,6 +1227,19 @@ describe('bulk construction correctness', () => {
       new Interval(1, 5),
     ])
     expect(tree.size).toBe(1)
+  })
+
+  it('keeps constructor intervals with same range and different data', () => {
+    const tree = new IntervalTree([
+      new Interval(1, 5, 'a'),
+      new Interval(1, 5, 'b'),
+      new Interval(1, 5, 'a'),
+    ])
+    expect(tree.size).toBe(2)
+    expect(tree.toTuples()).toEqual([
+      [1, 5, 'a'],
+      [1, 5, 'b'],
+    ])
   })
 
   it('handles same-start different-end intervals', () => {

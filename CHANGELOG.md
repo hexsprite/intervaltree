@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.5.0] (2026-05-08)
+
+### Features
+
+* add `rangeUnion(other)` for mathematical range union that merges overlapping or adjacent ranges
+
+### Bug Fixes
+
+* duplicate detection now matches the documented contract: only intervals with the same start, end, and data are deduplicated
+* remove Node-specific runtime imports from package source by replacing `node:assert` and `node:crypto` usage with package-local helpers
+* correct README architecture docs from red-black tree to augmented AVL tree
+
 ## [1.4.1](https://github.com/hexsprite/intervaltree/compare/v1.4.0...v1.4.1) (2026-04-27)
 
 

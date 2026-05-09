@@ -1,7 +1,7 @@
 import type { IntervalCollection } from './IntervalCollection'
-import crypto from 'node:crypto'
 import { compareIntervals } from './compareIntervals'
 import { Interval } from './Interval'
+import { sha256 } from './sha256'
 
 /**
  * Naive array-based reference implementation used as the oracle model in
@@ -111,9 +111,7 @@ export class ArrayIntervalCollection<T = unknown> implements IntervalCollection<
   }
 
   hash(): string {
-    const hash = crypto.createHash('sha256')
-    hash.update(JSON.stringify(this.toSorted()))
-    return hash.digest('hex')
+    return sha256(JSON.stringify(this.toSorted()))
   }
 
   mergeOverlaps(): void {
