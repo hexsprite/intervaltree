@@ -83,13 +83,19 @@ jobs:
             echo "release_created=false" >> "$GITHUB_OUTPUT"
           fi
 
+          if npm view "intervaltree@${version}" version >/dev/null 2>&1; then
+            echo "publish_required=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "publish_required=true" >> "$GITHUB_OUTPUT"
+          fi
+
           npx --yes release-please@17.6.0 release-pr \
             --repo-url "$GITHUB_REPOSITORY" \
             --release-type node \
             --token "$RELEASE_PLEASE_TOKEN"
 
       - run: npm ci
-        if: ${{ steps.release.outputs.release_created }}
+        if: ${{ steps.release.outputs.publish_required == 'true' }}
 
       - run: npm publish --access public
-        if: ${{ steps.release.outputs.release_created }}
+        if: ${{ steps.release.outputs.publish_required == 'true' }}

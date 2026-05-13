@@ -5,6 +5,10 @@
   "description": "Interval tree for JavaScript",
   "author": "Jordan Baker",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hexsprite/intervaltree"
+  },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
