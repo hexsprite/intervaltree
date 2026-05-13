@@ -22,20 +22,6 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
           package-manager-cache: false
 
-      - name: Probe release token
-        env:
-          GH_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
-        run: |
-          set -euo pipefail
-          gh api user --jq '.login'
-          release_id="$(gh api "repos/$GITHUB_REPOSITORY/releases" -X POST \
-            -f tag_name=codex-actions-token-permission-test \
-            -f target_commitish="$GITHUB_SHA" \
-            -f name=codex-actions-token-permission-test \
-            -F draft=true \
-            --jq '.id')"
-          gh api "repos/$GITHUB_REPOSITORY/releases/$release_id" -X DELETE
-
       - name: Run Release Please
         id: release
         env:
@@ -44,6 +30,7 @@ jobs:
         run: |
           set -euo pipefail
 
+          version="$(node -p "require('./package.json').version")"
           tag="$(node -p "'v' + require('./package.json').version")"
           if gh release view "$tag" >/dev/null 2>&1; then
             release_existed=true
@@ -51,10 +38,36 @@ jobs:
             release_existed=false
           fi
 
+          set +e
           npx --yes release-please@17.6.0 github-release \
             --repo-url "$GITHUB_REPOSITORY" \
             --release-type node \
             --token "$RELEASE_PLEASE_TOKEN"
+          release_status=$?
+          set -e
+
+          if [ "$release_status" -ne 0 ] && ! gh release view "$tag" >/dev/null 2>&1; then
+            target="$(gh pr list \
+              --state merged \
+              --search "release ${version} in:title" \
+              --json mergeCommit,mergedAt \
+              --jq 'sort_by(.mergedAt) | last | .mergeCommit.oid')"
+            if [ -z "$target" ] || [ "$target" = null ]; then
+              exit "$release_status"
+            fi
+
+            notes_json="$(mktemp)"
+            notes_body="$(mktemp)"
+            gh api "repos/$GITHUB_REPOSITORY/releases/generate-notes" \
+              -f tag_name="$tag" \
+              -f target_commitish="$target" > "$notes_json"
+            jq -r '.body' "$notes_json" > "$notes_body"
+
+            gh release create "$tag" \
+              --target "$target" \
+              --title "$(jq -r '.name' "$notes_json")" \
+              --notes-file "$notes_body"
+          fi
 
           if [ "$release_existed" = false ] && gh release view "$tag" >/dev/null 2>&1; then
             echo "release_created=true" >> "$GITHUB_OUTPUT"
