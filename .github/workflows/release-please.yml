@@ -22,6 +22,20 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
           package-manager-cache: false
 
+      - name: Probe release token
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh api user --jq '.login'
+          release_id="$(gh api "repos/$GITHUB_REPOSITORY/releases" -X POST \
+            -f tag_name=codex-actions-token-permission-test \
+            -f target_commitish="$GITHUB_SHA" \
+            -f name=codex-actions-token-permission-test \
+            -F draft=true \
+            --jq '.id')"
+          gh api "repos/$GITHUB_REPOSITORY/releases/$release_id" -X DELETE
+
       - name: Run Release Please
         id: release
         env:
