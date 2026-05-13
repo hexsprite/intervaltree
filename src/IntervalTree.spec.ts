@@ -1,5 +1,6 @@
 import { Interval } from './Interval'
 import { IntervalTree } from './IntervalTree'
+import { sha256 } from './sha256'
 
 it('find intervals of minimum length', () => {
   const tree = IntervalTree.fromTuples([
@@ -1512,6 +1513,12 @@ describe('dirty flag correctness', () => {
 })
 
 describe('equality and serialization', () => {
+  it('sha256 matches known UTF-8 test vectors', () => {
+    expect(sha256('')).toBe('e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855')
+    expect(sha256('abc')).toBe('ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad')
+    expect(sha256('hello 🌍')).toBe('92de6bbfa52e6cfa0f85916fd8176cb1644b95a4c0148cdda94745ba6c35e5eb')
+  })
+
   it('toJSON returns sorted [start, end, data] tuples', () => {
     const tree = IntervalTree.fromTuples([
       [5, 10],
