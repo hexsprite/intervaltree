@@ -14,22 +14,44 @@ jobs:
   release-please:
     runs-on: ubuntu-latest
     steps:
-      - uses: googleapis/release-please-action@v5
-        id: release
-        with:
-          token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
-          release-type: node
-
-      # Publish to npm when a release is created
       - uses: actions/checkout@v4
-        if: ${{ steps.release.outputs.release_created }}
 
       - uses: actions/setup-node@v6
-        if: ${{ steps.release.outputs.release_created }}
         with:
           node-version: 24
           registry-url: 'https://registry.npmjs.org'
           package-manager-cache: false
+
+      - name: Run Release Please
+        id: release
+        env:
+          RELEASE_PLEASE_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+          GH_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          tag="$(node -p "'v' + require('./package.json').version")"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            release_existed=true
+          else
+            release_existed=false
+          fi
+
+          npx --yes release-please@17.6.0 github-release \
+            --repo-url "$GITHUB_REPOSITORY" \
+            --release-type node \
+            --token "$RELEASE_PLEASE_TOKEN"
+
+          if [ "$release_existed" = false ] && gh release view "$tag" >/dev/null 2>&1; then
+            echo "release_created=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "release_created=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          npx --yes release-please@17.6.0 release-pr \
+            --repo-url "$GITHUB_REPOSITORY" \
+            --release-type node \
+            --token "$RELEASE_PLEASE_TOKEN"
 
       - run: npm ci
         if: ${{ steps.release.outputs.release_created }}
