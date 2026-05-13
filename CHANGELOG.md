@@ -1,5 +1,23 @@
 # Changelog
 
+## [2.0.0](https://github.com/hexsprite/intervaltree/compare/v1.4.1...v2.0.0) (2026-05-13)
+
+
+### ⚠ BREAKING CHANGES
+
+* require Node 20 runtime
+
+### Features
+
+* require Node 20 runtime ([95932f2](https://github.com/hexsprite/intervaltree/commit/95932f223f56fb77a69ea996d5938acee994ad1d))
+
+
+### Bug Fixes
+
+* bundle noble hashes in dist ([f8f4305](https://github.com/hexsprite/intervaltree/commit/f8f4305ce1fab8befa3e317e9f72565fefc611bf))
+* ignore local agent metadata in lint ([9a5fb54](https://github.com/hexsprite/intervaltree/commit/9a5fb54b5eaacab033026753157caec6a54f19e1))
+* use noble sha256 implementation ([472334e](https://github.com/hexsprite/intervaltree/commit/472334e3a86cc60f3f90cd91c63965a16ee8aebf))
+
 ## [1.5.0] (2026-05-08)
 
 ### Features
