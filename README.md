@@ -1,5 +1,7 @@
 # intervaltree JS
 
+[![CodSpeed](https://img.shields.io/endpoint?url=https://codspeed.io/badge.json)](https://codspeed.io/hexsprite/intervaltree?utm_source=badge)
+
 A mutable, self-balancing interval tree for JavaScript/TypeScript.
 
 Written in TypeScript with no external dependencies. Uses an augmented AVL tree under the hood for O(log n) operations.
