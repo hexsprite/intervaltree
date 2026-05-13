@@ -58,15 +58,22 @@ jobs:
 
             notes_json="$(mktemp)"
             notes_body="$(mktemp)"
+            release_payload="$(mktemp)"
             gh api "repos/$GITHUB_REPOSITORY/releases/generate-notes" \
               -f tag_name="$tag" \
               -f target_commitish="$target" > "$notes_json"
             jq -r '.body' "$notes_json" > "$notes_body"
+            jq -n \
+              --arg tag "$tag" \
+              --arg target "$target" \
+              --arg name "$(jq -r '.name' "$notes_json")" \
+              --rawfile body "$notes_body" \
+              '{tag_name: $tag, target_commitish: $target, name: $name, body: $body, draft: false, prerelease: false}' \
+              > "$release_payload"
 
-            gh release create "$tag" \
-              --target "$target" \
-              --title "$(jq -r '.name' "$notes_json")" \
-              --notes-file "$notes_body"
+            gh api "repos/$GITHUB_REPOSITORY/releases" \
+              --method POST \
+              --input "$release_payload" >/dev/null
           fi
 
           if [ "$release_existed" = false ] && gh release view "$tag" >/dev/null 2>&1; then
