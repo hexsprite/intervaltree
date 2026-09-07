@@ -657,3 +657,18 @@ This library uses **half-open intervals** `[start, end)` where:
 4. **Consistency**: Matches JavaScript conventions (`Array.slice`, `substring`, etc.)
 
 This follows the recommendation from Edsger W. Dijkstra's 1982 note on interval notation and is used by most programming languages and CS literature.
+
+## Performance Notes
+
+The tree is an augmented AVL tree built from plain objects. That layout is the right choice for read-heavy use at small to medium sizes.
+
+We measured a flat typed-array layout (structure-of-arrays, and a single stride-8 `Float64Array`) against the shipped tree at 10,000 intervals with 50,000 queries. The flat layout wins on `build`, `clone`, and `toArray`. It loses on `searchPoint` and `contains` by 2 to 3x, and those are the calls most applications make.
+
+| operation | object tree | flat (best variant) |
+|---|---|---|
+| searchPoint | 341 ns | 781 ns |
+| contains | 303 ns | 753 ns |
+| build | 155 ns | 118 ns |
+| clone | 237 ns | 77 ns |
+
+If you hold millions of intervals and mostly build, clone, or scan, the flat layout may be worth revisiting. The prototypes and benchmark scripts live on the `spike/flat-typed-array-tree` branch under `bench/spike/`.
