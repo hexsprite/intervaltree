@@ -7,9 +7,9 @@ const RIGHT = true
 type Direction = boolean
 
 // Shared mutable flags to avoid allocating [boolean] arrays per recursive call
-const _rebalancingDone = [false]
-const _updateRequired = [false]
-const _rebalance = [false]
+const _rebalancingDone: [boolean] = [false]
+const _updateRequired: [boolean] = [false]
+const _rebalance: [boolean] = [false]
 /** Set to true by insert() when a duplicate was detected and nothing was added */
 export const _flags = {
   /** Set to true by insert() when a duplicate was detected and nothing was added */
@@ -422,8 +422,12 @@ export class Node<T = unknown> {
     const right = this._right
     node._left = left?.clone() ?? null
     node._right = right?.clone() ?? null
+    // The source tree is already consistent, so copy the augmentation
+    // instead of recomputing it from values and children at every node.
     node.height = this.height
-    node.updateAttributes()
+    node.minStart = this.minStart
+    node.maxEnd = this.maxEnd
+    node.maxLength = this.maxLength
     return node
   }
 
