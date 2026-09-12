@@ -43,6 +43,7 @@
     "test": "vitest --no-watch",
     "test:watch": "vitest",
     "model-check": "vitest run --config vitest.model.config.ts",
+    "test:all": "pnpm test && pnpm model-check",
     "bench": "NODE_ENV=production vitest bench --run --config vitest.bench.config.ts",
     "test:compat": "rm -rf /tmp/itc && mkdir -p /tmp/itc && pnpm build && pnpm pack --pack-destination /tmp/itc >/dev/null && mkdir -p /tmp/itc/app && cp test/compat.cjs test/compat.mjs /tmp/itc/app/ && cd /tmp/itc/app && npm init -y >/dev/null && npm i --no-audit --no-fund /tmp/itc/intervaltree-*.tgz >/dev/null && node compat.cjs && node compat.mjs"
   },

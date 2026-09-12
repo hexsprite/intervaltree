@@ -21,6 +21,8 @@ npm run clean        # Remove dist directory
 ```bash
 npm test             # Run tests once using Vitest (with --globals --no-watch)
 npm run test:watch   # Run tests in watch mode
+npm run model-check  # Property-based model check against the array oracle, ~1-3 min
+npm run test:all     # npm test, then npm run model-check
 ```
 
 ### Linting
