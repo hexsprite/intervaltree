@@ -8,7 +8,10 @@ import { Interval } from './Interval'
 import { _flags, Node } from './Node'
 import { sha256 } from './sha256'
 
-const DEBUG = process.env.NODE_ENV !== 'production'
+// Automatic invariant checks after every mutation are O(n log n) each.
+// Off by default; this repo's vitest configs set INTERVALTREE_DEBUG=1.
+// `typeof process` guard keeps browser bundles from throwing on `process`.
+const DEBUG = typeof process !== 'undefined' && process.env?.INTERVALTREE_DEBUG === '1'
 
 export class IntervalTree<T = unknown> implements IntervalCollection<T> {
   private root: Node<T> | null = null
@@ -71,7 +74,7 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
         this._size++
     }
     this._dirty = true
-    this.verify()
+    this.verifyIfDebug()
   }
 
   public mergeOverlaps(): void {
@@ -101,7 +104,7 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
     this.root = Node.fromSortedIntervals(merged)
     this._size = merged.length
     this._dirty = false
-    this.verify()
+    this.verifyIfDebug()
   }
 
   /**
@@ -191,7 +194,7 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
     // Restore dirty state — chop only splits intervals, never creates overlaps
     this._dirty = wasDirty
 
-    this.verify()
+    this.verifyIfDebug()
   }
 
   public addAll(intervals: Interval<T>[]): void {
@@ -286,7 +289,7 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
     }
     // Preserve dirty state — chopAll doesn't merge overlaps
     this._dirty = wasDirty
-    this.verify()
+    this.verifyIfDebug()
   }
 
   /**
@@ -324,7 +327,7 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
     }
 
     this._dirty = wasDirty
-    this.verify()
+    this.verifyIfDebug()
   }
 
   /**
@@ -344,7 +347,7 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
     if (_flags.removeSucceeded)
       this._size--
     this._dirty = true
-    this.verify()
+    this.verifyIfDebug()
   }
 
   public removeAll(intervals: Interval<T>[]): void {
@@ -438,7 +441,7 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
 
     clone._size = this._size
     clone._dirty = this._dirty
-    clone.verify()
+    clone.verifyIfDebug()
     return clone
   }
 
@@ -584,13 +587,17 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
       }
     }
     diff._dirty = this._dirty
-    diff.verify()
+    diff.verifyIfDebug()
     return diff
   }
 
+  private verifyIfDebug(): void {
+    if (DEBUG)
+      this.verify()
+  }
+
+  /** Check every AVL and augmentation invariant. Throws on the first violation. O(n log n). */
   public verify(): void {
-    if (!DEBUG)
-      return
     if (!this.root)
       return
     this.root.verify()
