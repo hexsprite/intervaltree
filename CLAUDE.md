@@ -30,12 +30,12 @@ npx eslint .         # Run ESLint (uses @antfu/eslint-config)
 ### Core Data Structures
 
 - **Interval** (`src/Interval.ts`): Represents a single interval with start/end points and optional data. Immutable value object.
-- **IntervalTree** (`src/IntervalTree.ts`): Main public API. Mutable tree structure implementing the `IntervalCollection` interface. Uses red-black tree balancing internally.
-- **Node** (`src/Node.ts`): Internal node structure for the red-black tree. Handles insertion, deletion, and rebalancing operations. Not exposed in public API.
+- **IntervalTree** (`src/IntervalTree.ts`): Main public API. Mutable tree structure implementing the `IntervalCollection` interface. Uses augmented AVL tree balancing internally.
+- **Node** (`src/Node.ts`): Internal node structure for the augmented AVL tree. Handles insertion, deletion, and rebalancing operations. Not exposed in public API.
 
 ### Key Implementation Details
 
-- The tree uses red-black tree balancing (via the Node class) to maintain O(log n) operations
+- The tree uses augmented AVL tree balancing (via the Node class) to maintain O(log n) operations
 - Each Node maintains a `maxEnd` property for efficient interval overlap searches
 - The tree verifies its structure in debug mode (controlled by `NODE_ENV !== 'production'`)
 - Intervals are immutable - modifications create new Interval instances
@@ -77,7 +77,7 @@ npx eslint .         # Run ESLint (uses @antfu/eslint-config)
 
 - **searchOverlap**: Uses maxEnd optimization to prune search branches
 - **chop**: Removes overlapping intervals and trims partial overlaps, creating new intervals for non-overlapping portions
-- **Red-black tree balancing**: Maintains O(log n) operations via Node class
+- **AVL tree balancing**: Maintains O(log n) operations via Node class (height-based; rotates when |balance| > 1)
 - **Interval containment**: End points are exclusive (e.g., interval [1,5) contains 1-4 but not 5)
 
 <!-- BEGIN BEADS INTEGRATION v:1 profile:minimal hash:ca08a54f -->
