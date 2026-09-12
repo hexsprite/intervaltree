@@ -57,4 +57,14 @@ if (tree2.size !== 2) {
 }
 console.log('✓ Constructor with intervals works')
 
+// Tripwire for the 2.0.0 regression where dist shipped with DEBUG frozen on:
+// 5000 adds took ~20 s. With checks off they take a few ms.
+const big = new IntervalTree()
+const t0 = Date.now()
+for (let i = 0; i < 5000; i++) big.add(new Interval(i * 3, i * 3 + 5))
+const elapsed = Date.now() - t0
+if (elapsed > 2000)
+  throw new Error(`5000 adds took ${elapsed} ms; invariant checks are probably on in dist`)
+console.log(`✓ 5000 adds in ${elapsed} ms (checks off)`)
+
 console.log('\n✅ All compatibility tests passed!')
