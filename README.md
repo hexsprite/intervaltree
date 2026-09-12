@@ -4,7 +4,7 @@
 
 A mutable, self-balancing interval tree for JavaScript/TypeScript.
 
-Written in TypeScript with no external dependencies. Uses an augmented AVL tree under the hood for O(log n) operations.
+Written in TypeScript with no runtime dependencies (the SHA-256 used by `hash()` is bundled at build time). Uses an augmented AVL tree under the hood for O(log n) operations.
 
 ## Install
 

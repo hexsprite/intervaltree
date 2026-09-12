@@ -15,10 +15,6 @@ overrides:
 importers:
 
   .:
-    dependencies:
-      '@noble/hashes':
-        specifier: ^1.8.0
-        version: 1.8.0
     devDependencies:
       '@antfu/eslint-config':
         specifier: ^6.7.3
@@ -26,6 +22,9 @@ importers:
       '@codspeed/vitest-plugin':
         specifier: ^5.7.1
         version: 5.7.1(debug@4.4.3(supports-color@7.2.0))(supports-color@7.2.0)(tinybench@2.9.0)(vite@7.3.6(@types/node@24.13.3)(tsx@4.21.0)(yaml@2.9.0))(vitest@4.1.11)
+      '@noble/hashes':
+        specifier: ^1.8.0
+        version: 1.8.0
       '@types/node':
         specifier: ^24.13.3
         version: 24.13.3
