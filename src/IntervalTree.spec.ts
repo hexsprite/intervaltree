@@ -1634,3 +1634,14 @@ describe('verify', () => {
     expect(() => tree.verify()).not.toThrow()
   })
 })
+
+describe('searchByLengthStartingAt ordering', () => {
+  // Regression: two intervals clipped to the same start came back ordered by
+  // their original starts, not by (start, end); found by the model check.
+  it('returns clipped results sorted by (start, end)', () => {
+    const t = new IntervalTree()
+    t.addInterval(-5, 1)
+    t.addInterval(-10, 2)
+    expect(t.searchByLengthStartingAt(1, 0).map(iv => iv.toTuple())).toEqual([[0, 1], [0, 2]])
+  })
+})
