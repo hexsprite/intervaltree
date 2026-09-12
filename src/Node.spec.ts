@@ -21,6 +21,66 @@ it('should add a new interval to the node', () => {
   expect(node._right).toBeDefined()
 })
 
+describe('Node AVL rotations', () => {
+  // Every case inserts starts 1, 2, 3 (as unit intervals [n, n+1)) in an
+  // order that forces one rotation. All four converge on the same balanced
+  // shape: root 2, left child 1, right child 3, height 2, balance 0.
+  function expectBalancedShape(root: Node<unknown>) {
+    expect(root.start).toBe(2)
+    expect(root._left!.start).toBe(1)
+    expect(root._right!.start).toBe(3)
+    expect(root.height).toBe(2)
+    expect(root.balance).toBe(0)
+    expect(root.maxEnd).toBe(4)
+  }
+
+  it('rotates left on a right-right insertion (1, 2, 3)', () => {
+    let root: Node<unknown> = new Node(new Interval(1, 2))
+    root = root.insert(new Interval(2, 3))
+    root = root.insert(new Interval(3, 4))
+    expectBalancedShape(root)
+  })
+
+  it('rotates right on a left-left insertion (3, 2, 1)', () => {
+    let root: Node<unknown> = new Node(new Interval(3, 4))
+    root = root.insert(new Interval(2, 3))
+    root = root.insert(new Interval(1, 2))
+    expectBalancedShape(root)
+  })
+
+  it('rotates right-left on a right-left insertion (1, 3, 2)', () => {
+    let root: Node<unknown> = new Node(new Interval(1, 2))
+    root = root.insert(new Interval(3, 4))
+    root = root.insert(new Interval(2, 3))
+    expectBalancedShape(root)
+  })
+
+  it('rotates left-right on a left-right insertion (3, 1, 2)', () => {
+    let root: Node<unknown> = new Node(new Interval(3, 4))
+    root = root.insert(new Interval(1, 2))
+    root = root.insert(new Interval(2, 3))
+    expectBalancedShape(root)
+  })
+
+  it('stays balanced (|balance| <= 1 everywhere) after ascending inserts 1..7', () => {
+    function checkBalance(node: Node<unknown> | null): number {
+      if (!node)
+        return 0
+      const leftHeight = checkBalance(node._left)
+      const rightHeight = checkBalance(node._right)
+      expect(Math.abs(leftHeight - rightHeight)).toBeLessThanOrEqual(1)
+      return 1 + Math.max(leftHeight, rightHeight)
+    }
+
+    let root: Node<unknown> = new Node(new Interval(1, 2))
+    for (let n = 2; n <= 7; n++)
+      root = root.insert(new Interval(n, n + 1))
+
+    expect(root.height).toBe(3)
+    checkBalance(root)
+  })
+})
+
 describe('successor graft height', () => {
   // Regression: successor graft relied on rotate() to repair a stale cloned height.
   function expectHeights(node: Node<unknown> | null): number {
