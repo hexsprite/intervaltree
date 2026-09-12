@@ -254,6 +254,16 @@ const intervalArbitrary = fc.integer({ max: 2147483647 - 1 }).chain(start =>
   }),
 )
 
+// Fractional bounds — the integer arbitrary above never produces these, but
+// the README's date examples do, so exercise them here too.
+const floatIntervalArbitrary = fc.double({ noNaN: true, noDefaultInfinity: true, min: -1e6, max: 1e6 }).chain(start =>
+  fc.record({
+    start: fc.constant(start),
+    end: fc.double({ min: 1e-3, max: 1e6, noNaN: true }).map(delta => start + delta),
+    data: fc.constantFrom(...DATA_POOL),
+  }),
+)
+
 class ChopAllCommand implements fc.Command<ArrayIntervalCollection, IntervalTree> {
   ranges: Array<[number, number]>
 
@@ -702,42 +712,50 @@ class MapCommand implements fc.Command<ArrayIntervalCollection, IntervalTree> {
   toString = () => `map(end+1)`
 }
 
-const allCommands = [
-  intervalArbitrary.map(v => new AddCommand(v)),
-  fc.integer().map(seed => new RemoveCommand(seed)),
-  intervalArbitrary.map(v => new ChopCommand(v)),
-  fc.integer().map(v => new SearchCommand(v)),
-  fc.tuple(fc.integer({ min: 1 }), fc.integer()).map(
-    ([minLength, startingAt]) => new FindOneByLengthStartingAtCommand(minLength, startingAt),
-  ),
-  fc.tuple(fc.integer({ min: 1 }), fc.integer()).map(
-    ([minLength, startingAt]) => new SearchByLengthStartingAtCommand(minLength, startingAt),
-  ),
-  fc.constant(new SizeConsistencyCommand()),
-  fc.constant(new MergeOverlapsCommand()),
-  intervalArbitrary.map(v => new SearchOverlapCommand(v)),
-  fc.array(intervalArbitrary, { minLength: 1, maxLength: 5 }).map(v => new ChopAllCommand(v)),
-  fc.constant(new CloneCommand()),
-  intervalArbitrary.map(v => new SearchEnvelopCommand(v)),
-  fc.tuple(fc.integer({ min: 1 }), fc.integer()).map(
-    ([minLength, startingAt]) => new FindOneWithFilterCommand(minLength, startingAt),
-  ),
-  fc.constant(new FirstLastCommand()),
-  fc.tuple(fc.integer(), intervalArbitrary).map(
-    ([point, range]) => new ContainsOverlapsCommand(point, range),
-  ),
-  intervalArbitrary.map(v => new RemoveEnvelopedCommand(v)),
-  fc.array(intervalArbitrary, { minLength: 0, maxLength: 8 }).map(v => new DifferenceCommand(v)),
-  fc.array(intervalArbitrary, { minLength: 0, maxLength: 8 }).map(v => new UnionCommand(v)),
-  fc.array(intervalArbitrary, { minLength: 0, maxLength: 8 }).map(v => new RangeUnionCommand(v)),
-  fc.array(intervalArbitrary, { minLength: 0, maxLength: 8 }).map(v => new IntersectionCommand(v)),
-  fc.constant(new EqualsCommand()),
-  fc.constant(new HashCommand()),
-  fc.constant(new ToTuplesCommand()),
-  fc.array(intervalArbitrary, { minLength: 0, maxLength: 5 }).map(v => new AddAllCommand(v)),
-  fc.integer().map(seed => new RemoveAllCommand(seed)),
-  fc.constant(new MapCommand()),
-]
+type IntervalValue = { start: number, end: number, data?: unknown }
+
+// Parameterized over the interval arbitrary so the same command suite can run
+// against both integer bounds and float bounds (see floatIntervalArbitrary).
+function buildCommands(ivArb: fc.Arbitrary<IntervalValue>) {
+  return [
+    ivArb.map(v => new AddCommand(v)),
+    fc.integer().map(seed => new RemoveCommand(seed)),
+    ivArb.map(v => new ChopCommand(v)),
+    fc.integer().map(v => new SearchCommand(v)),
+    fc.tuple(fc.integer({ min: 1 }), fc.integer()).map(
+      ([minLength, startingAt]) => new FindOneByLengthStartingAtCommand(minLength, startingAt),
+    ),
+    fc.tuple(fc.integer({ min: 1 }), fc.integer()).map(
+      ([minLength, startingAt]) => new SearchByLengthStartingAtCommand(minLength, startingAt),
+    ),
+    fc.constant(new SizeConsistencyCommand()),
+    fc.constant(new MergeOverlapsCommand()),
+    ivArb.map(v => new SearchOverlapCommand(v)),
+    fc.array(ivArb, { minLength: 1, maxLength: 5 }).map(v => new ChopAllCommand(v)),
+    fc.constant(new CloneCommand()),
+    ivArb.map(v => new SearchEnvelopCommand(v)),
+    fc.tuple(fc.integer({ min: 1 }), fc.integer()).map(
+      ([minLength, startingAt]) => new FindOneWithFilterCommand(minLength, startingAt),
+    ),
+    fc.constant(new FirstLastCommand()),
+    fc.tuple(fc.integer(), ivArb).map(
+      ([point, range]) => new ContainsOverlapsCommand(point, range),
+    ),
+    ivArb.map(v => new RemoveEnvelopedCommand(v)),
+    fc.array(ivArb, { minLength: 0, maxLength: 8 }).map(v => new DifferenceCommand(v)),
+    fc.array(ivArb, { minLength: 0, maxLength: 8 }).map(v => new UnionCommand(v)),
+    fc.array(ivArb, { minLength: 0, maxLength: 8 }).map(v => new RangeUnionCommand(v)),
+    fc.array(ivArb, { minLength: 0, maxLength: 8 }).map(v => new IntersectionCommand(v)),
+    fc.constant(new EqualsCommand()),
+    fc.constant(new HashCommand()),
+    fc.constant(new ToTuplesCommand()),
+    fc.array(ivArb, { minLength: 0, maxLength: 5 }).map(v => new AddAllCommand(v)),
+    fc.integer().map(seed => new RemoveAllCommand(seed)),
+    fc.constant(new MapCommand()),
+  ]
+}
+
+const allCommands = buildCommands(intervalArbitrary)
 
 describe('sequential chops stress', () => {
   it('mixed ops + chop loop preserves tree invariants', () => {
@@ -815,6 +833,25 @@ describe('model checking', () => {
       }),
       {
         numRuns: Number(process.env.NUM_RUNS) || 200,
+        endOnFailure: !process.env.FC_SHRINK,
+        seed: process.env.FC_SEED ? Number(process.env.FC_SEED) : undefined,
+        path: process.env.FC_PATH,
+      },
+    )
+  })
+
+  it('model check with float bounds', () => {
+    const floatCommands = buildCommands(floatIntervalArbitrary)
+    fc.assert(
+      fc.property(fc.commands(floatCommands, { size: 'xlarge' }), (cmds) => {
+        const s = () => ({
+          model: new ArrayIntervalCollection(),
+          real: new IntervalTree(),
+        })
+        fc.modelRun(s, cmds)
+      }),
+      {
+        numRuns: Math.floor((Number(process.env.NUM_RUNS) || 200) / 2),
         endOnFailure: !process.env.FC_SHRINK,
         seed: process.env.FC_SEED ? Number(process.env.FC_SEED) : undefined,
         path: process.env.FC_PATH,
