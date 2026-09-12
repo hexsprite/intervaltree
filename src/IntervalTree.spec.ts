@@ -1634,3 +1634,13 @@ describe('verify', () => {
     expect(() => tree.verify()).not.toThrow()
   })
 })
+
+describe('argument validation', () => {
+  // Regression: searchByLengthStartingAt(0, x) threw "invalid null range" from
+  // deep inside Interval instead of rejecting the argument up front.
+  it('searchByLengthStartingAt rejects minLength <= 0 with a clear message', () => {
+    const t = IntervalTree.fromTuples([[0, 10]])
+    expect(() => t.searchByLengthStartingAt(0, 10)).toThrow('minLength must be > 0')
+    expect(() => t.searchByLengthStartingAt(-5, 0)).toThrow('minLength must be > 0')
+  })
+})

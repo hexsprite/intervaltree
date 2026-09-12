@@ -431,6 +431,7 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
    * @returns An array of matching intervals.
    */
   public searchByLengthStartingAt(minLength: number, startingAt: number): Interval<T>[] {
+    assert(minLength > 0, 'minLength must be > 0')
     if (!this.root)
       return []
     // In-order traversal with per-child pruning produces sorted results
