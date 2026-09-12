@@ -70,6 +70,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
+          cache: pnpm
+
+      - run: pnpm install
 
       - name: Test dist on Node ${{ matrix.node-version }}
         run: pnpm test:compat
