@@ -232,7 +232,9 @@ const cloned = tree.clone()
 console.log(tree.toString())
 // Output: "IntervalTree([ Interval(1, 5, length=4), Interval(10, 15, length=5) ])"
 
-// Verify tree structure (for debugging, only in development mode)
+// Runs the full invariant check on demand. Automatic checks after every
+// mutation are off by default; set the environment variable
+// INTERVALTREE_DEBUG=1 to turn them on (this repo's test suites do).
 tree.verify()
 ```
 
