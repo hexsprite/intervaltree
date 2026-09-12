@@ -334,6 +334,7 @@ const available = schedule.findOneByLengthStartingAt(minDuration, dayStart)
 
 **Manipulation:**
 - `chop(start: number, end: number)` - Remove a region from all intervals
+- `chopAll(ranges: Array<[number, number]>)` - Remove several regions in one sweep
 - `mergeOverlaps()` - Merge all overlapping intervals
 
 **Utility:**
