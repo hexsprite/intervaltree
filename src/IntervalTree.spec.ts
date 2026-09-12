@@ -1672,3 +1672,16 @@ describe('fromJSON', () => {
     expect(() => IntervalTree.fromJSON('{"nope":1}')).toThrow('fromJSON expects an array of [start, end, data?] tuples')
   })
 })
+
+describe('early-exit predicates', () => {
+  it('contains is true at the start boundary and false at the end boundary (half-open)', () => {
+    const tree = IntervalTree.fromTuples([[1, 5]])
+    expect(tree.contains(1)).toBe(true)
+    expect(tree.contains(5)).toBe(false)
+  })
+
+  it('overlaps is false for an adjacent range [end, end+1)', () => {
+    const tree = IntervalTree.fromTuples([[1, 5]])
+    expect(tree.overlaps(5, 6)).toBe(false)
+  })
+})

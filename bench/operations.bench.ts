@@ -48,6 +48,20 @@ describe('searchPoint: 10k tree', () => {
   })
 })
 
+describe('contains: 10k tree', () => {
+  const tree = buildOverlapping(10000)
+  bench('contains (dense)', () => {
+    tree.contains(25000)
+  })
+})
+
+describe('overlaps: 10k tree', () => {
+  const tree = buildTree(10000)
+  bench('overlaps (wide range)', () => {
+    tree.overlaps(0, 10000)
+  })
+})
+
 describe('chop: 10k tree, single range', () => {
   bench('mid range', () => {
     const tree = buildTree(10000)
