@@ -635,6 +635,13 @@ export class Node<T = unknown> {
       `start incorrect (this.start=${this.start}, actual=${this.values[0].start})`,
     )
 
+    for (let i = 1; i < this.values.length; i++) {
+      assert(
+        this.values[i - 1].end <= this.values[i].end,
+        `values not sorted by end at start=${this.start}`,
+      )
+    }
+
     // verify maxLength
     const actualMaxLength = this.calcMaxLength()
     assert(
