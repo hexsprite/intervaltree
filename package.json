@@ -39,6 +39,7 @@
     "prepack": "npm run build",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
+    "typecheck": "tsc --noEmit",
     "test": "vitest --no-watch",
     "test:watch": "vitest",
     "model-check": "vitest run --config vitest.model.config.ts",
