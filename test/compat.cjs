@@ -1,9 +1,9 @@
 /* eslint-disable no-console */
 /**
  * Compatibility smoke test for the built dist.
- * Runs against Node 14+ to verify the package works on older runtimes.
+ * Runs against the packed tarball on the minimum supported Node (see package.json engines).
  */
-const { IntervalTree, Interval, compareIntervals } = require('../dist/index.cjs')
+const { IntervalTree, Interval, compareIntervals } = require('intervaltree')
 
 // Basic construction
 const tree = new IntervalTree()

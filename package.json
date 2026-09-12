@@ -42,7 +42,8 @@
     "test": "vitest --no-watch",
     "test:watch": "vitest",
     "model-check": "vitest run --config vitest.model.config.ts",
-    "bench": "NODE_ENV=production vitest bench --run --config vitest.bench.config.ts"
+    "bench": "NODE_ENV=production vitest bench --run --config vitest.bench.config.ts",
+    "test:compat": "pnpm build && pnpm pack --pack-destination /tmp/itc >/dev/null && rm -rf /tmp/itc/app && mkdir -p /tmp/itc/app && cp test/compat.cjs test/compat.mjs /tmp/itc/app/ && cd /tmp/itc/app && npm init -y >/dev/null && npm i --no-audit --no-fund /tmp/itc/intervaltree-*.tgz >/dev/null && node compat.cjs && node compat.mjs"
   },
   "devDependencies": {
     "@antfu/eslint-config": "^6.7.3",
