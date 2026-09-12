@@ -1,7 +1,0 @@
-{
-  "database": "dolt",
-  "backend": "dolt",
-  "dolt_mode": "embedded",
-  "dolt_database": "intervaltree",
-  "project_id": "66e91b4c-9d90-401c-a09a-a9fbb74149f9"
-}

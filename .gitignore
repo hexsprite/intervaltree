@@ -187,3 +187,16 @@ dist
 
 # Beads / Dolt files (added by bd init)
 .beads-credential-key
+
+# Gas City
+.beads/*
+!.beads/config.yaml
+!.beads/metadata.json
+
+# Local agent/tooling state
+.agents/
+.gc/
+.pi/
+.beads.gate.lock
+LEARNING-*.md
+scorecard.png
