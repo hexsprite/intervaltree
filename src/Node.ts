@@ -673,27 +673,6 @@ export class Node<T = unknown> {
     }
   }
 
-  public walkNodes(
-    callback: (node: Node<T>, parent?: Node<T>, parentDir?: number) => void,
-    parent?: Node<T>,
-    parentDir?: number,
-  ) {
-    callback(this, parent, parentDir)
-    this._left?.walkNodes(callback, this, 0)
-    this._right?.walkNodes(callback, this, 1)
-  }
-
-  public reduceNodes<U>(
-    callback: (accumulator: U, node: Node<T>) => U,
-    initialValue: U,
-  ): U {
-    let accumulator = initialValue
-    this.walkNodes((node) => {
-      accumulator = callback(accumulator, node)
-    })
-    return accumulator
-  }
-
   private calcMaxLength(): number {
     let result = 0
     for (const iv of this.values) {
