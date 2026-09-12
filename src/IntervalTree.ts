@@ -167,7 +167,7 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
    * @param end The end of the range.
    */
   public chop(start: number, end: number): void {
-    assert(start < end, 'start must be <= end')
+    assert(start < end, 'start must be < end')
     if (!this.root)
       return
 

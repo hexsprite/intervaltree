@@ -1643,4 +1643,13 @@ describe('argument validation', () => {
     expect(() => t.searchByLengthStartingAt(0, 10)).toThrow('minLength must be > 0')
     expect(() => t.searchByLengthStartingAt(-5, 0)).toThrow('minLength must be > 0')
   })
+
+  // Regression: the assertion message named the wrong comparison operator
+  // (implying start equal to end was allowed) while the check itself
+  // required strict inequality, so a start === end call threw a message
+  // describing the opposite of the actual rule.
+  it('chop rejects start === end with a message matching the actual rule', () => {
+    const t = IntervalTree.fromTuples([[0, 10]])
+    expect(() => t.chop(5, 5)).toThrow('start must be < end')
+  })
 })
