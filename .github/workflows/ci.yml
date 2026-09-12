@@ -64,14 +64,15 @@ jobs:
         node-version: [20]
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: pnpm/action-setup@v4
         with:
-          name: dist
-          path: dist/
-
+          version: 9
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
+          cache: pnpm
+
+      - run: pnpm install
 
       - name: Test dist on Node ${{ matrix.node-version }}
-        run: node test/compat.cjs
+        run: pnpm test:compat
