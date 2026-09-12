@@ -19,6 +19,7 @@
   },
   "scripts": {
     "build": "npx tsup",
+    "postbuild": "node -e \"const fs=require('fs');for(const f of ['dist/index.js','dist/index.cjs']){const s=fs.readFileSync(f,'utf8');if(/DEBUG = true/.test(s)||!s.includes('INTERVALTREE_DEBUG'))throw new Error(f+': debug flag frozen on or missing')}\"",
     "clean": "rimraf dist",
     "prebuild": "rimraf dist",
     "prepare": "npm run build",
