@@ -694,18 +694,27 @@ export class Node<T = unknown> {
     return accumulator
   }
 
-  // can replace with walkNodes
   private calcMaxLength(): number {
+    let result = 0
+    for (const iv of this.values) {
+      if (iv.length > result)
+        result = iv.length
+    }
     return Math.max(
-      ...this.values.map(iv => iv.length),
+      result,
       this._left?.calcMaxLength() ?? 0,
       this._right?.calcMaxLength() ?? 0,
     )
   }
 
   private calcMaxEnd(): number {
+    let result = Number.NEGATIVE_INFINITY
+    for (const iv of this.values) {
+      if (iv.end > result)
+        result = iv.end
+    }
     return Math.max(
-      ...this.values.map(iv => iv.end),
+      result,
       this._left?.calcMaxEnd() ?? Number.NEGATIVE_INFINITY,
       this._right?.calcMaxEnd() ?? Number.NEGATIVE_INFINITY,
     )
