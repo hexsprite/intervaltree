@@ -309,6 +309,28 @@ export class Node<T = unknown> {
       right.searchPoint(point, result)
   }
 
+  /** Whether any interval in this subtree contains `point`. Mirrors searchPoint's prune conditions but short-circuits on the first hit. */
+  public hasPoint(point: number): boolean {
+    if (point < this.minStart || point > this.maxEnd)
+      return false
+
+    for (let i = 0; i < this.values.length; i++) {
+      const v = this.values[i]
+      if (v.start <= point && point < v.end)
+        return true
+    }
+
+    const left = this._left
+    if (left && point >= left.minStart && left.hasPoint(point))
+      return true
+
+    const right = this._right
+    if (right && point <= right.maxEnd && right.hasPoint(point))
+      return true
+
+    return false
+  }
+
   // print structure recursively, showing branches with extra spaces
   printStructure(indent = 0, prefix = '') {
     console.error(
@@ -538,6 +560,25 @@ export class Node<T = unknown> {
       right.searchOverlap(start, end, result)
 
     return result
+  }
+
+  /** Whether any interval in this subtree overlaps [start, end). Mirrors searchOverlap's prune conditions but short-circuits on the first hit. */
+  public hasOverlap(start: number, end: number): boolean {
+    const left = this._left
+    if (left && start <= left.maxEnd && left.hasOverlap(start, end))
+      return true
+
+    for (let i = 0; i < this.values.length; i++) {
+      const iv = this.values[i]
+      if (iv.end > start && iv.start < end)
+        return true
+    }
+
+    const right = this._right
+    if (right && end >= right.minStart && right.hasOverlap(start, end))
+      return true
+
+    return false
   }
 
   /**

@@ -172,7 +172,7 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
 
   /** Whether any interval in the tree contains the given point. */
   public contains(point: number): boolean {
-    return this.searchPoint(point).length > 0
+    return this.root ? this.root.hasPoint(point) : false
   }
 
   /**
@@ -475,7 +475,7 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
 
   /** Whether any interval in the tree overlaps with [start, end). */
   public overlaps(start: number, end: number): boolean {
-    return this.searchOverlap(start, end).length > 0
+    return this.root ? this.root.hasOverlap(start, end) : false
   }
 
   public toSorted(): Interval<T>[] {
