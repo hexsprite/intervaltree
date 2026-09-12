@@ -349,7 +349,7 @@ const available = schedule.findOneByLengthStartingAt(minDuration, dayStart)
 - `size: number` - Get the number of intervals in the tree (getter)
 
 **Equality & Serialization:**
-- `equals(other: IntervalTree<T>): boolean` - Semantic tree equality by sorted intervals + data (short-circuits on size mismatch). Use this instead of comparing hashes when inequality is likely — it exits on the first mismatch.
+- `equals(other: IntervalCollection<T>): boolean` - Semantic equality by sorted intervals + data (short-circuits on size mismatch). Use this instead of comparing hashes when inequality is likely — it exits on the first mismatch.
 - `hash(): string` - SHA-256 of the canonical interval list. Same intervals ⇒ same hash, regardless of construction order or op sequence. Useful for change detection and memoization cache keys.
 - `toJSON(): Array<[number, number, T | undefined]>` - Sorted intervals as `[start, end, data]` tuples. `JSON.stringify(tree)` uses this, so serialized trees are stable and topology-independent.
 
@@ -367,6 +367,17 @@ const available = schedule.findOneByLengthStartingAt(minDuration, dayStart)
 ### `compareIntervals(a: Interval, b: Interval)`
 
 Standalone comparator function for sorting intervals (by start, then by end).
+
+### Reference implementation
+
+`ArrayIntervalCollection` implements the same `IntervalCollection` interface as `IntervalTree`, backed by a plain array instead of a tree. Every operation is a straight O(n) scan — no balancing, no augmentation. Reach for it when you want an implementation that's obviously correct rather than fast: as the oracle in property-based tests, for small interval sets where O(n) is irrelevant, or as the executable spec a new `IntervalCollection` implementation can check itself against.
+
+```typescript
+import { ArrayIntervalCollection } from 'intervaltree'
+
+const tree = new ArrayIntervalCollection<string>()
+tree.addInterval(1, 5, 'Meeting')
+```
 
 ## TypeScript Generics
 
