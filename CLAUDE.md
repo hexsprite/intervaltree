@@ -19,10 +19,16 @@ npm run clean        # Remove dist directory
 
 ### Testing
 ```bash
-npm test             # Run tests once using Vitest (with --globals --no-watch)
-npm run test:watch   # Run tests in watch mode
-npm run model-check  # Property-based model check against the array oracle, ~1-3 min
+npm test             # Run unit tests once (Vitest)
+npm run test:watch   # Watch mode
+npm run model-check  # Property-based model check against the array oracle, ~30 s
 npm run test:all     # npm test, then npm run model-check
+npm run test:compat  # Build, pack, install the tarball, and smoke-test CJS + ESM imports
+```
+
+### Typecheck
+```bash
+npm run typecheck   # tsc --noEmit over src/ and bench/
 ```
 
 ### Linting
@@ -37,13 +43,15 @@ npx eslint .         # Run ESLint (uses @antfu/eslint-config)
 - **Interval** (`src/Interval.ts`): Represents a single interval with start/end points and optional data. Immutable value object.
 - **IntervalTree** (`src/IntervalTree.ts`): Main public API. Mutable tree structure implementing the `IntervalCollection` interface. Uses augmented AVL tree balancing internally.
 - **Node** (`src/Node.ts`): Internal node structure for the augmented AVL tree. Handles insertion, deletion, and rebalancing operations. Not exposed in public API.
+- **ArrayIntervalCollection** (`src/ArrayIntervalCollection.ts`): Naive O(n) reference implementation of `IntervalCollection`. Exported. Used as the oracle in the model check and as the executable spec for any other implementation.
 
 ### Key Implementation Details
 
 - The tree uses augmented AVL tree balancing (via the Node class) to maintain O(log n) operations
 - Each Node maintains a `maxEnd` property for efficient interval overlap searches
-- The tree verifies its structure in debug mode (controlled by `NODE_ENV !== 'production'`)
+- Automatic invariant checks after every mutation are off by default (they cost O(n log n) each). Set `INTERVALTREE_DEBUG=1` to enable them; the vitest configs do. `tree.verify()` always runs on demand.
 - Intervals are immutable - modifications create new Interval instances
+- Among intervals with identical bounds and different `data`, which one `first()`, `last()`, and `mergeOverlaps()` pick is unspecified by contract.
 
 ### Testing Approach
 
@@ -73,7 +81,7 @@ npx eslint .         # Run ESLint (uses @antfu/eslint-config)
 - **removeEnveloped**: Removes only intervals completely contained within specified range
 
 ### Utility Methods
-- **fromTuples**: Static factory method to create tree from array of [start, end] or [start, end, data] tuples
+- **fromTuples / fromJSON**: Static factories from `[start, end, data?]` tuples, or from the JSON string `toJSON` produced (`null` data is normalized to `undefined`).
 - **toArray/toSorted/toTuples**: Export tree contents in different formats
 - **clone**: Create deep copy of tree
 - **size**: Get count of intervals in tree
