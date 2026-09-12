@@ -73,13 +73,13 @@ export class ArrayIntervalCollection<T = unknown> implements IntervalCollection<
           return []
 
         if (i.start < start && i.end > end)
-          return [new Interval<T>(i.start, start), new Interval<T>(end, i.end)]
+          return [new Interval<T>(i.start, start, i.data), new Interval<T>(end, i.end, i.data)]
 
         if (i.start < start)
-          return new Interval<T>(i.start, start)
+          return new Interval<T>(i.start, start, i.data)
 
         // chop start (i.end > end must be true here)
-        return new Interval<T>(end, i.end)
+        return new Interval<T>(end, i.end, i.data)
       })
       .flat()
 
