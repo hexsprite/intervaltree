@@ -171,7 +171,11 @@ export class Node<T = unknown> {
         }
       }
 
-      this.values.push(interval)
+      // Keep values sorted by end so in-order traversal is canonical (start, end).
+      let pos = this.values.length
+      while (pos > 0 && this.values[pos - 1].end > interval.end)
+        pos--
+      this.values.splice(pos, 0, interval)
       // no rebalancing needed because the height of this node doesn't change
       rebalancingDone[0] = true
       updateRequired[0] = this.updateAttributes()
