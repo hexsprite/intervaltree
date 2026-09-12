@@ -21,7 +21,7 @@ it('should add a new interval to the node', () => {
   expect(node._right).toBeDefined()
 })
 
-describe('Node AVL rotations', () => {
+describe('node AVL rotations', () => {
   // Every case inserts starts 1, 2, 3 (as unit intervals [n, n+1)) in an
   // order that forces one rotation. All four converge on the same balanced
   // shape: root 2, left child 1, right child 3, height 2, balance 0.

@@ -712,7 +712,7 @@ class MapCommand implements fc.Command<ArrayIntervalCollection, IntervalTree> {
   toString = () => `map(end+1)`
 }
 
-type IntervalValue = { start: number, end: number, data?: unknown }
+interface IntervalValue { start: number, end: number, data?: unknown }
 
 // Parameterized over the interval arbitrary so the same command suite can run
 // against both integer bounds and float bounds (see floatIntervalArbitrary).

@@ -1,7 +1,7 @@
 import { Interval } from './Interval'
 import { IntervalTree } from './IntervalTree'
 
-describe('Interval numeric edge cases', () => {
+describe('interval numeric edge cases', () => {
   it('throws invalid null range for a NaN start', () => {
     expect(() => new Interval(Number.NaN, 10)).toThrow('invalid null range')
   })
