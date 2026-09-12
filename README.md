@@ -263,6 +263,9 @@ JSON.stringify(a)
 // → '[[0,10,null],[20,30,null]]'
 ```
 
+Restore with `IntervalTree.fromJSON(json)`; `equals()` and `hash()` both
+hold after the round trip.
+
 Use `equals()` when you expect inequality and want an early exit; use
 `hash()` when you want a cacheable fingerprint (e.g. memoization keys,
 cross-request change detection).
@@ -296,6 +299,7 @@ const available = schedule.findOneByLengthStartingAt(minDuration, dayStart)
 **Construction:**
 - `constructor(intervals?: Interval<T>[])` - Create a new tree, optionally with initial intervals
 - `static fromTuples<T>(tuples: Array<[number, number] | [number, number, T]>)` - Create from tuple array
+- `IntervalTree.fromJSON(input)` - Inverse of `toJSON`; accepts the JSON string or parsed tuples
 
 **Adding/Removing:**
 - `add(interval: Interval<T>)` - Add an interval to the tree

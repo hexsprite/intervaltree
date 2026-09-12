@@ -63,6 +63,23 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
     )
   }
 
+  /**
+   * Inverse of toJSON(). Accepts the JSON string or the parsed tuple array.
+   * A third element of `null` (what JSON.stringify emits for absent data)
+   * is normalized back to `undefined` so equals() holds after a round trip.
+   */
+  static fromJSON<T = unknown>(input: string | Array<[number, number] | [number, number, T | null]>): IntervalTree<T> {
+    const parsed: unknown = typeof input === 'string' ? JSON.parse(input) : input
+    assert(Array.isArray(parsed), 'fromJSON expects an array of [start, end, data?] tuples')
+    return new IntervalTree<T>(
+      parsed.map((t) => {
+        assert(Array.isArray(t) && t.length >= 2, 'fromJSON expects an array of [start, end, data?] tuples')
+        const [start, end, data] = t as [number, number, T | null | undefined]
+        return new Interval<T>(start, end, data === null ? undefined : data)
+      }),
+    )
+  }
+
   public add(interval: Interval<T>): void {
     if (!this.root) {
       this.root = new Node(interval)
