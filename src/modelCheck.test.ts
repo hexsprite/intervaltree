@@ -305,10 +305,10 @@ class FirstLastCommand implements fc.Command<ArrayIntervalCollection, IntervalTr
       const last = r.last()
       expect(first).not.toBeNull()
       expect(last).not.toBeNull()
-      // first() returns interval with smallest start
-      expect(first!.start).toBe(sorted[0].start)
-      // last() returns interval with largest start
-      expect(last!.start).toBe(sorted[sorted.length - 1].start)
+      // first() returns interval with smallest (start, end)
+      expect(first!.toString()).toBe(sorted[0].toString())
+      // last() returns interval with largest (start, end)
+      expect(last!.toString()).toBe(sorted[sorted.length - 1].toString())
       expect(r.isEmpty).toBe(false)
     }
   }
