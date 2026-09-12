@@ -5,15 +5,42 @@ import fc from 'fast-check'
 import prand from 'pure-rand'
 import { describe, expect, it } from 'vitest'
 import { ArrayIntervalCollection } from './ArrayIntervalCollection'
-import { compareIntervals } from './compareIntervals'
 import { Interval } from './Interval'
 import { IntervalTree } from './IntervalTree'
+
+/**
+ * Canonical string form: sorted by (start, end, data label) so tie order
+ * among intervals with identical (start, end) but different data never
+ * matters. That tie order is unspecified by both the tree (BST/original-start
+ * order) and the array oracle (insertion order), and the two conventions can
+ * disagree once a chop-like op collapses two different-start intervals onto
+ * the same bounds.
+ */
+function canon(ivs: Interval[]): string[] {
+  const label = (d: unknown) => d === undefined ? '' : typeof d === 'object' ? JSON.stringify(d) : String(d)
+  return ivs
+    .map(iv => [iv.start, iv.end, label(iv.data)] as const)
+    .sort((a, b) => a[0] - b[0] || a[1] - b[1] || (a[2] < b[2] ? -1 : a[2] > b[2] ? 1 : 0))
+    .map(t => `${t[0]},${t[1]},${t[2]}`)
+}
+
+/**
+ * Bounds only, ignoring data. mergeOverlaps() keeps `data` from the
+ * earliest-starting interval of a run, but among ties (identical bounds)
+ * which one wins is unspecified — see MergeOverlapsCommand.
+ */
+function canonBounds(ivs: Interval[]): string[] {
+  return ivs
+    .map(iv => [iv.start, iv.end] as const)
+    .sort((a, b) => a[0] - b[0] || a[1] - b[1])
+    .map(t => `${t[0]},${t[1]}`)
+}
 
 class AddCommand implements fc.Command<ArrayIntervalCollection, IntervalTree> {
   interval: Interval
 
-  constructor(value: { start: number, end: number }) {
-    this.interval = new Interval(value.start, value.end)
+  constructor(value: { start: number, end: number, data?: unknown }) {
+    this.interval = new Interval(value.start, value.end, value.data)
   }
 
   check = () => true
@@ -21,7 +48,7 @@ class AddCommand implements fc.Command<ArrayIntervalCollection, IntervalTree> {
   run(m: ArrayIntervalCollection, r: IntervalTree): void {
     r.add(this.interval)
     m.add(this.interval)
-    expect(r.toString()).toEqual(m.toString())
+    expect(canon(r.toArray())).toEqual(canon(m.toArray()))
   }
 
   toString = () => `add(${this.interval.toString()})`
@@ -47,7 +74,7 @@ class RemoveCommand implements fc.Command<ArrayIntervalCollection, IntervalTree>
     m.remove(removed)
     r.remove(removed)
 
-    expect(r.toString()).toEqual(m.toString())
+    expect(canon(r.toArray())).toEqual(canon(m.toArray()))
   }
 
   toString = () => `remove(seed=${this.seed}, index=${this.index})`
@@ -56,8 +83,8 @@ class RemoveCommand implements fc.Command<ArrayIntervalCollection, IntervalTree>
 class ChopCommand implements fc.Command<ArrayIntervalCollection, IntervalTree> {
   interval: Interval
 
-  constructor(value: { start: number, end: number }) {
-    this.interval = new Interval(value.start, value.end)
+  constructor(value: { start: number, end: number, data?: unknown }) {
+    this.interval = new Interval(value.start, value.end, value.data)
   }
 
   check(m: ArrayIntervalCollection) {
@@ -69,7 +96,7 @@ class ChopCommand implements fc.Command<ArrayIntervalCollection, IntervalTree> {
     m.chop(this.interval.start, this.interval.end)
     r.verify()
 
-    expect(r.toString()).toEqual(m.toString())
+    expect(canon(r.toArray())).toEqual(canon(m.toArray()))
   }
 
   toString = () => `chop(${this.interval})`
@@ -85,9 +112,10 @@ class SearchCommand implements fc.Command<ArrayIntervalCollection, IntervalTree>
   check = () => true
 
   run(m: ArrayIntervalCollection, r: IntervalTree): void {
-    const rSorted = r.searchPoint(this.value).toSorted(compareIntervals)
-    const mSorted = m.searchPoint(this.value).toSorted(compareIntervals)
-    expect(rSorted).toEqual(mSorted)
+    // canon() also serializes via public getters — Interval's fields are true
+    // #private, so a raw toEqual(Interval[]) never sees a mismatch (own
+    // enumerable properties are empty on every instance).
+    expect(canon(r.searchPoint(this.value))).toEqual(canon(m.searchPoint(this.value)))
   }
 
   toString = () => `search(${this.value})`
@@ -107,7 +135,23 @@ class FindOneByLengthStartingAtCommand implements fc.Command<ArrayIntervalCollec
   run(m: ArrayIntervalCollection, r: IntervalTree): void {
     const rResult = r.findOneByLengthStartingAt(this.minLength, this.startingAt)
     const mResult = m.findOneByLengthStartingAt(this.minLength, this.startingAt)
-    expect(rResult).toEqual(mResult)
+    if (rResult === undefined || mResult === undefined) {
+      expect(rResult).toBeUndefined()
+      expect(mResult).toBeUndefined()
+      return
+    }
+    // Bounds are exact; among identical bounds, data choice is unspecified
+    // (mirrors the first()/last()/mergeOverlaps() contract), so check data
+    // by membership against the oracle's full interval set. A result may be
+    // clipped to startingAt, so compare against each candidate's own clipped
+    // start, not its stored start.
+    expect(rResult.start).toBe(mResult.start)
+    expect(rResult.end).toBe(mResult.end)
+    const candidates = m.toArray().filter((iv) => {
+      const clippedStart = iv.start < this.startingAt ? this.startingAt : iv.start
+      return clippedStart === rResult.start && iv.end === rResult.end
+    })
+    expect(candidates.some(c => c.data === rResult.data)).toBe(true)
   }
 
   toString = () => `findOneByLengthStartingAt(${this.minLength}, ${this.startingAt})`
@@ -127,7 +171,7 @@ class SearchByLengthStartingAtCommand implements fc.Command<ArrayIntervalCollect
   run(m: ArrayIntervalCollection, r: IntervalTree): void {
     const rResult = r.searchByLengthStartingAt(this.minLength, this.startingAt)
     const mResult = m.searchByLengthStartingAt(this.minLength, this.startingAt)
-    expect(rResult.map(String)).toEqual(mResult.map(String))
+    expect(canon(rResult)).toEqual(canon(mResult))
   }
 
   toString = () => `searchByLengthStartingAt(${this.minLength}, ${this.startingAt})`
@@ -149,10 +193,27 @@ class MergeOverlapsCommand implements fc.Command<ArrayIntervalCollection, Interv
   }
 
   run(m: ArrayIntervalCollection, r: IntervalTree): void {
+    // data retention among tied bounds is unspecified (see mergeOverlaps()
+    // JSDoc), so check bounds exactly, then check data by membership.
+    const preMerge = m.toArray().slice()
     r.mergeOverlaps()
     m.mergeOverlaps()
-    expect(r.toString()).toEqual(m.toString())
+    expect(canonBounds(r.toArray())).toEqual(canonBounds(m.toArray()))
     expect(r.size).toEqual(m.size)
+    for (const iv of r.toArray()) {
+      const candidates = preMerge.filter(pre => pre.start === iv.start)
+      expect(candidates.some(c => c.data === iv.data)).toBe(true)
+    }
+    // Tie data is unspecified by contract; the model adopts the tree's legal
+    // choice so later strict comparisons stay meaningful.
+    for (const rIv of r.toArray()) {
+      const mIv = m.toArray().find(iv => iv.start === rIv.start)!
+      if (mIv.data !== rIv.data) {
+        m.remove(mIv)
+        m.add(new Interval(mIv.start, mIv.end, rIv.data))
+      }
+    }
+    expect(canon(r.toArray())).toEqual(canon(m.toArray()))
   }
 
   toString = () => `mergeOverlaps()`
@@ -170,19 +231,26 @@ class SearchOverlapCommand implements fc.Command<ArrayIntervalCollection, Interv
   check = () => true
 
   run(m: ArrayIntervalCollection, r: IntervalTree): void {
-    const rResult = r.searchOverlap(this.start, this.end).toSorted(compareIntervals)
+    const rResult = r.searchOverlap(this.start, this.end)
     // ArrayIntervalCollection doesn't have searchOverlap, use filter
-    const mResult = m.toArray().filter(iv => iv.start < this.end && iv.end > this.start).toSorted(compareIntervals)
-    expect(rResult).toEqual(mResult)
+    const mResult = m.toArray().filter(iv => iv.start < this.end && iv.end > this.start)
+    expect(canon(rResult)).toEqual(canon(mResult))
   }
 
   toString = () => `searchOverlap(${this.start}, ${this.end})`
 }
 
+// Shared references so equal-bounds intervals with equal object data are also
+// reference-equal — required for the tree's reference-equality dedup checks
+// to ever fire under random input. Recreating `{ id: 1 }` per interval would
+// silently break that.
+const DATA_POOL = [undefined, 'a', 'b', { id: 1 }] as const
+
 const intervalArbitrary = fc.integer({ max: 2147483647 - 1 }).chain(start =>
   fc.record({
     start: fc.constant(start),
     end: fc.integer({ min: start + 1 }),
+    data: fc.constantFrom(...DATA_POOL),
   }),
 )
 
@@ -202,7 +270,7 @@ class ChopAllCommand implements fc.Command<ArrayIntervalCollection, IntervalTree
     for (const [start, end] of this.ranges) {
       m.chop(start, end)
     }
-    expect(r.toString()).toEqual(m.toString())
+    expect(canon(r.toArray())).toEqual(canon(m.toArray()))
     expect(r.size).toEqual(m.size)
   }
 
@@ -214,7 +282,7 @@ class CloneCommand implements fc.Command<ArrayIntervalCollection, IntervalTree> 
 
   run(_m: ArrayIntervalCollection, r: IntervalTree): void {
     const cloned = r.clone()
-    expect(cloned.toString()).toEqual(r.toString())
+    expect(canon(cloned.toArray())).toEqual(canon(r.toArray()))
     expect(cloned.size).toEqual(r.size)
     cloned.verify()
     // Mutation on clone must not corrupt invariants — guards against missing
@@ -241,11 +309,10 @@ class SearchEnvelopCommand implements fc.Command<ArrayIntervalCollection, Interv
   check = () => true
 
   run(m: ArrayIntervalCollection, r: IntervalTree): void {
-    const rResult = r.searchEnveloped(this.start, this.end).toSorted(compareIntervals)
+    const rResult = r.searchEnveloped(this.start, this.end)
     const mResult = m.toArray()
       .filter(iv => iv.start >= this.start && iv.end <= this.end)
-      .toSorted(compareIntervals)
-    expect(rResult).toEqual(mResult)
+    expect(canon(rResult)).toEqual(canon(mResult))
   }
 
   toString = () => `searchEnveloped(${this.start}, ${this.end})`
@@ -301,10 +368,21 @@ class FirstLastCommand implements fc.Command<ArrayIntervalCollection, IntervalTr
       const last = r.last()
       expect(first).not.toBeNull()
       expect(last).not.toBeNull()
-      // first() returns interval with smallest (start, end)
-      expect(first!.toString()).toBe(sorted[0].toString())
-      // last() returns interval with largest (start, end)
-      expect(last!.toString()).toBe(sorted[sorted.length - 1].toString())
+
+      // Bounds are exact; among identical bounds, data choice is unspecified
+      // (see first()/last() JSDoc), so check data by membership.
+      const firstExpected = sorted[0]
+      expect(first!.start).toBe(firstExpected.start)
+      expect(first!.end).toBe(firstExpected.end)
+      const firstCandidates = m.toArray().filter(iv => iv.start === first!.start && iv.end === first!.end)
+      expect(firstCandidates.some(c => c.data === first!.data)).toBe(true)
+
+      const lastExpected = sorted[sorted.length - 1]
+      expect(last!.start).toBe(lastExpected.start)
+      expect(last!.end).toBe(lastExpected.end)
+      const lastCandidates = m.toArray().filter(iv => iv.start === last!.start && iv.end === last!.end)
+      expect(lastCandidates.some(c => c.data === last!.data)).toBe(true)
+
       expect(r.isEmpty).toBe(false)
     }
   }
@@ -359,7 +437,7 @@ class RemoveEnvelopedCommand implements fc.Command<ArrayIntervalCollection, Inte
     }
     r.removeEnveloped(this.start, this.end)
 
-    expect(r.toString()).toEqual(m.toString())
+    expect(canon(r.toArray())).toEqual(canon(m.toArray()))
     expect(r.size).toEqual(m.size)
   }
 
@@ -389,7 +467,7 @@ class DifferenceCommand implements fc.Command<ArrayIntervalCollection, IntervalT
         expected.chop(s, e)
     }
 
-    expect(fast.toString()).toEqual(expected.toString())
+    expect(canon(fast.toArray())).toEqual(canon(expected.toArray()))
     expect(fast.size).toEqual(expected.size)
 
     // Also exercise tree-side chop loop on a clone — surfaces rotation bugs
@@ -398,10 +476,10 @@ class DifferenceCommand implements fc.Command<ArrayIntervalCollection, IntervalT
       if (s < e)
         naive.chop(s, e)
     }
-    expect(naive.toString()).toEqual(expected.toString())
+    expect(canon(naive.toArray())).toEqual(canon(expected.toArray()))
 
     // Inputs unchanged
-    expect(r.toString()).toEqual(m.toString())
+    expect(canon(r.toArray())).toEqual(canon(m.toArray()))
   }
 
   toString = () => `difference(${this.others.length} ranges)`
@@ -438,9 +516,9 @@ const allCommands = [
 describe('sequential chops stress', () => {
   it('mixed ops + chop loop preserves tree invariants', () => {
     type Op
-      = | { kind: 'add', iv: { start: number, end: number } }
+      = | { kind: 'add', iv: { start: number, end: number, data?: unknown } }
         | { kind: 'remove', seed: number }
-        | { kind: 'chop', iv: { start: number, end: number } }
+        | { kind: 'chop', iv: { start: number, end: number, data?: unknown } }
         | { kind: 'chopAll', ranges: Array<{ start: number, end: number }> }
         | { kind: 'merge' }
         | { kind: 'cloneChop', ranges: Array<{ start: number, end: number }> }
@@ -460,7 +538,7 @@ describe('sequential chops stress', () => {
         for (const op of ops) {
           switch (op.kind) {
             case 'add':
-              tree.add(new Interval(op.iv.start, op.iv.end))
+              tree.add(new Interval(op.iv.start, op.iv.end, op.iv.data))
               break
             case 'remove':
               if (tree.size > 0) {

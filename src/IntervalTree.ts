@@ -38,6 +38,7 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
   /**
    * Returns the interval with the smallest (start, end), or null if empty.
    * O(log n) — walks left branch without materializing the full tree.
+   * Among intervals with identical bounds the choice is unspecified.
    */
   public first(): Interval<T> | null {
     if (!this.root)
@@ -49,6 +50,7 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
   /**
    * Returns the interval with the largest (start, end), or null if empty.
    * O(log n) — walks right branch without materializing the full tree.
+   * Among intervals with identical bounds the choice is unspecified.
    */
   public last(): Interval<T> | null {
     if (!this.root)
@@ -77,6 +79,11 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
     this.verifyIfDebug()
   }
 
+  /**
+   * Merges overlapping (or touching) intervals in place. The merged interval
+   * keeps `data` from the earliest-starting interval of the run. Among
+   * intervals with identical bounds the choice is unspecified.
+   */
   public mergeOverlaps(): void {
     if (!this.root || !this._dirty)
       return
