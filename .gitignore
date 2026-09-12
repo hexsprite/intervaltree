@@ -90,6 +90,10 @@ web_modules/
 
 \*.tgz
 
+# npm lockfile (use pnpm for consistency)
+
+package-lock.json
+
 # Yarn Integrity file
 
 .yarn-integrity
