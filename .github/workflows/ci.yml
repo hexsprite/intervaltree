@@ -31,12 +31,16 @@ jobs:
 
       - name: Generate coverage report
         run: pnpm vitest run --coverage
-        continue-on-error: true
 
       - uses: actions/upload-artifact@v4
         with:
           name: dist
           path: dist/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage/
 
   model-check:
     needs: build
