@@ -127,11 +127,7 @@ class SearchByLengthStartingAtCommand implements fc.Command<ArrayIntervalCollect
   run(m: ArrayIntervalCollection, r: IntervalTree): void {
     const rResult = r.searchByLengthStartingAt(this.minLength, this.startingAt)
     const mResult = m.searchByLengthStartingAt(this.minLength, this.startingAt)
-    // Tree adjusts intervals starting before startingAt; array returns originals.
-    // Compare by end values and count, since that's what both agree on.
-    const rEnds = rResult.map(iv => iv.end).sort((a, b) => a - b)
-    const mEnds = mResult.map(iv => iv.end).sort((a, b) => a - b)
-    expect(rEnds).toEqual(mEnds)
+    expect(rResult.map(String)).toEqual(mResult.map(String))
   }
 
   toString = () => `searchByLengthStartingAt(${this.minLength}, ${this.startingAt})`

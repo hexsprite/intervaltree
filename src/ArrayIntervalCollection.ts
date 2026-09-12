@@ -92,12 +92,15 @@ export class ArrayIntervalCollection<T = unknown> implements IntervalCollection<
   }
 
   searchByLengthStartingAt(minLength: number, startingAt: number): Interval<T>[] {
-    return this.intervals.filter((iv) => {
-      if (iv.end < startingAt)
-        return false
+    return this.intervals
+      .filter((iv) => {
+        if (iv.end < startingAt)
+          return false
 
-      return iv.availableLength(startingAt) >= minLength
-    })
+        return iv.availableLength(startingAt) >= minLength
+      })
+      .map(iv => iv.start < startingAt ? new Interval(startingAt, iv.end, iv.data) : iv)
+      .toSorted(compareIntervals)
   }
 
   first(): Interval<T> | null {
