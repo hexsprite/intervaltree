@@ -38,6 +38,7 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
   /**
    * Returns the interval with the smallest (start, end), or null if empty.
    * O(log n) — walks left branch without materializing the full tree.
+   * Among intervals with identical bounds the choice is unspecified.
    */
   public first(): Interval<T> | null {
     if (!this.root)
@@ -49,6 +50,7 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
   /**
    * Returns the interval with the largest (start, end), or null if empty.
    * O(log n) — walks right branch without materializing the full tree.
+   * Among intervals with identical bounds the choice is unspecified.
    */
   public last(): Interval<T> | null {
     if (!this.root)
@@ -94,6 +96,11 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
     this.verifyIfDebug()
   }
 
+  /**
+   * Merges overlapping (or touching) intervals in place. The merged interval
+   * keeps `data` from the earliest-starting interval of the run. Among
+   * intervals with identical bounds the choice is unspecified.
+   */
   public mergeOverlaps(): void {
     if (!this.root || !this._dirty)
       return
@@ -425,7 +432,10 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
    * with early termination.
    *
    * If the found interval starts before `startingAt`, the returned interval is
-   * adjusted to begin at `startingAt`.
+   * adjusted to begin at `startingAt`. Among intervals that clip to the same
+   * start, the one with the earliest original start wins.
+   *
+   * `filterFn` receives the stored interval, not the clipped result.
    *
    * @param minLength - The minimum length of the interval to search for.
    * @param startingAt - The earliest start position to consider.
@@ -451,8 +461,9 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
     assert(minLength > 0, 'minLength must be > 0')
     if (!this.root)
       return []
-    // In-order traversal with per-child pruning produces sorted results
-    return this.root.searchByLengthStartingAt(minLength, startingAt, [])
+    // Node traversal is in-order by ORIGINAL start; clipping to startingAt
+    // can reorder ties, so sort the (small) result.
+    return this.root.searchByLengthStartingAt(minLength, startingAt, []).sort(compareIntervals)
   }
 
   public clone(): IntervalTree<T> {

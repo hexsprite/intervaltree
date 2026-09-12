@@ -1,4 +1,5 @@
 import type { IntervalCollection } from './IntervalCollection'
+import type { IntervalTuple } from './types'
 import { compareIntervals } from './compareIntervals'
 import { Interval } from './Interval'
 import { sha256 } from './sha256'
@@ -23,6 +24,10 @@ export class ArrayIntervalCollection<T = unknown> implements IntervalCollection<
     intervals.forEach(iv => this.add(iv))
   }
 
+  removeAll(intervals: Interval<T>[]): void {
+    intervals.forEach(iv => this.remove(iv))
+  }
+
   findOneByLengthStartingAt(
     minLength: number,
     startingAt: number,
@@ -30,11 +35,12 @@ export class ArrayIntervalCollection<T = unknown> implements IntervalCollection<
   ): Interval<T> | undefined {
     for (const interval of this.toSorted()) {
       if (interval.availableLength(startingAt) >= minLength) {
-        const candidate = interval.start < startingAt && interval.end >= startingAt
+        // filterFn sees the stored (unclipped) interval, mirroring Node.ts.
+        if (filterFn && !filterFn(interval))
+          continue
+        return interval.start < startingAt && interval.end >= startingAt
           ? new Interval<T>(startingAt, interval.end, interval.data)
           : interval
-        if (!filterFn || filterFn(candidate))
-          return candidate
       }
     }
     return undefined
@@ -73,13 +79,13 @@ export class ArrayIntervalCollection<T = unknown> implements IntervalCollection<
           return []
 
         if (i.start < start && i.end > end)
-          return [new Interval<T>(i.start, start), new Interval<T>(end, i.end)]
+          return [new Interval<T>(i.start, start, i.data), new Interval<T>(end, i.end, i.data)]
 
         if (i.start < start)
-          return new Interval<T>(i.start, start)
+          return new Interval<T>(i.start, start, i.data)
 
         // chop start (i.end > end must be true here)
-        return new Interval<T>(end, i.end)
+        return new Interval<T>(end, i.end, i.data)
       })
       .flat()
 
@@ -92,12 +98,15 @@ export class ArrayIntervalCollection<T = unknown> implements IntervalCollection<
   }
 
   searchByLengthStartingAt(minLength: number, startingAt: number): Interval<T>[] {
-    return this.intervals.filter((iv) => {
-      if (iv.end < startingAt)
-        return false
+    return this.intervals
+      .filter((iv) => {
+        if (iv.end < startingAt)
+          return false
 
-      return iv.availableLength(startingAt) >= minLength
-    })
+        return iv.availableLength(startingAt) >= minLength
+      })
+      .map(iv => iv.start < startingAt ? new Interval(startingAt, iv.end, iv.data) : iv)
+      .toSorted(compareIntervals)
   }
 
   first(): Interval<T> | null {
@@ -111,7 +120,9 @@ export class ArrayIntervalCollection<T = unknown> implements IntervalCollection<
   }
 
   hash(): string {
-    return sha256(JSON.stringify(this.toSorted()))
+    // Interval's fields are true #private, so JSON.stringify(Interval) always
+    // serializes to "{}" — hash over tuples instead, mirroring IntervalTree.
+    return sha256(JSON.stringify(this.toSorted().map(iv => iv.toTuple())))
   }
 
   mergeOverlaps(): void {
@@ -138,6 +149,62 @@ export class ArrayIntervalCollection<T = unknown> implements IntervalCollection<
 
   remove(interval: Interval<T>): void {
     this.intervals = this.intervals.filter(iv => !iv.equals(interval))
+  }
+
+  /** Returns a new collection with all intervals from both collections. */
+  union(other: ArrayIntervalCollection<T>): ArrayIntervalCollection<T> {
+    const result = new ArrayIntervalCollection<T>()
+    for (const iv of [...this.intervals, ...other.intervals])
+      result.add(iv)
+    return result
+  }
+
+  /** Returns a new collection with all overlapping or adjacent ranges merged. */
+  rangeUnion(other: ArrayIntervalCollection<T>): ArrayIntervalCollection<T> {
+    const result = this.union(other)
+    result.mergeOverlaps()
+    return result
+  }
+
+  /** Returns a new collection containing only the overlapping regions between intervals in both collections. */
+  intersection(other: ArrayIntervalCollection<T>): ArrayIntervalCollection<T> {
+    const result = new ArrayIntervalCollection<T>()
+    for (const a of this.intervals) {
+      for (const b of other.intervals) {
+        if (a.start < b.end && b.start < a.end)
+          result.add(new Interval<T>(Math.max(a.start, b.start), Math.min(a.end, b.end), a.data))
+      }
+    }
+    return result
+  }
+
+  /** Returns a new collection with regions from this collection that don't overlap with the other. */
+  difference(other: ArrayIntervalCollection<T>): ArrayIntervalCollection<T> {
+    const result = this.clone()
+    for (const iv of other.intervals)
+      result.chop(iv.start, iv.end)
+    return result
+  }
+
+  /**
+   * True when both collections represent the same set of (start, end, data)
+   * intervals in sorted order. Mirrors IntervalTree.equals(): insertion-order
+   * sensitive when identical bounds carry different data.
+   */
+  equals(other: ArrayIntervalCollection<T>): boolean {
+    const a = this.toSorted()
+    const b = other.toSorted()
+    if (a.length !== b.length)
+      return false
+    return a.every((iv, i) => iv.start === b[i].start && iv.end === b[i].end && iv.data === b[i].data)
+  }
+
+  toTuples(): IntervalTuple<T>[] {
+    return this.toSorted().map(iv => iv.toTuple())
+  }
+
+  toJSON(): Array<[number, number, T | undefined]> {
+    return this.toSorted().map(iv => [iv.start, iv.end, iv.data])
   }
 
   public toString() {

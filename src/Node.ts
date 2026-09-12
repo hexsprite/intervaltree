@@ -514,7 +514,7 @@ export class Node<T = unknown> {
     if (this.maxEnd < startingAt || this.maxLength < minLength)
       return result
 
-    // In-order traversal: left, self, right — produces sorted output
+    // in-order by original start; IntervalTree sorts after clipping
     const left = this._left
     if (left && left.maxEnd >= startingAt && left.maxLength >= minLength)
       left.searchByLengthStartingAt(minLength, startingAt, result)

@@ -1685,3 +1685,23 @@ describe('early-exit predicates', () => {
     expect(tree.overlaps(5, 6)).toBe(false)
   })
 })
+
+describe('searchByLengthStartingAt ordering', () => {
+  // Regression: two intervals clipped to the same start came back ordered by
+  // their original starts, not by (start, end); found by the model check.
+  it('returns clipped results sorted by (start, end)', () => {
+    const t = new IntervalTree()
+    t.addInterval(-5, 1)
+    t.addInterval(-10, 2)
+    expect(t.searchByLengthStartingAt(1, 0).map(iv => iv.toTuple())).toEqual([[0, 1], [0, 2]])
+  })
+})
+
+describe('findOneByLengthStartingAt filterFn', () => {
+  it('passes the stored interval to filterFn, not the clipped result', () => {
+    const t = new IntervalTree()
+    t.addInterval(0, 100)
+    const result = t.findOneByLengthStartingAt(5, 50, iv => iv.start === 0)
+    expect(result!.toTuple()).toEqual([50, 100])
+  })
+})
