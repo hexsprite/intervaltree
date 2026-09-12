@@ -673,4 +673,4 @@ We measured a flat typed-array layout (structure-of-arrays, and a single stride-
 | build | 155 ns | 118 ns |
 | clone | 237 ns | 77 ns |
 
-If you hold millions of intervals and mostly build, clone, or scan, the flat layout may be worth revisiting. The prototypes and benchmark scripts live on the `spike/flat-typed-array-tree` branch under `bench/spike/`.
+If you hold millions of intervals and mostly build, clone, or scan, the flat layout may be worth revisiting. The prototypes and benchmark scripts are preserved at the `spike-flat-typed-array-tree` tag under `bench/spike/`; the approach was measured and not adopted.

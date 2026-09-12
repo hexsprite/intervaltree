@@ -16,6 +16,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
       - uses: actions/setup-node@v6
         with:
           node-version: 24
@@ -94,7 +98,7 @@ jobs:
             --release-type node \
             --token "$RELEASE_PLEASE_TOKEN"
 
-      - run: npm ci
+      - run: pnpm install --frozen-lockfile
         if: ${{ steps.release.outputs.publish_required == 'true' }}
 
       - run: npm publish --access public
