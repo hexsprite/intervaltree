@@ -1593,6 +1593,39 @@ describe('equality and serialization', () => {
     b.addInterval(0, 10, 'y')
     expect(a.equals(b)).toBe(false)
   })
+
+  // Regression: same-start intervals were stored in insertion order, so
+  // equals() disagreed with hash() and first()/last() ignored end.
+  it('equals is independent of insertion order for same-start intervals', () => {
+    const a = new IntervalTree()
+    a.addInterval(1, 5)
+    a.addInterval(1, 3)
+    const b = new IntervalTree()
+    b.addInterval(1, 3)
+    b.addInterval(1, 5)
+    expect(a.equals(b)).toBe(true)
+    expect(a.hash()).toBe(b.hash())
+  })
+
+  it('first() returns the smallest (start, end) and last() the largest', () => {
+    const t = new IntervalTree()
+    t.addInterval(1, 5)
+    t.addInterval(1, 3)
+    t.addInterval(9, 10)
+    t.addInterval(9, 99)
+    expect(t.first()!.toTuple()).toEqual([1, 3])
+    expect(t.last()!.toTuple()).toEqual([9, 99])
+    expect(t.first()).toBe(t.toSorted()[0])
+    expect(t.last()).toBe(t.toSorted().at(-1))
+  })
+
+  it('toArray() is sorted by (start, end) regardless of insertion order', () => {
+    const t = new IntervalTree()
+    t.addInterval(1, 9)
+    t.addInterval(1, 2)
+    t.addInterval(1, 5)
+    expect(t.toArray().map(iv => iv.end)).toEqual([2, 5, 9])
+  })
 })
 
 describe('verify', () => {
