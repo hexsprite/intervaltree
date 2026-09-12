@@ -1645,3 +1645,12 @@ describe('searchByLengthStartingAt ordering', () => {
     expect(t.searchByLengthStartingAt(1, 0).map(iv => iv.toTuple())).toEqual([[0, 1], [0, 2]])
   })
 })
+
+describe('findOneByLengthStartingAt filterFn', () => {
+  it('passes the stored interval to filterFn, not the clipped result', () => {
+    const t = new IntervalTree()
+    t.addInterval(0, 100)
+    const result = t.findOneByLengthStartingAt(5, 50, iv => iv.start === 0)
+    expect(result!.toTuple()).toEqual([50, 100])
+  })
+})

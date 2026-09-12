@@ -411,6 +411,8 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
    * adjusted to begin at `startingAt`. Among intervals that clip to the same
    * start, the one with the earliest original start wins.
    *
+   * `filterFn` receives the stored interval, not the clipped result.
+   *
    * @param minLength - The minimum length of the interval to search for.
    * @param startingAt - The earliest start position to consider.
    * @param filterFn - An optional filter function to further refine the search.

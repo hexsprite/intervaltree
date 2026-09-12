@@ -30,11 +30,12 @@ export class ArrayIntervalCollection<T = unknown> implements IntervalCollection<
   ): Interval<T> | undefined {
     for (const interval of this.toSorted()) {
       if (interval.availableLength(startingAt) >= minLength) {
-        const candidate = interval.start < startingAt && interval.end >= startingAt
+        // filterFn sees the stored (unclipped) interval, mirroring Node.ts.
+        if (filterFn && !filterFn(interval))
+          continue
+        return interval.start < startingAt && interval.end >= startingAt
           ? new Interval<T>(startingAt, interval.end, interval.data)
           : interval
-        if (!filterFn || filterFn(candidate))
-          return candidate
       }
     }
     return undefined
