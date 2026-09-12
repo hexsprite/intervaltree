@@ -1594,3 +1594,10 @@ describe('equality and serialization', () => {
     expect(a.equals(b)).toBe(false)
   })
 })
+
+describe('verify', () => {
+  it('runs on demand even when automatic checks are off', () => {
+    const tree = IntervalTree.fromTuples([[0, 10], [5, 15], [20, 30]])
+    expect(() => tree.verify()).not.toThrow()
+  })
+})
