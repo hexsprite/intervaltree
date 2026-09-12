@@ -658,8 +658,8 @@ export class Node<T = unknown> {
     // recursively verify branches
     if (this._left) {
       assert(
-        this._left.start <= this.start,
-        `(${this.start}) left child out of order (${this._left.start} < ${this.start})`,
+        this._left.start < this.start,
+        `(${this.start}) left child out of order (${this._left.start} >= ${this.start})`,
       )
       this._left.verify()
     }
