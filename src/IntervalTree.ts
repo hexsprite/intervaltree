@@ -36,7 +36,7 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
   }
 
   /**
-   * Returns the interval(s) with the smallest start value, or null if empty.
+   * Returns the interval with the smallest (start, end), or null if empty.
    * O(log n) — walks left branch without materializing the full tree.
    */
   public first(): Interval<T> | null {
@@ -47,14 +47,14 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
   }
 
   /**
-   * Returns the interval(s) with the largest start value, or null if empty.
+   * Returns the interval with the largest (start, end), or null if empty.
    * O(log n) — walks right branch without materializing the full tree.
    */
   public last(): Interval<T> | null {
     if (!this.root)
       return null
     const node = this.root.max()
-    return node.values[0] ?? null
+    return node.values[node.values.length - 1] ?? null
   }
 
   static fromTuples<T = unknown>(allIntervals: Array<[number, number] | [number, number, T]>): IntervalTree<T> {
@@ -122,6 +122,9 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
    * intervals in sorted order. Short-circuits on size, then compares
    * element-wise — faster than hashing both trees when inequality is
    * likely (early exit on first mismatch).
+   * Intervals with identical start and end but different `data` compare in
+   * insertion order; `equals` and `hash` are both insertion-order sensitive
+   * for that case only.
    */
   public equals(other: IntervalTree<T>): boolean {
     if (this === other)
