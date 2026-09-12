@@ -485,6 +485,223 @@ class DifferenceCommand implements fc.Command<ArrayIntervalCollection, IntervalT
   toString = () => `difference(${this.others.length} ranges)`
 }
 
+class UnionCommand implements fc.Command<ArrayIntervalCollection, IntervalTree> {
+  others: Array<{ start: number, end: number, data?: unknown }>
+
+  constructor(others: Array<{ start: number, end: number, data?: unknown }>) {
+    this.others = others
+  }
+
+  check = () => true
+
+  run(m: ArrayIntervalCollection, r: IntervalTree): void {
+    const otherTree = IntervalTree.fromTuples(this.others.map(o => [o.start, o.end, o.data]))
+    const otherModel = new ArrayIntervalCollection()
+    otherModel.addAll(this.others.map(o => new Interval(o.start, o.end, o.data)))
+
+    const rResult = r.union(otherTree)
+    const mResult = m.union(otherModel)
+
+    expect(canon(rResult.toArray())).toEqual(canon(mResult.toArray()))
+    expect(rResult.size).toEqual(mResult.size)
+
+    // Inputs unchanged
+    expect(canon(r.toArray())).toEqual(canon(m.toArray()))
+  }
+
+  toString = () => `union(${this.others.length} intervals)`
+}
+
+class RangeUnionCommand implements fc.Command<ArrayIntervalCollection, IntervalTree> {
+  others: Array<{ start: number, end: number, data?: unknown }>
+
+  constructor(others: Array<{ start: number, end: number, data?: unknown }>) {
+    this.others = others
+  }
+
+  check = () => true
+
+  run(m: ArrayIntervalCollection, r: IntervalTree): void {
+    const otherTree = IntervalTree.fromTuples(this.others.map(o => [o.start, o.end, o.data]))
+    const otherModel = new ArrayIntervalCollection()
+    otherModel.addAll(this.others.map(o => new Interval(o.start, o.end, o.data)))
+
+    // rangeUnion() calls mergeOverlaps() internally, whose data tie-break
+    // among identical bounds is unspecified (see mergeOverlaps() JSDoc) —
+    // same bounds-exact / data-by-membership rule as MergeOverlapsCommand.
+    const preMerge = [...m.toArray(), ...otherModel.toArray()]
+
+    const rResult = r.rangeUnion(otherTree)
+    const mResult = m.rangeUnion(otherModel)
+
+    expect(canonBounds(rResult.toArray())).toEqual(canonBounds(mResult.toArray()))
+    expect(rResult.size).toEqual(mResult.size)
+    for (const iv of rResult.toArray()) {
+      const candidates = preMerge.filter(pre => pre.start === iv.start)
+      expect(candidates.some(c => c.data === iv.data)).toBe(true)
+    }
+
+    // Inputs unchanged
+    expect(canon(r.toArray())).toEqual(canon(m.toArray()))
+  }
+
+  toString = () => `rangeUnion(${this.others.length} intervals)`
+}
+
+class IntersectionCommand implements fc.Command<ArrayIntervalCollection, IntervalTree> {
+  others: Array<{ start: number, end: number, data?: unknown }>
+
+  constructor(others: Array<{ start: number, end: number, data?: unknown }>) {
+    this.others = others
+  }
+
+  check = () => true
+
+  run(m: ArrayIntervalCollection, r: IntervalTree): void {
+    const otherTree = IntervalTree.fromTuples(this.others.map(o => [o.start, o.end, o.data]))
+    const otherModel = new ArrayIntervalCollection()
+    otherModel.addAll(this.others.map(o => new Interval(o.start, o.end, o.data)))
+
+    const rResult = r.intersection(otherTree)
+    const mResult = m.intersection(otherModel)
+
+    expect(canon(rResult.toArray())).toEqual(canon(mResult.toArray()))
+    expect(rResult.size).toEqual(mResult.size)
+
+    // Inputs unchanged
+    expect(canon(r.toArray())).toEqual(canon(m.toArray()))
+  }
+
+  toString = () => `intersection(${this.others.length} intervals)`
+}
+
+class EqualsCommand implements fc.Command<ArrayIntervalCollection, IntervalTree> {
+  check = () => true
+
+  run(_m: ArrayIntervalCollection, r: IntervalTree): void {
+    const clone = r.clone()
+    expect(r.equals(clone)).toBe(true)
+    expect(clone.equals(r)).toBe(true)
+  }
+
+  toString = () => `equalsSelf()`
+}
+
+class HashCommand implements fc.Command<ArrayIntervalCollection, IntervalTree> {
+  check(m: ArrayIntervalCollection) {
+    // hash()/equals() are documented insertion-order sensitive when bounds
+    // tie with different data (see IntervalTree.equals() JSDoc). Skip so
+    // this command only asserts the well-defined (no-tie) case.
+    const seen = new Set<string>()
+    for (const iv of m.toArray()) {
+      const key = `${iv.start},${iv.end}`
+      if (seen.has(key))
+        return false
+      seen.add(key)
+    }
+    return true
+  }
+
+  run(m: ArrayIntervalCollection, r: IntervalTree): void {
+    expect(r.hash()).toBe(r.clone().hash())
+    const fromModel = new IntervalTree(m.toSorted())
+    expect(r.hash()).toBe(fromModel.hash())
+  }
+
+  toString = () => `hash()`
+}
+
+class ToTuplesCommand implements fc.Command<ArrayIntervalCollection, IntervalTree> {
+  check = () => true
+
+  run(m: ArrayIntervalCollection, r: IntervalTree): void {
+    // Compare as a multiset of stringified tuples, not the raw array: when
+    // bounds tie with different data, toTuples()/toJSON() order is the same
+    // unspecified tie as elsewhere, but content must still match exactly.
+    const rTuples = new Set(r.toTuples().map(t => JSON.stringify(t)))
+    const mTuples = new Set(m.toTuples().map(t => JSON.stringify(t)))
+    expect(rTuples).toEqual(mTuples)
+
+    const rJson = new Set(r.toJSON().map(t => JSON.stringify(t)))
+    const mJson = new Set(m.toJSON().map(t => JSON.stringify(t)))
+    expect(rJson).toEqual(mJson)
+  }
+
+  toString = () => `toTuplesJson()`
+}
+
+class AddAllCommand implements fc.Command<ArrayIntervalCollection, IntervalTree> {
+  intervals: Interval[]
+
+  constructor(values: Array<{ start: number, end: number, data?: unknown }>) {
+    this.intervals = values.map(v => new Interval(v.start, v.end, v.data))
+  }
+
+  check = () => true
+
+  run(m: ArrayIntervalCollection, r: IntervalTree): void {
+    r.addAll(this.intervals)
+    m.addAll(this.intervals)
+    expect(canon(r.toArray())).toEqual(canon(m.toArray()))
+    expect(r.size).toEqual(m.size)
+  }
+
+  toString = () => `addAll(${this.intervals.length} intervals)`
+}
+
+class RemoveAllCommand implements fc.Command<ArrayIntervalCollection, IntervalTree> {
+  readonly seed: number
+
+  constructor(seed: number) {
+    this.seed = seed
+  }
+
+  check(m: ArrayIntervalCollection) {
+    return m.size > 0
+  }
+
+  run(m: ArrayIntervalCollection, r: IntervalTree): void {
+    const sorted = m.toSorted()
+    const count = Math.min(sorted.length, 1 + (Math.abs(this.seed) % 5))
+    let rng = prand.xoroshiro128plus(this.seed)
+    const toRemove: Interval[] = []
+    const usedIdx = new Set<number>()
+    while (toRemove.length < count) {
+      const [idx, nextRng] = prand.uniformIntDistribution(0, sorted.length - 1, rng)
+      rng = nextRng
+      if (!usedIdx.has(idx)) {
+        usedIdx.add(idx)
+        toRemove.push(sorted[idx])
+      }
+    }
+
+    r.removeAll(toRemove)
+    m.removeAll(toRemove)
+    expect(canon(r.toArray())).toEqual(canon(m.toArray()))
+    expect(r.size).toEqual(m.size)
+  }
+
+  toString = () => `removeAll(seed=${this.seed})`
+}
+
+class MapCommand implements fc.Command<ArrayIntervalCollection, IntervalTree> {
+  check = () => true
+
+  run(m: ArrayIntervalCollection, r: IntervalTree): void {
+    const rResult = r.map(iv => new Interval(iv.start, iv.end + 1, iv.data))
+    const mResult = new ArrayIntervalCollection()
+    mResult.addAll(m.toArray().map(iv => new Interval(iv.start, iv.end + 1, iv.data)))
+
+    expect(canon(rResult.toArray())).toEqual(canon(mResult.toArray()))
+    expect(rResult.size).toEqual(mResult.size)
+
+    // Input unchanged
+    expect(canon(r.toArray())).toEqual(canon(m.toArray()))
+  }
+
+  toString = () => `map(end+1)`
+}
+
 const allCommands = [
   intervalArbitrary.map(v => new AddCommand(v)),
   fc.integer().map(seed => new RemoveCommand(seed)),
@@ -511,6 +728,15 @@ const allCommands = [
   ),
   intervalArbitrary.map(v => new RemoveEnvelopedCommand(v)),
   fc.array(intervalArbitrary, { minLength: 0, maxLength: 8 }).map(v => new DifferenceCommand(v)),
+  fc.array(intervalArbitrary, { minLength: 0, maxLength: 8 }).map(v => new UnionCommand(v)),
+  fc.array(intervalArbitrary, { minLength: 0, maxLength: 8 }).map(v => new RangeUnionCommand(v)),
+  fc.array(intervalArbitrary, { minLength: 0, maxLength: 8 }).map(v => new IntersectionCommand(v)),
+  fc.constant(new EqualsCommand()),
+  fc.constant(new HashCommand()),
+  fc.constant(new ToTuplesCommand()),
+  fc.array(intervalArbitrary, { minLength: 0, maxLength: 5 }).map(v => new AddAllCommand(v)),
+  fc.integer().map(seed => new RemoveAllCommand(seed)),
+  fc.constant(new MapCommand()),
 ]
 
 describe('sequential chops stress', () => {

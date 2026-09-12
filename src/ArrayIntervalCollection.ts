@@ -24,6 +24,10 @@ export class ArrayIntervalCollection<T = unknown> implements IntervalCollection<
     intervals.forEach(iv => this.add(iv))
   }
 
+  removeAll(intervals: Interval<T>[]): void {
+    intervals.forEach(iv => this.remove(iv))
+  }
+
   findOneByLengthStartingAt(
     minLength: number,
     startingAt: number,
