@@ -152,15 +152,14 @@ export class Node<T = unknown> {
     else this._left = node
   }
 
-  insert(interval: Interval<T>, rebalancingDone: [boolean] = _rebalancingDone, updateRequired: [boolean] = _updateRequired): Node<T> {
-    // Reset shared state on top-level call (recursive calls pass explicit refs)
-    if (rebalancingDone === _rebalancingDone) {
-      _rebalancingDone[0] = false
-      _flags.insertWasDuplicate = false
-    }
-    if (updateRequired === _updateRequired)
-      _updateRequired[0] = false
+  insert(interval: Interval<T>): Node<T> {
+    _rebalancingDone[0] = false
+    _updateRequired[0] = false
+    _flags.insertWasDuplicate = false
+    return this._insert(interval, _rebalancingDone, _updateRequired)
+  }
 
+  private _insert(interval: Interval<T>, rebalancingDone: [boolean], updateRequired: [boolean]): Node<T> {
     // if the interval starts at the same point as this node, add it to the values
     if (this.start === interval.start) {
       // don't add a duplicate with the same start, end, and data reference
@@ -188,7 +187,7 @@ export class Node<T = unknown> {
     const branchNode = dir === RIGHT ? this._right : this._left
 
     if (branchNode) {
-      const inserted = branchNode.insert(interval, rebalancingDone, updateRequired)
+      const inserted = branchNode._insert(interval, rebalancingDone, updateRequired)
       if (dir === RIGHT)
         this._right = inserted
       else this._left = inserted
@@ -359,22 +358,23 @@ export class Node<T = unknown> {
     return result
   }
 
-  public remove(interval: Interval<T>, rebalance: [boolean] = _rebalance): Node<T> | null {
-    // Reset shared state on top-level call
-    if (rebalance === _rebalance) {
-      _rebalance[0] = false
-      _flags.removeSucceeded = false
-    }
+  public remove(interval: Interval<T>): Node<T> | null {
+    _rebalance[0] = false
+    _flags.removeSucceeded = false
+    return this._remove(interval, _rebalance)
+  }
+
+  private _remove(interval: Interval<T>, rebalance: [boolean]): Node<T> | null {
     // eslint-disable-next-line ts/no-this-alias
     let result: Node<T> = this
 
     if (interval.start < this.start) {
       const left = this._left
-      this._left = left?.remove(interval, rebalance) ?? null
+      this._left = left?._remove(interval, rebalance) ?? null
     }
     else if (interval.start > this.start) {
       const right = this._right
-      this._right = right?.remove(interval, rebalance) ?? null
+      this._right = right?._remove(interval, rebalance) ?? null
     }
     else {
       // Found the node — remove the specific interval
@@ -401,10 +401,11 @@ export class Node<T = unknown> {
           // Remove successor values from right subtree
           let rightNode: Node<T> | null = right
           for (const value of successor.values)
-            rightNode = rightNode?.remove(value, rebalance) ?? null
+            rightNode = rightNode?._remove(value, rebalance) ?? null
 
           successor._left = left
           successor._right = rightNode
+          successor.updateHeight()
           result = successor
         }
         else {

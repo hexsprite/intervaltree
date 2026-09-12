@@ -1653,3 +1653,22 @@ describe('argument validation', () => {
     expect(() => t.chop(5, 5)).toThrow('start must be < end')
   })
 })
+
+describe('fromJSON', () => {
+  it('round-trips through JSON.stringify with equals() true', () => {
+    const a = new IntervalTree<string>()
+    a.addInterval(1, 5)
+    a.addInterval(7, 9, 'x')
+    const b = IntervalTree.fromJSON<string>(JSON.stringify(a))
+    expect(b.equals(a)).toBe(true)
+    expect(b.hash()).toBe(a.hash())
+    expect(b.first()!.data).toBeUndefined()
+  })
+  it('accepts an already-parsed tuple array', () => {
+    const b = IntervalTree.fromJSON([[1, 5, null], [7, 9, 'x']])
+    expect(b.toTuples()).toEqual([[1, 5], [7, 9, 'x']])
+  })
+  it('rejects malformed input with a clear message', () => {
+    expect(() => IntervalTree.fromJSON('{"nope":1}')).toThrow('fromJSON expects an array of [start, end, data?] tuples')
+  })
+})
