@@ -8,7 +8,7 @@
     "moduleResolution": "bundler",
     "types": [
       "node",
-      "jest"
+      "vitest/globals"
     ],
     "allowImportingTsExtensions": true,
     "allowJs": true,
