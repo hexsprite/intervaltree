@@ -142,21 +142,23 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
   }
 
   /**
-   * True when two trees represent the same set of (start, end, data)
-   * intervals in sorted order. Short-circuits on size, then compares
-   * element-wise — faster than hashing both trees when inequality is
-   * likely (early exit on first mismatch).
+   * True when this tree and another collection represent the same set of
+   * (start, end, data) intervals in sorted order. Short-circuits on size,
+   * then compares element-wise — faster than hashing both when inequality
+   * is likely (early exit on first mismatch).
    * Intervals with identical start and end but different `data` compare in
    * insertion order; `equals` and `hash` are both insertion-order sensitive
    * for that case only.
+   * `this.toArray()` is already in sorted order (in-order BST walk); the
+   * other side may not be, so it goes through `toSorted()`.
    */
-  public equals(other: IntervalTree<T>): boolean {
-    if (this === other)
+  public equals(other: IntervalCollection<T>): boolean {
+    if ((this as unknown) === other)
       return true
-    if (this._size !== other._size)
+    if (this.size !== other.size)
       return false
     const a = this.toArray()
-    const b = other.toArray()
+    const b = other.toSorted()
     for (let i = 0; i < a.length; i++) {
       if (
         a[i].start !== b[i].start

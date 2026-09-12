@@ -5,9 +5,11 @@ import { Interval } from './Interval'
 import { sha256 } from './sha256'
 
 /**
- * Naive array-based reference implementation used as the oracle model in
- * property-based tests. Optimized for readability, clarity and correctness
- * — not performance. Do not use in production.
+ * Reference implementation of IntervalCollection: every operation is a
+ * straight array scan, O(n) per call. It exists to be obviously correct, not
+ * fast — used as the oracle model in property-based tests, and suitable for
+ * tests, tiny sets, or as the executable spec for a new implementation to
+ * check itself against.
  */
 export class ArrayIntervalCollection<T = unknown> implements IntervalCollection<T> {
   private intervals: Interval<T>[]
@@ -58,6 +60,10 @@ export class ArrayIntervalCollection<T = unknown> implements IntervalCollection<
     return this.intervals.length
   }
 
+  get isEmpty(): boolean {
+    return this.intervals.length === 0
+  }
+
   add(interval: Interval<T>): void {
     if (this.intervals.some(iv => iv.equals(interval)))
       return
@@ -93,8 +99,31 @@ export class ArrayIntervalCollection<T = unknown> implements IntervalCollection<
     this.addAll(newIntervals)
   }
 
+  /** Naive batch chop: just chop() once per range. O(ranges * n) — fine for an oracle. */
+  chopAll(ranges: Array<[number, number]>): void {
+    for (const [start, end] of ranges)
+      this.chop(start, end)
+  }
+
   searchPoint(point: number): Interval<T>[] {
     return this.intervals.filter(iv => iv.containsPoint(point))
+  }
+
+  searchOverlap(start: number, end: number): Interval<T>[] {
+    return this.intervals.filter(iv => iv.overlapsWith(start, end))
+  }
+
+  /** Intervals fully contained within [start, end]: iv.start >= start && iv.end <= end. */
+  searchEnveloped(start: number, end: number): Interval<T>[] {
+    return this.intervals.filter(iv => iv.start >= start && iv.end <= end)
+  }
+
+  contains(point: number): boolean {
+    return this.intervals.some(iv => iv.containsPoint(point))
+  }
+
+  overlaps(start: number, end: number): boolean {
+    return this.intervals.some(iv => iv.overlapsWith(start, end))
   }
 
   searchByLengthStartingAt(minLength: number, startingAt: number): Interval<T>[] {
@@ -151,6 +180,11 @@ export class ArrayIntervalCollection<T = unknown> implements IntervalCollection<
     this.intervals = this.intervals.filter(iv => !iv.equals(interval))
   }
 
+  /** Removes intervals fully contained within [start, end]. Naive counterpart to chop's trimming. */
+  removeEnveloped(start: number, end: number): void {
+    this.intervals = this.intervals.filter(iv => !(iv.start >= start && iv.end <= end))
+  }
+
   /** Returns a new collection with all intervals from both collections. */
   union(other: ArrayIntervalCollection<T>): ArrayIntervalCollection<T> {
     const result = new ArrayIntervalCollection<T>()
@@ -187,11 +221,12 @@ export class ArrayIntervalCollection<T = unknown> implements IntervalCollection<
   }
 
   /**
-   * True when both collections represent the same set of (start, end, data)
-   * intervals in sorted order. Mirrors IntervalTree.equals(): insertion-order
-   * sensitive when identical bounds carry different data.
+   * True when this collection and another represent the same set of
+   * (start, end, data) intervals in sorted order. Mirrors
+   * IntervalTree.equals(): insertion-order sensitive when identical bounds
+   * carry different data.
    */
-  equals(other: ArrayIntervalCollection<T>): boolean {
+  equals(other: IntervalCollection<T>): boolean {
     const a = this.toSorted()
     const b = other.toSorted()
     if (a.length !== b.length)
@@ -211,5 +246,13 @@ export class ArrayIntervalCollection<T = unknown> implements IntervalCollection<
     return `IntervalTree([ ${this.toSorted()
       .map(iv => iv.toString())
       .join(', ')} ])`
+  }
+
+  forEach(callback: (interval: Interval<T>, index: number) => void): void {
+    this.toSorted().forEach(callback)
+  }
+
+  [Symbol.iterator](): Iterator<Interval<T>> {
+    return this.toSorted()[Symbol.iterator]()
   }
 }
