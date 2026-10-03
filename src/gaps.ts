@@ -1,6 +1,7 @@
 import type { IntervalTree } from './IntervalTree'
 import { assert } from './assert'
 import { Interval } from './Interval'
+import { subtractRanges } from './rangeSubtraction'
 
 /**
  * @experimental Design spike (plan 012). Not exported from the package.
@@ -21,25 +22,5 @@ import { Interval } from './Interval'
 export function gaps<T>(tree: IntervalTree<T>, start: number, end: number): Interval<T>[] {
   assert(start < end, 'start must be < end')
 
-  const overlapping = tree.searchOverlap(start, end)
-  // searchOverlap does not guarantee order; sort by start for the sweep.
-  overlapping.sort((a, b) => a.start - b.start)
-
-  const result: Interval<T>[] = []
-  let cursor = start
-
-  for (const iv of overlapping) {
-    if (iv.start > cursor) {
-      result.push(new Interval(cursor, iv.start))
-    }
-    if (iv.end > cursor) {
-      cursor = iv.end
-    }
-  }
-
-  if (cursor < end) {
-    result.push(new Interval(cursor, end))
-  }
-
-  return result
+  return subtractRanges([new Interval<T>(start, end)], tree.searchOverlap(start, end))
 }
