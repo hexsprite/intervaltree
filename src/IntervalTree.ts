@@ -255,7 +255,8 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
     const wasDirty = this._dirty
 
     // Sort and merge overlapping chop ranges
-    const sorted = ranges.slice().sort((a, b) => a[0] - b[0])
+    // Copy each tuple: the merge below writes to them, and they belong to the caller.
+    const sorted = ranges.map(r => [r[0], r[1]] as [number, number]).sort((a, b) => a[0] - b[0])
     const merged: Array<[number, number]> = [sorted[0]]
     for (let i = 1; i < sorted.length; i++) {
       const last = merged[merged.length - 1]

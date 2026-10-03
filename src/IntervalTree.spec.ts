@@ -1705,3 +1705,14 @@ describe('findOneByLengthStartingAt filterFn', () => {
     expect(result!.toTuple()).toEqual([50, 100])
   })
 })
+
+it('chopAll leaves the caller\'s ranges array untouched', () => {
+  // Symptom (in-52s): the merge loop wrote into the caller's tuples, so [0,10],[5,20] became [0,20],[5,20].
+  const tree = IntervalTree.fromTuples(Array.from({ length: 10 }, (_, i) => [i * 10, i * 10 + 5] as [number, number]))
+  const ranges: Array<[number, number]> = [[0, 10], [5, 20], [30, 31], [40, 41]]
+  const snapshot = structuredClone(ranges)
+
+  tree.chopAll(ranges)
+
+  expect(ranges).toEqual(snapshot)
+})
