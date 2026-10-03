@@ -12,14 +12,15 @@ import { sha256 } from './sha256'
  * check itself against.
  */
 export class ArrayIntervalCollection<T = unknown> implements IntervalCollection<T> {
-  private intervals: Interval<T>[]
+  private intervals: Interval<T>[] = []
 
+  // Goes through add() so duplicates drop, and copies so the caller's array stays untouched.
   constructor(intervals: Interval<T>[] = []) {
-    this.intervals = intervals
+    this.addAll(intervals)
   }
 
   clone(): ArrayIntervalCollection<T> {
-    return new ArrayIntervalCollection(this.intervals.slice())
+    return new ArrayIntervalCollection(this.intervals)
   }
 
   addAll(intervals: Interval<T>[]): void {
@@ -49,7 +50,7 @@ export class ArrayIntervalCollection<T = unknown> implements IntervalCollection<
   }
 
   toArray(): Interval<T>[] {
-    return this.intervals
+    return this.intervals.slice()
   }
 
   toSorted(): Interval<T>[] {
@@ -149,9 +150,9 @@ export class ArrayIntervalCollection<T = unknown> implements IntervalCollection<
   }
 
   hash(): string {
-    // Interval's fields are true #private, so JSON.stringify(Interval) always
-    // serializes to "{}" — hash over tuples instead, mirroring IntervalTree.
-    return sha256(JSON.stringify(this.toSorted().map(iv => iv.toTuple())))
+    // Same canonical form as IntervalTree.hash(), via toJSON(): absent data
+    // serializes as null. Stored hashes depend on this exact output.
+    return sha256(JSON.stringify(this))
   }
 
   mergeOverlaps(): void {
