@@ -1,6 +1,13 @@
-import { assert, assertEqual } from './assert'
+import { assert } from './assert'
 import { compareIntervals } from './compareIntervals'
 import { Interval } from './Interval'
+
+interface Aggregates {
+  height: number
+  minStart: number
+  maxEnd: number
+  maxLength: number
+}
 
 const LEFT = false
 const RIGHT = true
@@ -647,98 +654,83 @@ export class Node<T = unknown> {
     return result
   }
 
+  /**
+   * Check every node invariant against values recomputed from the subtree.
+   * Read-only: it never repairs a field. Throws on the first violation. O(n).
+   */
   public verify(): void {
-    // Node is balanced
-    const bal = this.balance
-    if (Math.abs(bal) > 1)
-      this.printStructure()
+    this.verifySubtree(Number.NEGATIVE_INFINITY, Number.POSITIVE_INFINITY)
+  }
 
+  /** Verifies the subtree, whose starts must lie strictly between `lo` and `hi`. */
+  private verifySubtree(lo: number, hi: number): Aggregates {
+    const where = `(start=${this.start})`
+    assert(this.values.length > 0, `${where} node holds no intervals`)
     assert(
-      Math.abs(bal) < 2,
-      `Error: Rotation should have happened, but didn't! balance=${bal}`,
+      this.start > lo && this.start < hi,
+      `${where} out of order: start must lie in (${lo}, ${hi})`,
     )
 
-    // balance is up-to-date
-    this.updateHeight()
-    assertEqual(
-      bal,
-      this.balance,
-      `Error: (x=${this.start}) balance not set correctly!`,
-    )
-
-    // verify all values have the same start
-    const startValues = Array.from(new Set(this.values.map(iv => iv.start)))
-    assert(startValues.length === 1, `different start values: ${startValues}`)
-
-    // verify this.start is equal to the start of the first interval
-    assertEqual(
-      this.start,
-      this.values[0].start,
-      `start incorrect (this.start=${this.start}, actual=${this.values[0].start})`,
-    )
-
-    for (let i = 1; i < this.values.length; i++) {
-      assert(
-        this.values[i - 1].end <= this.values[i].end,
-        `values not sorted by end at start=${this.start}`,
-      )
+    // Every value shares the node's start and the values sort by end.
+    let maxEnd = Number.NEGATIVE_INFINITY
+    let maxLength = 0
+    for (let i = 0; i < this.values.length; i++) {
+      const iv = this.values[i]
+      assert(iv.start === this.start, `${where} different start values: ${iv.start}`)
+      if (i > 0) {
+        assert(
+          this.values[i - 1].end <= iv.end,
+          `${where} values not sorted by end`,
+        )
+      }
+      if (iv.end > maxEnd)
+        maxEnd = iv.end
+      if (iv.length > maxLength)
+        maxLength = iv.length
     }
+    let minStart = this.start
 
-    // verify maxLength
-    const actualMaxLength = this.calcMaxLength()
-    assert(
-      this.maxLength === actualMaxLength,
-      `maxlength incorrect, this.maxLength=${this.maxLength}, actual=${actualMaxLength}`,
-    )
-
-    const actualMaxEnd = this.calcMaxEnd()
-    assert(
-      this.maxEnd === actualMaxEnd,
-      `(${this.start}) maxEnd incorrect, this.maxEnd=${this.maxEnd}, actual=${actualMaxEnd}`,
-    )
-
-    // recursively verify branches
+    let leftHeight = 0
+    let rightHeight = 0
     if (this._left) {
-      assert(
-        this._left.start < this.start,
-        `(${this.start}) left child out of order (${this._left.start} >= ${this.start})`,
-      )
-      this._left.verify()
+      const l = this._left.verifySubtree(lo, this.start)
+      leftHeight = l.height
+      minStart = Math.min(minStart, l.minStart)
+      maxEnd = Math.max(maxEnd, l.maxEnd)
+      maxLength = Math.max(maxLength, l.maxLength)
     }
-
     if (this._right) {
-      assert(
-        this._right.start > this.start,
-        `(${this.start}) right child out of order (${this._right.start} > ${this.start})`,
-      )
-      this._right.verify()
+      const r = this._right.verifySubtree(this.start, hi)
+      rightHeight = r.height
+      minStart = Math.min(minStart, r.minStart)
+      maxEnd = Math.max(maxEnd, r.maxEnd)
+      maxLength = Math.max(maxLength, r.maxLength)
     }
-  }
 
-  private calcMaxLength(): number {
-    let result = 0
-    for (const iv of this.values) {
-      if (iv.length > result)
-        result = iv.length
-    }
-    return Math.max(
-      result,
-      this._left?.calcMaxLength() ?? 0,
-      this._right?.calcMaxLength() ?? 0,
+    const height = 1 + Math.max(leftHeight, rightHeight)
+    assert(
+      this.height === height,
+      `${where} height incorrect, stored=${this.height}, actual=${height}`,
     )
-  }
-
-  private calcMaxEnd(): number {
-    let result = Number.NEGATIVE_INFINITY
-    for (const iv of this.values) {
-      if (iv.end > result)
-        result = iv.end
-    }
-    return Math.max(
-      result,
-      this._left?.calcMaxEnd() ?? Number.NEGATIVE_INFINITY,
-      this._right?.calcMaxEnd() ?? Number.NEGATIVE_INFINITY,
+    // Balance uses the verified child heights, so it cannot pass by accident.
+    const balance = rightHeight - leftHeight
+    assert(
+      Math.abs(balance) < 2,
+      `${where} unbalanced: balance=${balance} (left height ${leftHeight}, right height ${rightHeight})`,
     )
+    assert(
+      this.minStart === minStart,
+      `${where} minStart incorrect, stored=${this.minStart}, actual=${minStart}`,
+    )
+    assert(
+      this.maxEnd === maxEnd,
+      `${where} maxEnd incorrect, stored=${this.maxEnd}, actual=${maxEnd}`,
+    )
+    assert(
+      this.maxLength === maxLength,
+      `${where} maxLength incorrect, stored=${this.maxLength}, actual=${maxLength}`,
+    )
+    return { height, minStart, maxEnd, maxLength }
   }
 
   /**
