@@ -83,17 +83,6 @@ describe('node AVL rotations', () => {
 
 describe('successor graft height', () => {
   // Regression: successor graft relied on rotate() to repair a stale cloned height.
-  function expectHeights(node: Node<unknown> | null): number {
-    if (!node)
-      return 0
-    const leftHeight = expectHeights(node._left)
-    const rightHeight = expectHeights(node._right)
-    const expectedHeight = 1 + Math.max(leftHeight, rightHeight)
-    expect(node.height).toEqual(expectedHeight)
-    expect(Math.abs(leftHeight - rightHeight)).toBeLessThanOrEqual(1)
-    return expectedHeight
-  }
-
   it('keeps heights and balance correct after removing a two-child node whose successor has no left child', () => {
     const starts = [50, 25, 75, 60, 90, 55, 65]
     let root: Node<unknown> = new Node(new Interval(starts[0], starts[0] + 1))
@@ -102,10 +91,10 @@ describe('successor graft height', () => {
 
     // Remove 75: two children, successor is 90 (no left child).
     root = root.remove(new Interval(75, 76))!
-    expectHeights(root)
+    root.verify()
 
     // Remove 50: two children, successor is 55.
     root = root.remove(new Interval(50, 51))!
-    expectHeights(root)
+    root.verify()
   })
 })

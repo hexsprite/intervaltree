@@ -630,10 +630,29 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
       this.verify()
   }
 
-  /** Check every AVL and augmentation invariant. Throws on the first violation. O(n log n). */
+  /**
+   * Check every AVL and augmentation invariant, the cached size, and the clean-tree rule.
+   * Read-only. Throws on the first violation. O(n).
+   */
   public verify(): void {
-    if (!this.root)
+    if (!this.root) {
+      assert(this._size === 0, `size is ${this._size} but the tree is empty`)
       return
+    }
     this.root.verify()
+    const sorted = this.root.toArray()
+    assert(
+      this._size === sorted.length,
+      `size is ${this._size} but the tree holds ${sorted.length} intervals`,
+    )
+    // chopAll and difference rebuild a clean tree from sorted intervals and assume no overlaps.
+    if (!this._dirty) {
+      for (let i = 1; i < sorted.length; i++) {
+        assert(
+          sorted[i - 1].end <= sorted[i].start,
+          `clean tree holds overlapping intervals ${sorted[i - 1]} and ${sorted[i]}`,
+        )
+      }
+    }
   }
 }
