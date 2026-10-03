@@ -226,3 +226,96 @@ describe.each(impls)('intervalCollection conformance: $name', ({ make }) => {
     expect(bounds(collected).sort((a, b) => a[0] - b[0])).toEqual(base)
   })
 })
+
+describe('intervalTree.hash stability', () => {
+  // Users may persist hashes. These literals come from the code before the
+  // oracle fix; a change here is a breaking change.
+  it('pins hash output for intervals without data', () => {
+    const tree = new IntervalTree<string>([new Interval(1, 2)])
+    expect(tree.hash()).toBe('cd7792b98a17499d7df2a5d15796f1c2cec65dd0e81f8c84332fa323a31c2026')
+  })
+
+  it('pins hash output for intervals with data', () => {
+    const tree = new IntervalTree<string>([new Interval(1, 2, 'a'), new Interval(5, 9, 'b')])
+    expect(tree.hash()).toBe('1c64ae7097ab0c1bdc6994e8df85403f3484b316856b1b0d151710fbed1787f5')
+  })
+})
+
+describe('arrayIntervalCollection matches IntervalTree', () => {
+  // Symptom: equals() was true but hash() differed, because the oracle hashed
+  // [s, e] tuples while the tree hashes [s, e, null].
+  it.each([
+    ['no data', [new Interval<string>(1, 2)]],
+    ['data', [new Interval<string>(1, 2, 'a'), new Interval<string>(5, 9, 'b')]],
+  ])('hashes equal collections identically (%s)', (_label, ivs) => {
+    const tree = new IntervalTree<string>(ivs)
+    const oracle = new ArrayIntervalCollection<string>(ivs)
+    expect(tree.equals(oracle)).toBe(true)
+    expect(oracle.hash()).toBe(tree.hash())
+  })
+
+  // Ties (same start) and overlaps: the base fixture has neither.
+  describe('on a tied and overlapping fixture', () => {
+    const tied: Array<[number, number, string]> = [
+      [0, 10, 'a'],
+      [0, 4, 'b'],
+      [3, 8, 'c'],
+      [3, 12, 'd'],
+      [9, 15, 'e'],
+      [20, 25, 'f'],
+    ]
+    const mk = () => [
+      new IntervalTree<string>(tied.map(([s, e, d]) => new Interval(s, e, d))),
+      new ArrayIntervalCollection<string>(tied.map(([s, e, d]) => new Interval(s, e, d))),
+    ] as const
+    const key = (ivs: Interval<string>[]) => bounds(ivs).map(t => t.join(',')).sort()
+
+    it('compares equal in both directions with the same hash', () => {
+      const [tree, oracle] = mk()
+      expect(tree.equals(oracle)).toBe(true)
+      expect(oracle.equals(tree)).toBe(true)
+      expect(tree.hash()).toBe(oracle.hash())
+    })
+
+    it('agrees on searches', () => {
+      const [tree, oracle] = mk()
+      for (const p of [0, 3, 4, 9, 12, 19, 20])
+        expect(key(tree.searchPoint(p))).toEqual(key(oracle.searchPoint(p)))
+      for (const [s, e] of [[0, 3], [3, 4], [4, 9], [12, 20], [8, 21]]) {
+        expect(key(tree.searchOverlap(s, e))).toEqual(key(oracle.searchOverlap(s, e)))
+        expect(key(tree.searchEnveloped(s, e))).toEqual(key(oracle.searchEnveloped(s, e)))
+        expect(tree.overlaps(s, e)).toBe(oracle.overlaps(s, e))
+      }
+    })
+
+    it('agrees after chopAll with overlapping ranges', () => {
+      const [tree, oracle] = mk()
+      const ranges: Array<[number, number]> = [[1, 5], [4, 9], [8, 13], [2, 3], [21, 22]]
+      tree.chopAll(ranges)
+      oracle.chopAll(ranges)
+      expect(key(tree.toArray())).toEqual(key(oracle.toArray()))
+    })
+  })
+
+  // Symptom: the oracle kept duplicates the tree ignores, so sizes differed.
+  it('ignores duplicate intervals passed to the constructor', () => {
+    const iv = new Interval(1, 2, 'a')
+    expect(new IntervalTree([iv, iv]).size).toBe(1)
+    expect(new ArrayIntervalCollection([iv, iv]).size).toBe(1)
+  })
+
+  // Symptom: add() on the oracle mutated the caller's array.
+  it('does not alias the constructor argument', () => {
+    const input = [new Interval(1, 2, 'a')]
+    const oracle = new ArrayIntervalCollection(input)
+    oracle.add(new Interval(5, 6, 'b'))
+    expect(input).toHaveLength(1)
+  })
+
+  // Symptom: mutating the array from toArray() corrupted the oracle.
+  it('returns a fresh array from toArray', () => {
+    const oracle = new ArrayIntervalCollection([new Interval(1, 2, 'a')])
+    oracle.toArray().push(new Interval(5, 6, 'b'))
+    expect(oracle.size).toBe(1)
+  })
+})

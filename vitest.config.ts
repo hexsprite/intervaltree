@@ -8,7 +8,7 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       include: ['src/**/*.ts'],
-      exclude: ['src/**/*.spec.ts', 'src/**/*.test.ts', 'src/ArrayIntervalCollection.ts'],
+      exclude: ['src/**/*.spec.ts', 'src/**/*.test.ts'],
       thresholds: { lines: 86, functions: 85, branches: 83, statements: 86 },
     },
   },

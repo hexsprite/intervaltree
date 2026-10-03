@@ -232,8 +232,7 @@ class SearchOverlapCommand implements fc.Command<ArrayIntervalCollection, Interv
 
   run(m: ArrayIntervalCollection, r: IntervalTree): void {
     const rResult = r.searchOverlap(this.start, this.end)
-    // ArrayIntervalCollection doesn't have searchOverlap, use filter
-    const mResult = m.toArray().filter(iv => iv.start < this.end && iv.end > this.start)
+    const mResult = m.searchOverlap(this.start, this.end)
     expect(canon(rResult)).toEqual(canon(mResult))
   }
 
@@ -264,11 +263,43 @@ const floatIntervalArbitrary = fc.double({ noNaN: true, noDefaultInfinity: true,
   }),
 )
 
-class ChopAllCommand implements fc.Command<ArrayIntervalCollection, IntervalTree> {
-  ranges: Array<[number, number]>
+/**
+ * A range placed relative to an existing interval, so it overlaps stored
+ * intervals and other anchored ranges. Fully random ranges almost never hit
+ * each other, which would leave the sweep path of chopAll/difference idle.
+ */
+interface AnchoredRange { pick: number, off: number, len: number }
 
-  constructor(ranges: Array<{ start: number, end: number }>) {
-    this.ranges = ranges.map(r => [r.start, r.end])
+const anchoredRangeArbitrary: fc.Arbitrary<AnchoredRange> = fc.record({
+  pick: fc.nat(),
+  off: fc.integer({ min: -5, max: 10 }),
+  len: fc.integer({ min: 1, max: 20 }),
+})
+
+function resolveRanges(
+  m: ArrayIntervalCollection,
+  raw: Array<[number, number]>,
+  anchored: AnchoredRange[],
+): Array<[number, number]> {
+  const sorted = m.toSorted()
+  const placed = sorted.length === 0
+    ? []
+    : anchored.map((a): [number, number] => {
+        const start = sorted[a.pick % sorted.length].start + a.off
+        return [start, start + a.len]
+      })
+  return [...raw, ...placed]
+}
+
+class ChopAllCommand implements fc.Command<ArrayIntervalCollection, IntervalTree> {
+  raw: Array<[number, number]>
+  anchored: AnchoredRange[]
+  count = 0
+
+  constructor(ranges: Array<{ start: number, end: number }>, anchored: AnchoredRange[] = []) {
+    this.raw = ranges.map(r => [r.start, r.end])
+    this.anchored = anchored
+    this.count = this.raw.length + anchored.length
   }
 
   check(m: ArrayIntervalCollection) {
@@ -276,15 +307,14 @@ class ChopAllCommand implements fc.Command<ArrayIntervalCollection, IntervalTree
   }
 
   run(m: ArrayIntervalCollection, r: IntervalTree): void {
-    r.chopAll(this.ranges)
-    for (const [start, end] of this.ranges) {
-      m.chop(start, end)
-    }
+    const ranges = resolveRanges(m, this.raw, this.anchored)
+    r.chopAll(ranges)
+    m.chopAll(ranges)
     expect(canon(r.toArray())).toEqual(canon(m.toArray()))
     expect(r.size).toEqual(m.size)
   }
 
-  toString = () => `chopAll(${this.ranges.length} ranges)`
+  toString = () => `chopAll(${this.count} ranges)`
 }
 
 class CloneCommand implements fc.Command<ArrayIntervalCollection, IntervalTree> {
@@ -320,8 +350,7 @@ class SearchEnvelopCommand implements fc.Command<ArrayIntervalCollection, Interv
 
   run(m: ArrayIntervalCollection, r: IntervalTree): void {
     const rResult = r.searchEnveloped(this.start, this.end)
-    const mResult = m.toArray()
-      .filter(iv => iv.start >= this.start && iv.end <= this.end)
+    const mResult = m.searchEnveloped(this.start, this.end)
     expect(canon(rResult)).toEqual(canon(mResult))
   }
 
@@ -414,13 +443,8 @@ class ContainsOverlapsCommand implements fc.Command<ArrayIntervalCollection, Int
   check = () => true
 
   run(m: ArrayIntervalCollection, r: IntervalTree): void {
-    // contains should match searchPoint
-    const searchResult = m.searchPoint(this.point)
-    expect(r.contains(this.point)).toBe(searchResult.length > 0)
-
-    // overlaps should match searchOverlap
-    const overlapResult = m.toArray().filter(iv => iv.start < this.end && iv.end > this.start)
-    expect(r.overlaps(this.start, this.end)).toBe(overlapResult.length > 0)
+    expect(r.contains(this.point)).toBe(m.contains(this.point))
+    expect(r.overlaps(this.start, this.end)).toBe(m.overlaps(this.start, this.end))
   }
 
   toString = () => `containsOverlaps(${this.point}, ${this.start}, ${this.end})`
@@ -440,11 +464,7 @@ class RemoveEnvelopedCommand implements fc.Command<ArrayIntervalCollection, Inte
   }
 
   run(m: ArrayIntervalCollection, r: IntervalTree): void {
-    // Find enveloped intervals in model, remove them
-    const enveloped = m.toArray().filter(iv => iv.start >= this.start && iv.end <= this.end)
-    for (const iv of enveloped) {
-      m.remove(iv)
-    }
+    m.removeEnveloped(this.start, this.end)
     r.removeEnveloped(this.start, this.end)
 
     expect(canon(r.toArray())).toEqual(canon(m.toArray()))
@@ -455,36 +475,30 @@ class RemoveEnvelopedCommand implements fc.Command<ArrayIntervalCollection, Inte
 }
 
 class DifferenceCommand implements fc.Command<ArrayIntervalCollection, IntervalTree> {
-  others: Array<[number, number]>
+  raw: Array<[number, number]>
+  anchored: AnchoredRange[]
+  count = 0
 
-  constructor(others: Array<{ start: number, end: number }>) {
-    this.others = others.map(r => [r.start, r.end])
+  constructor(others: Array<{ start: number, end: number }>, anchored: AnchoredRange[] = []) {
+    this.raw = others.map(r => [r.start, r.end])
+    this.anchored = anchored
+    this.count = this.raw.length + anchored.length
   }
 
   check = () => true
 
   run(m: ArrayIntervalCollection, r: IntervalTree): void {
-    const otherTree = IntervalTree.fromTuples(this.others)
-    const fast = r.difference(otherTree)
-
-    // Expected: chop on Array model (avoids hitting tree rotation paths)
-    const expected = new ArrayIntervalCollection()
-    for (const iv of m.toArray()) {
-      expected.add(iv)
-    }
-    for (const [s, e] of this.others) {
-      if (s < e)
-        expected.chop(s, e)
-    }
+    const others = resolveRanges(m, this.raw, this.anchored)
+    const fast = r.difference(IntervalTree.fromTuples(others))
+    const expected = m.difference(new ArrayIntervalCollection(others.map(([s, e]) => new Interval(s, e))))
 
     expect(canon(fast.toArray())).toEqual(canon(expected.toArray()))
     expect(fast.size).toEqual(expected.size)
 
     // Also exercise tree-side chop loop on a clone — surfaces rotation bugs
     const naive = r.clone()
-    for (const [s, e] of this.others) {
-      if (s < e)
-        naive.chop(s, e)
+    for (const [s, e] of others) {
+      naive.chop(s, e)
     }
     expect(canon(naive.toArray())).toEqual(canon(expected.toArray()))
 
@@ -492,7 +506,7 @@ class DifferenceCommand implements fc.Command<ArrayIntervalCollection, IntervalT
     expect(canon(r.toArray())).toEqual(canon(m.toArray()))
   }
 
-  toString = () => `difference(${this.others.length} ranges)`
+  toString = () => `difference(${this.count} ranges)`
 }
 
 class UnionCommand implements fc.Command<ArrayIntervalCollection, IntervalTree> {
@@ -616,9 +630,32 @@ class HashCommand implements fc.Command<ArrayIntervalCollection, IntervalTree> {
     expect(r.hash()).toBe(r.clone().hash())
     const fromModel = new IntervalTree(m.toSorted())
     expect(r.hash()).toBe(fromModel.hash())
+    expect(r.hash()).toBe(m.hash())
   }
 
   toString = () => `hash()`
+}
+
+class CrossEqualsCommand implements fc.Command<ArrayIntervalCollection, IntervalTree> {
+  check(m: ArrayIntervalCollection) {
+    // equals() compares sorted lists, so tied bounds with different data are
+    // order-sensitive (see HashCommand). Only assert the well-defined case.
+    const seen = new Set<string>()
+    for (const iv of m.toArray()) {
+      const key = `${iv.start},${iv.end}`
+      if (seen.has(key))
+        return false
+      seen.add(key)
+    }
+    return true
+  }
+
+  run(m: ArrayIntervalCollection, r: IntervalTree): void {
+    expect(r.equals(m)).toBe(true)
+    expect(m.equals(r)).toBe(true)
+  }
+
+  toString = () => `crossEquals()`
 }
 
 class ToTuplesCommand implements fc.Command<ArrayIntervalCollection, IntervalTree> {
@@ -731,7 +768,13 @@ function buildCommands(ivArb: fc.Arbitrary<IntervalValue>) {
     fc.constant(new SizeConsistencyCommand()),
     fc.constant(new MergeOverlapsCommand()),
     ivArb.map(v => new SearchOverlapCommand(v)),
-    fc.array(ivArb, { minLength: 1, maxLength: 5 }).map(v => new ChopAllCommand(v)),
+    fc.array(ivArb, { minLength: 1, maxLength: 3 }).map(v => new ChopAllCommand(v)),
+    // More than 3 ranges takes the tree's sweep path; anchored ranges overlap
+    // stored intervals and each other.
+    fc.tuple(
+      fc.array(ivArb, { minLength: 0, maxLength: 4 }),
+      fc.array(anchoredRangeArbitrary, { minLength: 4, maxLength: 6 }),
+    ).map(([v, a]) => new ChopAllCommand(v, a)),
     fc.constant(new CloneCommand()),
     ivArb.map(v => new SearchEnvelopCommand(v)),
     fc.tuple(fc.integer({ min: 1 }), fc.integer()).map(
@@ -743,11 +786,13 @@ function buildCommands(ivArb: fc.Arbitrary<IntervalValue>) {
     ),
     ivArb.map(v => new RemoveEnvelopedCommand(v)),
     fc.array(ivArb, { minLength: 0, maxLength: 8 }).map(v => new DifferenceCommand(v)),
+    fc.array(anchoredRangeArbitrary, { minLength: 1, maxLength: 5 }).map(a => new DifferenceCommand([], a)),
     fc.array(ivArb, { minLength: 0, maxLength: 8 }).map(v => new UnionCommand(v)),
     fc.array(ivArb, { minLength: 0, maxLength: 8 }).map(v => new RangeUnionCommand(v)),
     fc.array(ivArb, { minLength: 0, maxLength: 8 }).map(v => new IntersectionCommand(v)),
     fc.constant(new EqualsCommand()),
     fc.constant(new HashCommand()),
+    fc.constant(new CrossEqualsCommand()),
     fc.constant(new ToTuplesCommand()),
     fc.array(ivArb, { minLength: 0, maxLength: 5 }).map(v => new AddAllCommand(v)),
     fc.integer().map(seed => new RemoveAllCommand(seed)),
