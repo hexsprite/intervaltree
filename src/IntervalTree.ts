@@ -6,6 +6,7 @@ import { assert } from './assert'
 import { compareIntervals } from './compareIntervals'
 import { Interval } from './Interval'
 import { _flags, Node } from './Node'
+import { subtractRanges } from './rangeSubtraction'
 import { sha256 } from './sha256'
 
 // Automatic invariant checks after every mutation are O(n log n) each.
@@ -254,51 +255,8 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
     // Preserve dirty state to choose correct rebuild path
     const wasDirty = this._dirty
 
-    // Sort and merge overlapping chop ranges
-    const sorted = ranges.slice().sort((a, b) => a[0] - b[0])
-    const merged: Array<[number, number]> = [sorted[0]]
-    for (let i = 1; i < sorted.length; i++) {
-      const last = merged[merged.length - 1]
-      if (sorted[i][0] <= last[1]) {
-        last[1] = Math.max(last[1], sorted[i][1])
-      }
-      else {
-        merged.push(sorted[i])
-      }
-    }
-
-    // Get all existing intervals sorted
     // toArray() already returns in-order (sorted by start)
-    const existing = this.toArray()
-
-    // Linear sweep: subtract merged chop ranges from existing intervals
-    const result: Interval<T>[] = []
-    let chopIdx = 0
-
-    for (let ei = 0; ei < existing.length; ei++) {
-      const iv = existing[ei]
-      let ivStart = iv.start
-      const ivEnd = iv.end
-
-      while (chopIdx < merged.length && merged[chopIdx][1] <= ivStart) {
-        chopIdx++
-      }
-
-      let ci = chopIdx
-      while (ci < merged.length && merged[ci][0] < ivEnd) {
-        const cStart = merged[ci][0]
-        const cEnd = merged[ci][1]
-        if (ivStart < cStart) {
-          result.push(new Interval(ivStart, cStart, iv.data))
-        }
-        ivStart = cEnd
-        ci++
-      }
-
-      if (ivStart < ivEnd) {
-        result.push(new Interval(ivStart, ivEnd, iv.data))
-      }
-    }
+    const result = subtractRanges(this.toArray(), ranges.map(([start, end]) => ({ start, end })))
 
     if (result.length > 0) {
       if (wasDirty) {
@@ -561,51 +519,7 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
       return result
     }
 
-    const existing = this.toArray()
-    const otherIntervals = other.toArray()
-
-    // Merge overlapping chop ranges from the other tree
-    const sorted = otherIntervals.map(iv => [iv.start, iv.end] as [number, number])
-    sorted.sort((a, b) => a[0] - b[0])
-    const merged: Array<[number, number]> = [sorted[0]]
-    for (let i = 1; i < sorted.length; i++) {
-      const last = merged[merged.length - 1]
-      if (sorted[i][0] <= last[1]) {
-        last[1] = Math.max(last[1], sorted[i][1])
-      }
-      else {
-        merged.push(sorted[i])
-      }
-    }
-
-    // Single linear sweep: subtract merged chop ranges from existing intervals
-    const result: Interval<T>[] = []
-    let chopIdx = 0
-
-    for (let ei = 0; ei < existing.length; ei++) {
-      const iv = existing[ei]
-      let ivStart = iv.start
-      const ivEnd = iv.end
-
-      while (chopIdx < merged.length && merged[chopIdx][1] <= ivStart) {
-        chopIdx++
-      }
-
-      let ci = chopIdx
-      while (ci < merged.length && merged[ci][0] < ivEnd) {
-        const cStart = merged[ci][0]
-        const cEnd = merged[ci][1]
-        if (ivStart < cStart) {
-          result.push(new Interval(ivStart, cStart, iv.data))
-        }
-        ivStart = cEnd
-        ci++
-      }
-
-      if (ivStart < ivEnd) {
-        result.push(new Interval(ivStart, ivEnd, iv.data))
-      }
-    }
+    const result = subtractRanges(this.toArray(), other.toArray())
 
     // Build new tree from remaining fragments
     const diff = new IntervalTree<T>()
