@@ -21,8 +21,10 @@ pnpm pack --pack-destination /tmp/intervaltree-candidate
 bash scripts/check-focuster-compat.sh /absolute/path/to/focuster /tmp/intervaltree-candidate/intervaltree-2.1.0.tgz
 ```
 
-The script overrides the installed package without changing the consumer's
-manifest or lockfile. Use a disposable checkout for candidate checks.
+The script installs the self-contained distribution in an isolated directory,
+temporarily replaces only the installed intervaltree package, and restores it
+on exit. It preserves the consumer's manifest, lockfile, and other installed
+dependencies. A candidate with runtime dependencies fails explicitly.
 
 The separate release-health workflow checks all PR pages, including merged
 PRs. A pending release whose `v<version>` tag exists fails with its PR URL.
