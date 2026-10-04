@@ -5,9 +5,9 @@ import type { IntervalTuple } from './types'
 import { assert } from './assert'
 import { compareIntervals } from './compareIntervals'
 import { Interval } from './Interval'
-import { _flags, Node } from './Node'
 import { subtractRanges } from './rangeSubtraction'
 import { sha256 } from './sha256'
+import { TreeCore } from './TreeCore'
 
 // Automatic invariant checks after every mutation are O(n log n) each.
 // Off by default; this repo's vitest configs set INTERVALTREE_DEBUG=1.
@@ -20,25 +20,30 @@ function assertValidRange(start: number, end: number): void {
 }
 
 export class IntervalTree<T = unknown> implements IntervalCollection<T> {
-  private root: Node<T> | null = null
-  private _dirty = false
-  private _size = 0
+  private core: TreeCore<T>
+  private _dirty: boolean
 
   constructor(intervals: Interval<T>[] = []) {
-    if (intervals.length > 0) {
-      this.root = Node.fromIntervals(intervals)
-      this._dirty = true
-      this._size = this.root?.countIntervals() ?? 0
-    }
+    this.core = TreeCore.from(intervals)
+    this._dirty = intervals.length > 0
+  }
+
+  /** Wraps a core built elsewhere, such as a clone or a set-operation result. */
+  static #of<T>(core: TreeCore<T>, dirty: boolean): IntervalTree<T> {
+    const tree = new IntervalTree<T>()
+    tree.core = core
+    tree._dirty = dirty
+    tree.verifyIfDebug()
+    return tree
   }
 
   public get size(): number {
-    return this._size
+    return this.core.size
   }
 
   /** Whether the tree contains zero intervals. */
   public get isEmpty(): boolean {
-    return this.root === null
+    return this.core.isEmpty
   }
 
   /**
@@ -47,10 +52,7 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
    * Among intervals with identical bounds the choice is unspecified.
    */
   public first(): Interval<T> | null {
-    if (!this.root)
-      return null
-    const node = this.root.min()
-    return node.values[0] ?? null
+    return this.core.first()
   }
 
   /**
@@ -59,10 +61,7 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
    * Among intervals with identical bounds the choice is unspecified.
    */
   public last(): Interval<T> | null {
-    if (!this.root)
-      return null
-    const node = this.root.max()
-    return node.values[node.values.length - 1] ?? null
+    return this.core.last()
   }
 
   static fromTuples<T = unknown>(allIntervals: Array<[number, number] | [number, number, T]>): IntervalTree<T> {
@@ -89,15 +88,7 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
   }
 
   public add(interval: Interval<T>): void {
-    if (!this.root) {
-      this.root = new Node(interval)
-      this._size = 1
-    }
-    else {
-      this.root = this.root.insert(interval)
-      if (!_flags.insertWasDuplicate)
-        this._size++
-    }
+    this.core.insert(interval)
     this._dirty = true
     this.verifyIfDebug()
   }
@@ -108,7 +99,7 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
    * intervals with identical bounds the choice is unspecified.
    */
   public mergeOverlaps(): void {
-    if (!this.root || !this._dirty)
+    if (this.core.isEmpty || !this._dirty)
       return
 
     // toArray() already returns in-order (sorted by start)
@@ -131,8 +122,7 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
         merged.push(current)
       }
     }
-    this.root = Node.fromSortedIntervals(merged)
-    this._size = merged.length
+    this.core = TreeCore.fromSortedDistinctStarts(merged)
     this._dirty = false
     this.verifyIfDebug()
   }
@@ -178,16 +168,12 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
   }
 
   public searchPoint(point: number): Interval<T>[] {
-    if (!this.root)
-      return []
-    const result: Interval<T>[] = []
-    this.root.searchPoint(point, result)
-    return result
+    return this.core.searchPoint(point)
   }
 
   /** Whether any interval in the tree contains the given point. */
   public contains(point: number): boolean {
-    return this.root ? this.root.hasPoint(point) : false
+    return this.core.hasPoint(point)
   }
 
   /**
@@ -203,11 +189,11 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
    */
   public chop(start: number, end: number): void {
     assertValidRange(start, end)
-    if (start === end || !this.root)
+    if (start === end)
       return
 
     // Single searchOverlap to find all affected intervals
-    const overlapping = this.root.searchOverlap(start, end)
+    const overlapping = this.core.searchOverlap(start, end)
     if (overlapping.length === 0)
       return
 
@@ -255,7 +241,7 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
   public chopAll(ranges: Array<[number, number]>): void {
     for (const [start, end] of ranges)
       assertValidRange(start, end)
-    if (ranges.length === 0 || !this.root)
+    if (ranges.length === 0 || this.core.isEmpty)
       return
 
     // For small numbers of ranges, individual chops are fine
@@ -272,22 +258,9 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
     // toArray() already returns in-order (sorted by start)
     const result = subtractRanges(this.toArray(), ranges.map(([start, end]) => ({ start, end })))
 
-    if (result.length > 0) {
-      if (wasDirty) {
-        // Dirty tree may produce unsorted/duplicate fragments — full rebuild with dedup
-        this.root = Node.fromIntervals(result)
-        this._size = this.root?.countIntervals() ?? 0
-      }
-      else {
-        // Clean tree produces sorted, unique fragments — fast path
-        this.root = Node.fromSortedIntervals(result)
-        this._size = result.length
-      }
-    }
-    else {
-      this.root = null
-      this._size = 0
-    }
+    // A dirty tree may produce unsorted or duplicate fragments, so it needs the full rebuild.
+    // A clean tree produces sorted fragments with distinct starts.
+    this.core = wasDirty ? TreeCore.from(result) : TreeCore.fromSortedDistinctStarts(result)
     // Preserve dirty state — chopAll doesn't merge overlaps
     this._dirty = wasDirty
     this.verifyIfDebug()
@@ -297,29 +270,22 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
    * Remove all intervals fully enveloped by [start, end] in a single tree
    * walk. Branches by removed/kept ratio:
    *   - All removed → drop root.
-   *   - Dense (M ≥ N/8) → second walk collects survivors, rebuild via fromIntervals (O(N)).
+   *   - Dense (M ≥ N/8) → second walk collects survivors, rebuild via TreeCore.from (O(N)).
    *   - Sparse → per-remove path (O(M log N) with rebalancing amortized).
    * Removing intervals never creates overlaps, so `_dirty` is preserved.
    */
   public removeEnveloped(start: number, end: number): void {
-    if (!this.root)
-      return
-
-    const removed = this.root.searchEnveloped(start, end, [])
+    const removed = this.core.searchEnveloped(start, end)
     if (removed.length === 0)
       return
 
     const wasDirty = this._dirty
 
-    if (removed.length === this._size) {
-      this.root = null
-      this._size = 0
+    if (removed.length === this.core.size) {
+      this.core = TreeCore.from([])
     }
-    else if (removed.length * 8 >= this._size) {
-      const kept: Interval<T>[] = []
-      this.root.collectNonEnveloped(start, end, kept)
-      this.root = Node.fromIntervals(kept)
-      this._size = wasDirty ? this.root?.countIntervals() ?? 0 : kept.length
+    else if (removed.length * 8 >= this.core.size) {
+      this.core = TreeCore.from(this.core.collectNonEnveloped(start, end))
     }
     else {
       for (let i = 0; i < removed.length; i++) {
@@ -336,17 +302,13 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
    * Single tree walk with subtree pruning — see Node.searchEnveloped.
    */
   public searchEnveloped(start: number, end: number): Interval<T>[] {
-    if (!this.root)
-      return []
-    return this.root.searchEnveloped(start, end, [])
+    return this.core.searchEnveloped(start, end)
   }
 
   public remove(interval: Interval<T>): void {
-    if (!this.root)
+    if (this.core.isEmpty)
       return
-    this.root = this.root.remove(interval)
-    if (_flags.removeSucceeded)
-      this._size--
+    this.core.remove(interval)
     this._dirty = true
     this.verifyIfDebug()
   }
@@ -358,18 +320,11 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
   }
 
   public printStructure(): void {
-    if (!this.root) {
-      console.error('IntervalTree(<empty>)')
-      return
-    }
-
-    this.root.printStructure()
+    this.core.printStructure()
   }
 
   public toArray(): Interval<T>[] {
-    if (!this.root)
-      return []
-    return this.root.toArray()
+    return this.core.toArray()
   }
 
   public addInterval(start: number, end: number, data?: T): void {
@@ -391,7 +346,7 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
    * tuples. `JSON.stringify(tree)` will produce this form.
    *
    * Why this matters: hash() digests JSON.stringify(this). Without toJSON,
-   * JSON.stringify would serialize the raw {root, _size, _dirty} object
+   * JSON.stringify would serialize the raw {core, _dirty} object
    * graph — making hash() sensitive to internal tree topology, so two
    * trees with byte-identical intervals built via different op sequences
    * produced different hashes. With toJSON, hash() becomes semantic.
@@ -422,7 +377,7 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
     filterFn?: (iv: Interval<T>) => boolean,
   ): Interval<T> | undefined {
     assert(minLength > 0, 'minLength must be > 0')
-    return this.root?.findOneByLengthStartingAt(minLength, startingAt, filterFn)
+    return this.core.findOneByLengthStartingAt(minLength, startingAt, filterFn)
   }
 
   /**
@@ -433,34 +388,23 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
    */
   public searchByLengthStartingAt(minLength: number, startingAt: number): Interval<T>[] {
     assert(minLength > 0, 'minLength must be > 0')
-    if (!this.root)
-      return []
-    // Node traversal is in-order by ORIGINAL start; clipping to startingAt
+    // The core walks in order by ORIGINAL start; clipping to startingAt
     // can reorder ties, so sort the (small) result.
-    return this.root.searchByLengthStartingAt(minLength, startingAt, []).sort(compareIntervals)
+    return this.core.searchByLengthStartingAt(minLength, startingAt).sort(compareIntervals)
   }
 
   public clone(): IntervalTree<T> {
-    const clone = new IntervalTree<T>()
-    if (this.root)
-      clone.root = this.root.clone()
-
-    clone._size = this._size
-    clone._dirty = this._dirty
-    clone.verifyIfDebug()
-    return clone
+    return IntervalTree.#of(this.core.clone(), this._dirty)
   }
 
   // all intervals overlapping the given range.
   public searchOverlap(start: number, end: number): Interval<T>[] {
-    if (!this.root)
-      return []
-    return this.root.searchOverlap(start, end, [])
+    return this.core.searchOverlap(start, end)
   }
 
   /** Whether any interval in the tree overlaps with [start, end). */
   public overlaps(start: number, end: number): boolean {
-    return this.root ? this.root.hasOverlap(start, end) : false
+    return this.core.hasOverlap(start, end)
   }
 
   public toSorted(): Interval<T>[] {
@@ -519,13 +463,13 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
   /** Returns a new tree with regions from this tree that don't overlap with the other. */
   public difference(other: IntervalTree<T>): IntervalTree<T> {
     // Fast path: empty trees
-    if (!this.root || !other.root)
+    if (this.isEmpty || other.isEmpty)
       return this.clone()
 
     // When other is much smaller than this, the sweep's O(this.size) cost
     // dominates. Fall back to per-chop loop, which is O(other.size × log this.size).
     // Threshold tuned via bench: naive wins when other.size * 20 < this.size.
-    if (other._size * 20 < this._size) {
+    if (other.size * 20 < this.size) {
       const result = this.clone()
       for (const iv of other.toArray()) {
         result.chop(iv.start, iv.end)
@@ -534,23 +478,9 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
     }
 
     const result = subtractRanges(this.toArray(), other.toArray())
-
-    // Build new tree from remaining fragments
-    const diff = new IntervalTree<T>()
-    if (result.length > 0) {
-      if (this._dirty) {
-        diff.root = Node.fromIntervals(result)
-        diff._size = diff.root?.countIntervals() ?? 0
-      }
-      else {
-        // Clean input → fragments are sorted with unique starts
-        diff.root = Node.fromSortedIntervals(result)
-        diff._size = result.length
-      }
-    }
-    diff._dirty = this._dirty
-    diff.verifyIfDebug()
-    return diff
+    // Clean input gives fragments sorted with distinct starts.
+    const core = this._dirty ? TreeCore.from(result) : TreeCore.fromSortedDistinctStarts(result)
+    return IntervalTree.#of(core, this._dirty)
   }
 
   private verifyIfDebug(): void {
@@ -563,19 +493,11 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
    * Read-only. Throws on the first violation. O(n).
    */
   public verify(): void {
-    if (!this.root) {
-      assert(this._size === 0, `size is ${this._size} but the tree is empty`)
-      return
-    }
-    this.root.verify()
-    const sorted = this.root.toArray()
-    assert(
-      this._size === sorted.length,
-      `size is ${this._size} but the tree holds ${sorted.length} intervals`,
-    )
+    this.core.verify()
     // chopAll and difference rebuild a clean tree from sorted intervals and assume no overlaps.
     // mergeOverlaps also merges touching intervals, so a clean tree needs a gap between them.
     if (!this._dirty) {
+      const sorted = this.core.toArray()
       for (let i = 1; i < sorted.length; i++) {
         assert(
           sorted[i - 1].end < sorted[i].start,

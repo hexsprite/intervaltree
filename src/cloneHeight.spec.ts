@@ -27,7 +27,8 @@ describe('clone preserves balance invariants', () => {
 describe('clone copies augmentation fields', () => {
   // Symptom guard for in-ba3: clone() copies minStart/maxEnd/maxLength/height
   // instead of recomputing them. verify() catches a field clone() forgets.
-  it('every cloned node is consistent and owns its values', () => {
+  // A clone that shared a node's value array would leak same-start adds into the source.
+  it('adding to the clone leaves the source unchanged', () => {
     const tree = new IntervalTree<string>()
     let seed = 42
     const rand = () => (seed = (seed * 1103515245 + 12345) & 0x7FFFFFFF) / 0x7FFFFFFF
@@ -35,21 +36,16 @@ describe('clone copies augmentation fields', () => {
       const start = Math.floor(rand() * 10_000)
       tree.add(new Interval(start, start + 1 + Math.floor(rand() * 500), `d${i % 7}`))
     }
+    const before = tree.toTuples()
     const clone = tree.clone()
-
-    // verify() covers height, minStart, maxEnd, and maxLength consistency on the clone.
-    // The walk keeps only what verify() cannot see: the clone must not share value arrays.
-    const walk = (a: any, b: any): void => {
-      if (!a || !b) {
-        expect(a).toBe(b)
-        return
-      }
-      expect(b.values).toEqual(a.values)
-      expect(b.values).not.toBe(a.values)
-      walk(a._left, b._left)
-      walk(a._right, b._right)
-    }
-    walk((tree as any).root, (clone as any).root)
     clone.verify()
+
+    // Same starts as stored intervals, so each add lands in an existing node.
+    for (const [start, end] of before)
+      clone.add(new Interval(start, end + 1000, 'clone'))
+    clone.verify()
+
+    expect(tree.toTuples()).toEqual(before)
+    tree.verify()
   })
 })

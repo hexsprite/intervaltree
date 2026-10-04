@@ -1,5 +1,4 @@
 import { assert } from './assert'
-import { compareIntervals } from './compareIntervals'
 import { Interval } from './Interval'
 
 interface Aggregates {
@@ -7,6 +6,7 @@ interface Aggregates {
   minStart: number
   maxEnd: number
   maxLength: number
+  count: number
 }
 
 const LEFT = false
@@ -46,63 +46,26 @@ export class Node<T = unknown> {
     return (this._right?.height ?? 0) - (this._left?.height ?? 0)
   }
 
-  /** Sorts, groups by start, and drops duplicates. Empty input gives null. */
-  static fromIntervals<T>(intervals: Interval<T>[]): Node<T> | null {
-    const groups = Node._groupByStart(intervals.toSorted(compareIntervals))
-    return Node._build(i => Node._nodeFromGroup(groups[i]), 0, groups.length - 1)
-  }
-
-  /** Like fromIntervals but skips sorting and grouping. The caller guarantees sorted input with distinct starts. */
-  static fromSortedIntervals<T>(sorted: Interval<T>[]): Node<T> | null {
-    return Node._build(i => new Node(sorted[i]), 0, sorted.length - 1)
-  }
-
   /**
    * Builds a balanced subtree over indices [lo, hi] in O(n). `make(i)` returns
    * a leaf node with correct attributes for index i. An empty range gives null.
    */
-  private static _build<T>(make: (i: number) => Node<T>, lo: number, hi: number): Node<T> | null {
+  static build<T>(make: (i: number) => Node<T>, lo: number, hi: number): Node<T> | null {
     if (lo > hi)
       return null
     const mid = (lo + hi) >> 1
     const node = make(mid)
     if (lo < hi) {
-      node._left = Node._build(make, lo, mid - 1)
-      node._right = Node._build(make, mid + 1, hi)
+      node._left = Node.build(make, lo, mid - 1)
+      node._right = Node.build(make, mid + 1, hi)
       node.updateHeight()
       node.updateAttributes()
     }
     return node
   }
 
-  /** Group sorted intervals by start, deduplicating same start+end+data. */
-  private static _groupByStart<T>(sorted: Interval<T>[]): Interval<T>[][] {
-    const groups: Interval<T>[][] = []
-    let i = 0
-    while (i < sorted.length) {
-      const s = sorted[i].start
-      const values: Interval<T>[] = [sorted[i]]
-      const byEnd = new Map<number, Interval<T>[]>([[sorted[i].end, [sorted[i]]]])
-      i++
-      while (i < sorted.length && sorted[i].start === s) {
-        const bucket = byEnd.get(sorted[i].end)
-        if (!bucket) {
-          byEnd.set(sorted[i].end, [sorted[i]])
-          values.push(sorted[i])
-        }
-        else if (!bucket.some(iv => iv.data === sorted[i].data)) {
-          bucket.push(sorted[i])
-          values.push(sorted[i])
-        }
-        i++
-      }
-      groups.push(values)
-    }
-    return groups
-  }
-
-  /** A leaf node holding one same-start group. */
-  private static _nodeFromGroup<T>(values: Interval<T>[]): Node<T> {
+  /** A leaf node holding one same-start group, sorted by end. */
+  static fromGroup<T>(values: Interval<T>[]): Node<T> {
     const node = new Node(values[0])
     if (values.length > 1) {
       node.values = values
@@ -311,17 +274,6 @@ export class Node<T = unknown> {
 
     if (this._right)
       this._right.printStructure(indent + 1, '> ')
-  }
-
-  public countIntervals(): number {
-    let count = this.values.length
-    const left = this._left
-    const right = this._right
-    if (left)
-      count += left.countIntervals()
-    if (right)
-      count += right.countIntervals()
-    return count
   }
 
   /** Return the leftmost (minimum start) node */
@@ -620,9 +572,10 @@ export class Node<T = unknown> {
   /**
    * Check every node invariant against values recomputed from the subtree.
    * Read-only: it never repairs a field. Throws on the first violation. O(n).
+   * @returns the number of intervals in the subtree.
    */
-  public verify(): void {
-    this.verifySubtree(Number.NEGATIVE_INFINITY, Number.POSITIVE_INFINITY)
+  public verify(): number {
+    return this.verifySubtree(Number.NEGATIVE_INFINITY, Number.POSITIVE_INFINITY).count
   }
 
   /** Verifies the subtree, whose starts must lie strictly between `lo` and `hi`. */
@@ -652,6 +605,7 @@ export class Node<T = unknown> {
         maxLength = iv.length
     }
     let minStart = this.start
+    let count = this.values.length
 
     let leftHeight = 0
     let rightHeight = 0
@@ -661,6 +615,7 @@ export class Node<T = unknown> {
       minStart = Math.min(minStart, l.minStart)
       maxEnd = Math.max(maxEnd, l.maxEnd)
       maxLength = Math.max(maxLength, l.maxLength)
+      count += l.count
     }
     if (this._right) {
       const r = this._right.verifySubtree(this.start, hi)
@@ -668,6 +623,7 @@ export class Node<T = unknown> {
       minStart = Math.min(minStart, r.minStart)
       maxEnd = Math.max(maxEnd, r.maxEnd)
       maxLength = Math.max(maxLength, r.maxLength)
+      count += r.count
     }
 
     const height = 1 + Math.max(leftHeight, rightHeight)
@@ -693,7 +649,7 @@ export class Node<T = unknown> {
       this.maxLength === maxLength,
       `${where} maxLength incorrect, stored=${this.maxLength}, actual=${maxLength}`,
     )
-    return { height, minStart, maxEnd, maxLength }
+    return { height, minStart, maxEnd, maxLength, count }
   }
 
   /**
