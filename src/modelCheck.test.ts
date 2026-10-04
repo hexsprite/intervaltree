@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest'
 import { ArrayIntervalCollection } from './ArrayIntervalCollection'
 import { Interval } from './Interval'
 import { IntervalTree } from './IntervalTree'
+import { isCanonical } from './order'
 
 /**
  * Canonical string form: sorted by (start, end, data label) so tie order
@@ -17,6 +18,7 @@ import { IntervalTree } from './IntervalTree'
  * the same bounds.
  */
 function canon(ivs: Interval[]): string[] {
+  expect(isCanonical(ivs)).toBe(true)
   const label = (d: unknown) => d === undefined ? '' : typeof d === 'object' ? JSON.stringify(d) : String(d)
   return ivs
     .map(iv => [iv.start, iv.end, label(iv.data)] as const)
@@ -30,9 +32,9 @@ function canon(ivs: Interval[]): string[] {
  * which one wins is unspecified — see MergeOverlapsCommand.
  */
 function canonBounds(ivs: Interval[]): string[] {
+  expect(isCanonical(ivs)).toBe(true)
   return ivs
     .map(iv => [iv.start, iv.end] as const)
-    .sort((a, b) => a[0] - b[0] || a[1] - b[1])
     .map(t => `${t[0]},${t[1]}`)
 }
 
@@ -135,6 +137,11 @@ class FindOneByLengthStartingAtCommand implements fc.Command<ArrayIntervalCollec
   run(m: ArrayIntervalCollection, r: IntervalTree): void {
     const rResult = r.findOneByLengthStartingAt(this.minLength, this.startingAt)
     const mResult = m.findOneByLengthStartingAt(this.minLength, this.startingAt)
+    for (const c of [r, m]) {
+      const first = c.searchByLengthStartingAt(this.minLength, this.startingAt)[0]
+      expect(c.findOneByLengthStartingAt(this.minLength, this.startingAt)?.start).toBe(first?.start)
+      expect(c.findOneByLengthStartingAt(this.minLength, this.startingAt)?.end).toBe(first?.end)
+    }
     if (rResult === undefined || mResult === undefined) {
       expect(rResult).toBeUndefined()
       expect(mResult).toBeUndefined()
@@ -369,24 +376,14 @@ class FindOneWithFilterCommand implements fc.Command<ArrayIntervalCollection, In
   check = () => true
 
   run(m: ArrayIntervalCollection, r: IntervalTree): void {
-    // Verify findOneByLengthStartingAt against model: find qualifying intervals manually
-    const result = r.findOneByLengthStartingAt(this.minLength, this.startingAt)
+    const filter = (iv: Interval) => iv.start % 2 === 0
+    const result = r.findOneByLengthStartingAt(this.minLength, this.startingAt, filter)
     const qualifying = m.toArray()
-      .filter((iv) => {
-        const adjustedLength = iv.end - Math.max(iv.start, this.startingAt)
-        return iv.end > this.startingAt && adjustedLength >= this.minLength
-      })
+      .filter(iv => iv.availableLength(this.startingAt) >= this.minLength && filter(iv))
+      .map(iv => new Interval(Math.max(iv.start, this.startingAt), iv.end, iv.data))
       .sort((a, b) => a.start - b.start || a.end - b.end)
-
-    if (qualifying.length === 0) {
-      expect(result).toBeUndefined()
-    }
-    else {
-      expect(result).toBeDefined()
-      // Result start should be adjusted to startingAt if interval begins earlier
-      const expectedStart = Math.max(qualifying[0].start, this.startingAt)
-      expect(result!.start).toEqual(expectedStart)
-    }
+    expect(result?.start).toBe(qualifying[0]?.start)
+    expect(result?.end).toBe(qualifying[0]?.end)
   }
 
   toString = () => `findOneWithFilter(${this.minLength}, ${this.startingAt})`
@@ -665,6 +662,9 @@ class ToTuplesCommand implements fc.Command<ArrayIntervalCollection, IntervalTre
     // Compare as a multiset of stringified tuples, not the raw array: when
     // bounds tie with different data, toTuples()/toJSON() order is the same
     // unspecified tie as elsewhere, but content must still match exactly.
+    expect(isCanonical(r.toSorted())).toBe(true)
+    expect(isCanonical(m.toSorted())).toBe(true)
+    expect(canonBounds(r.toSorted())).toEqual(canonBounds(m.toSorted()))
     const rTuples = new Set(r.toTuples().map(t => JSON.stringify(t)))
     const mTuples = new Set(m.toTuples().map(t => JSON.stringify(t)))
     expect(rTuples).toEqual(mTuples)

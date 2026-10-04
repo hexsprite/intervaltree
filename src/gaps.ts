@@ -1,4 +1,4 @@
-import type { IntervalTree } from './IntervalTree'
+import type { IntervalCollection } from './IntervalCollection'
 import { assert } from './assert'
 import { Interval } from './Interval'
 import { subtractRanges } from './rangeSubtraction'
@@ -17,9 +17,9 @@ import { subtractRanges } from './rangeSubtraction'
  * - Intervals overlapping the range are clipped to it.
  * - An empty tree yields a single gap `[start, end)`.
  * - A tree fully covering `[start, end)` yields `[]`.
- * - `start >= end` throws, matching `chop`.
+ * - `start >= end` throws; unlike `chop`, this spike requires a positive window.
  */
-export function gaps<T>(tree: IntervalTree<T>, start: number, end: number): Interval<T>[] {
+export function gaps<T>(tree: IntervalCollection<T>, start: number, end: number): Interval<T>[] {
   assert(start < end, 'start must be < end')
 
   return subtractRanges([new Interval<T>(start, end)], tree.searchOverlap(start, end))

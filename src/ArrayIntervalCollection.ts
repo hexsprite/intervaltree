@@ -1,8 +1,8 @@
 import type { IntervalCollection } from './IntervalCollection'
 import type { IntervalTuple } from './types'
 import { assert } from './assert'
-import { compareIntervals } from './compareIntervals'
 import { Interval } from './Interval'
+import { clipStart, compareIntervals } from './order'
 import { sha256 } from './sha256'
 
 /**
@@ -37,21 +37,16 @@ export class ArrayIntervalCollection<T = unknown> implements IntervalCollection<
     startingAt: number,
     filterFn?: (iv: Interval<T>) => boolean,
   ): Interval<T> | undefined {
-    for (const interval of this.toSorted()) {
-      if (interval.availableLength(startingAt) >= minLength) {
-        // filterFn sees the stored (unclipped) interval, mirroring TreeCore.ts.
-        if (filterFn && !filterFn(interval))
-          continue
-        return interval.start < startingAt && interval.end >= startingAt
-          ? new Interval<T>(startingAt, interval.end, interval.data)
-          : interval
-      }
-    }
-    return undefined
+    assert(minLength > 0, 'minLength must be > 0')
+    // Rank clipped results, but apply the predicate to each stored interval.
+    return this.toSorted()
+      .filter(iv => iv.availableLength(startingAt) >= minLength && (!filterFn || filterFn(iv)))
+      .map(iv => clipStart(iv, startingAt))
+      .sort(compareIntervals)[0]
   }
 
   toArray(): Interval<T>[] {
-    return this.intervals.slice()
+    return this.toSorted()
   }
 
   toSorted(): Interval<T>[] {
@@ -123,16 +118,16 @@ export class ArrayIntervalCollection<T = unknown> implements IntervalCollection<
   }
 
   searchPoint(point: number): Interval<T>[] {
-    return this.intervals.filter(iv => iv.containsPoint(point))
+    return this.toSorted().filter(iv => iv.containsPoint(point))
   }
 
   searchOverlap(start: number, end: number): Interval<T>[] {
-    return this.intervals.filter(iv => iv.overlapsWith(start, end))
+    return this.toSorted().filter(iv => iv.overlapsWith(start, end))
   }
 
   /** Intervals fully contained within [start, end]: iv.start >= start && iv.end <= end. */
   searchEnveloped(start: number, end: number): Interval<T>[] {
-    return this.intervals.filter(iv => iv.start >= start && iv.end <= end)
+    return this.toSorted().filter(iv => iv.start >= start && iv.end <= end)
   }
 
   contains(point: number): boolean {
@@ -144,25 +139,19 @@ export class ArrayIntervalCollection<T = unknown> implements IntervalCollection<
   }
 
   searchByLengthStartingAt(minLength: number, startingAt: number): Interval<T>[] {
+    assert(minLength > 0, 'minLength must be > 0')
     return this.intervals
-      .filter((iv) => {
-        if (iv.end < startingAt)
-          return false
-
-        return iv.availableLength(startingAt) >= minLength
-      })
-      .map(iv => iv.start < startingAt ? new Interval(startingAt, iv.end, iv.data) : iv)
-      .toSorted(compareIntervals)
+      .filter(iv => iv.availableLength(startingAt) >= minLength)
+      .map(iv => clipStart(iv, startingAt))
+      .sort(compareIntervals)
   }
 
   first(): Interval<T> | null {
-    const sorted = this.toSorted()
-    return sorted[0] ?? null
+    return this.toSorted()[0] ?? null
   }
 
   last(): Interval<T> | null {
-    const sorted = this.toSorted()
-    return sorted.at(-1) ?? null
+    return this.toSorted().at(-1) ?? null
   }
 
   hash(): string {
@@ -174,7 +163,7 @@ export class ArrayIntervalCollection<T = unknown> implements IntervalCollection<
   mergeOverlaps(): void {
     if (this.intervals.length <= 1)
       return
-    const sorted = this.intervals.toSorted(compareIntervals)
+    const sorted = this.toSorted()
     const merged: Interval<T>[] = [sorted[0]]
     for (let i = 1; i < sorted.length; i++) {
       const current = sorted[i]

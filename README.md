@@ -98,10 +98,11 @@ const enveloped = tree.searchEnveloped(0, 100)
 const byLength = tree.searchByLengthStartingAt(3, 5)
 // Returns: All intervals of length >= 3 starting at position 5 or later
 
-// Find first interval of minimum length — O(log n) with early termination
+// Find the first canonical interval of minimum remaining length
 const first = tree.findOneByLengthStartingAt(3, 5)
 // Returns: First interval of length >= 3 starting at/after position 5
 // If found interval starts before 5, it's adjusted to start at 5
+// Ties on the adjusted start choose the smallest end.
 
 // With optional filter function
 const filtered = tree.findOneByLengthStartingAt(3, 5, iv => iv.data?.priority === 'high')
@@ -299,6 +300,14 @@ const available = freeSlots.findOneByLengthStartingAt(minDuration, dayStart)
 
 ## API Reference
 
+All array results and iteration use **canonical order**: ascending start,
+then end of the returned bounds. Identical bounds with different data are
+unordered. `toArray()` is canonical; `toSorted()` remains a compatibility alias.
+`findOneByLengthStartingAt(L, t)` selects the first bounds returned by
+`searchByLengthStartingAt(L, t)`. Its optional filter receives the original
+stored interval. Neither query joins touching intervals; call `mergeOverlaps()`
+first if that is the intended interpretation. See [GLOSSARY.md](GLOSSARY.md).
+
 ### IntervalTree
 
 **Construction:**
@@ -319,7 +328,7 @@ const available = freeSlots.findOneByLengthStartingAt(minDuration, dayStart)
 - `searchOverlap(start: number, end: number)` - Find all intervals overlapping a range
 - `searchEnveloped(start: number, end: number)` - Find intervals completely within a range
 - `searchByLengthStartingAt(length: number, start: number)` - Find intervals by minimum length
-- `findOneByLengthStartingAt(minLength: number, startingAt: number, filterFn?: (iv: Interval<T>) => boolean)` - O(log n) first matching interval with optional filter
+- `findOneByLengthStartingAt(minLength: number, startingAt: number, filterFn?: (iv: Interval<T>) => boolean)` - First canonical result; O(log n + k) without a filter, where k counts qualifying intervals containing startingAt. A filter can require O(n).
 
 **Navigation:**
 - `first(): Interval<T> | null` - Get the earliest interval by start (O(log n))

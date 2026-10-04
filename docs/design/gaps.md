@@ -39,8 +39,9 @@ the way out.
    the range are clipped to it (verified: `[[-5,3],[8,30]]` over `[0,10)` →
    `[[3,8)]`).
 
-4. **Invalid range.** Decided: `start >= end` throws `start must be < end`,
-   matching `chop`'s existing assertion, for consistency across the API.
+4. **Invalid window.** The spike requires `start < end`. This differs from
+   `chop` and `chopAll`, where empty windows are no-ops. Keep this experimental
+   boundary until a public gaps API is proposed.
 
 5. **`minLength` filter parameter?** Decided: no. Callers already have
    `Array.prototype.filter` on the result, and folding length filtering into
@@ -76,17 +77,24 @@ result-tree construction entirely — it returns a plain array.
 ## Proposed public signature
 
 ```ts
-function gaps<T>(tree: IntervalTree<T>, start: number, end: number): Interval<T>[]
+function gaps<T>(tree: IntervalCollection<T>, start: number, end: number): Interval<T>[]
 ```
 
-Free function (not a tree method) is deliberate for the spike, mirroring
-`fromTuples`-style ergonomics without adding tree-internal coupling; whether
-it should instead be `IntervalTree.prototype.gaps(start, end)` for API
-symmetry with `difference`/`chop`/etc. is an open question for the
-maintainer, not decided here.
+Decision (2026-10-04): keep gaps as a free function over `IntervalCollection`.
+The library is generic; busy and free interpretations belong to callers, not
+storage types. This helper remains experimental and unexported. See
+`GLOSSARY.md` for the terminology.
 
-## Follow-up (out of scope for this spike)
+## Length-query duality
 
-If accepted, `searchByLengthStartingAt`'s "first free slot of length L"
-logic can likely be re-expressed as a filter over `gaps`, per the plan's
-maintenance note. Not attempted here.
+For stored busy intervals B and a window W, gaps finds uncovered bounds.
+Length queries instead search stored bounds. They agree only after taking the
+complement: construct F as W.difference(B), merge F, then compare
+`gaps(B, Math.max(t, W.start), W.end).filter(iv => iv.length >= L)` with
+`F.searchByLengthStartingAt(L, t)`. This requires t < W.end.
+
+Neither operation replaces the other on the same collection. Length queries
+do not join touching stored intervals; callers should merge them first when
+that is their intended interpretation. Focuster stores free slots and chops
+bookings out, so its existing length queries are appropriate. A scheduling
+wrapper or first-gap convenience API can wait for a concrete second caller.

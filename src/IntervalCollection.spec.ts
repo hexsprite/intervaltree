@@ -191,8 +191,7 @@ describe.each(impls)('intervalCollection conformance: $name', ({ make }) => {
   it('toArray and toSorted', () => {
     const c = make(base)
     expect(bounds(c.toSorted())).toEqual(base)
-    // toArray need not be sorted for every implementation, so sort before comparing.
-    expect(bounds(c.toArray()).sort((x, y) => x[0] - y[0])).toEqual(base)
+    expect(bounds(c.toArray())).toEqual(base)
   })
 
   it('toTuples', () => {
@@ -217,13 +216,13 @@ describe.each(impls)('intervalCollection conformance: $name', ({ make }) => {
     const c = make(base)
     const seen: Array<[number, number, string | undefined]> = []
     c.forEach(iv => seen.push([iv.start, iv.end, iv.data]))
-    expect(seen.sort((a, b) => a[0] - b[0])).toEqual(base)
+    expect(seen).toEqual(base)
   })
 
   it('[Symbol.iterator]', () => {
     const c = make(base)
     const collected = [...c]
-    expect(bounds(collected).sort((a, b) => a[0] - b[0])).toEqual(base)
+    expect(bounds(collected)).toEqual(base)
   })
 })
 
