@@ -279,7 +279,7 @@ Since intervals work with numbers, you can use timestamps for date-based interva
 ```js
 const schedule = new IntervalTree()
 
-// Add time slots (using timestamps)
+// Store busy time (using timestamps)
 const start = new Date('2024-01-01T09:00:00').getTime()
 const end = new Date('2024-01-01T10:00:00').getTime()
 schedule.addInterval(start, end, 'Morning meeting')
@@ -290,8 +290,11 @@ const conflicts = schedule.searchPoint(when)
 
 // Find available slots
 const dayStart = new Date('2024-01-01T08:00:00').getTime()
+const dayEnd = new Date('2024-01-01T17:00:00').getTime()
+const freeSlots = IntervalTree.fromTuples([[dayStart, dayEnd]]).difference(schedule)
 const minDuration = 60 * 60 * 1000  // 1 hour in milliseconds
-const available = schedule.findOneByLengthStartingAt(minDuration, dayStart)
+const available = freeSlots.findOneByLengthStartingAt(minDuration, dayStart)
+// Returns [08:00, 09:00), before the morning meeting.
 ```
 
 ## API Reference
@@ -673,7 +676,7 @@ This library uses **half-open intervals** `[start, end)` where:
 **Why half-open intervals?**
 1. **Length calculation**: Just `end - start` (no off-by-one errors)
 2. **Adjacent intervals**: `[1, 5)` and `[5, 10)` don't overlap
-3. **Empty intervals**: `[5, 5)` is naturally empty
+3. **Stored intervals must have positive length**: constructing `[5, 5)` throws. Empty ranges passed to `chop` or `chopAll` are no-ops.
 4. **Consistency**: Matches JavaScript conventions (`Array.slice`, `substring`, etc.)
 
 This follows the recommendation from Edsger W. Dijkstra's 1982 note on interval notation and is used by most programming languages and CS literature.
