@@ -39,7 +39,7 @@ export class ArrayIntervalCollection<T = unknown> implements IntervalCollection<
   ): Interval<T> | undefined {
     for (const interval of this.toSorted()) {
       if (interval.availableLength(startingAt) >= minLength) {
-        // filterFn sees the stored (unclipped) interval, mirroring Node.ts.
+        // filterFn sees the stored (unclipped) interval, mirroring TreeCore.ts.
         if (filterFn && !filterFn(interval))
           continue
         return interval.start < startingAt && interval.end >= startingAt

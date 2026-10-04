@@ -299,7 +299,7 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
 
   /**
    * Searches for intervals that are completely enveloped by the specified range.
-   * Single tree walk with subtree pruning — see Node.searchEnveloped.
+   * Single tree walk with subtree pruning — see Node.searchEnveloped in TreeCore.ts.
    */
   public searchEnveloped(start: number, end: number): Interval<T>[] {
     return this.core.searchEnveloped(start, end)
