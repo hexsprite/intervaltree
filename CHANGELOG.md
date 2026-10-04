@@ -7,7 +7,6 @@
 
 * add IntervalTree.fromJSON for exact serialize round trips ([bfe9bbe](https://github.com/hexsprite/intervaltree/commit/bfe9bbe1e439785fdb9eb4bcc61427a2709d6764))
 * export ArrayIntervalCollection as reference implementation ([c4ccdf6](https://github.com/hexsprite/intervaltree/commit/c4ccdf6b9526608dbc3cfd4e3e2e93a094da26f1))
-* **spike:** prototype gaps() free-slot query with property test ([7a1d323](https://github.com/hexsprite/intervaltree/commit/7a1d323340df631d904ff3439306f1a877f275fa))
 * widen IntervalCollection to the full API ([54cf430](https://github.com/hexsprite/intervaltree/commit/54cf43029ada01661d09296473f3960ad9e23f5b))
 
 
@@ -32,6 +31,7 @@
 
 * copy augmentation fields in Node.clone instead of recomputing ([6a06086](https://github.com/hexsprite/intervaltree/commit/6a06086f4954db7926556d5ae305f7d3078b3517))
 * early-exit contains() and overlaps() ([802dd09](https://github.com/hexsprite/intervaltree/commit/802dd09a91a024affb181e8e17bb757e6052f07b))
+* faster add, remove, chop, chopAll, and removeEnveloped (5–12% in the bundled benchmarks): the tree core now tracks its own size and reports insert/remove results without module-level state ([03c9d74](https://github.com/hexsprite/intervaltree/commit/03c9d74))
 
 ## [2.0.0](https://github.com/hexsprite/intervaltree/compare/v1.4.1...v2.0.0) (2026-05-13)
 
