@@ -1,5 +1,6 @@
 import { spawnSync } from 'node:child_process'
 import { resolve } from 'node:path'
+import process from 'node:process'
 import { pathToFileURL } from 'node:url'
 
 // Probe the public behavior in fresh processes with no inherited debug flags.

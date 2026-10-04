@@ -5,6 +5,7 @@ on:
     branches: [master, main]
   pull_request:
     branches: [master, main]
+    types: [opened, synchronize, reopened, labeled, unlabeled]
   schedule:
     # Run full model check once a day at 2 AM UTC
     - cron: '0 2 * * *'
@@ -23,6 +24,7 @@ jobs:
 
       - run: pnpm install
       - run: pnpm build
+      - run: pnpm test:automation
       - run: pnpm test
       - run: pnpm lint
       - run: pnpm typecheck
@@ -75,3 +77,45 @@ jobs:
 
       - name: Test dist on Node ${{ matrix.node-version }}
         run: pnpm test:compat
+
+  focuster-freelist:
+    # Only maintainer-owned release branches may access the private consumer.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'pull_request' &&
+       github.event.pull_request.head.repo.full_name == github.repository &&
+       startsWith(github.event.pull_request.head.ref, 'release-please--branches--master'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: intervaltree
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: intervaltree/package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Pack the release candidate
+        working-directory: intervaltree
+        run: |
+          pnpm install --frozen-lockfile
+          mkdir -p "$RUNNER_TEMP/intervaltree-candidate"
+          pnpm pack --pack-destination "$RUNNER_TEMP/intervaltree-candidate"
+      - uses: actions/checkout@v4
+        with:
+          repository: hexsprite/focuster
+          ref: master
+          path: focuster
+          # Prefer a repo-scoped read token; the existing release token is a fallback.
+          token: ${{ secrets.FOCUSTER_READ_TOKEN || secrets.RELEASE_PLEASE_TOKEN }}
+          persist-credentials: false
+      - name: Install the consumer test dependencies
+        working-directory: focuster
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Test the packed candidate against Focuster's freelist specs
+        run: bash intervaltree/scripts/check-focuster-compat.sh "$GITHUB_WORKSPACE/focuster" "$RUNNER_TEMP"/intervaltree-candidate/intervaltree-*.tgz
