@@ -46,46 +46,38 @@ export class Node<T = unknown> {
     return (this._right?.height ?? 0) - (this._left?.height ?? 0)
   }
 
-  static fromIntervals<T>(intervals: Interval<T>[]): Node<T> {
-    assert(intervals.length > 0, 'Error: intervals must not be empty')
-    const sorted = intervals.toSorted(compareIntervals)
-    // Group same-start intervals and dedup, then build balanced tree from groups
-    const groups = Node._groupByStart(sorted)
-    return Node._buildFromGroups(groups, 0, groups.length - 1)
+  /** Sorts, groups by start, and drops duplicates. Empty input gives null. */
+  static fromIntervals<T>(intervals: Interval<T>[]): Node<T> | null {
+    const groups = Node._groupByStart(intervals.toSorted(compareIntervals))
+    return Node._build(i => Node._nodeFromGroup(groups[i]), 0, groups.length - 1)
   }
 
-  /** Like fromIntervals but skips sorting — caller guarantees sorted, non-overlapping input. */
-  static fromSortedIntervals<T>(sorted: Interval<T>[]): Node<T> {
-    assert(sorted.length > 0, 'Error: intervals must not be empty')
-    // Fast path: sorted non-overlapping intervals have unique starts — skip grouping
-    return Node._buildSimple(sorted, 0, sorted.length - 1)
+  /** Like fromIntervals but skips sorting and grouping. The caller guarantees sorted input with distinct starts. */
+  static fromSortedIntervals<T>(sorted: Interval<T>[]): Node<T> | null {
+    return Node._build(i => new Node(sorted[i]), 0, sorted.length - 1)
   }
 
-  /** Build balanced tree from sorted intervals with unique starts (no grouping needed). */
-  private static _buildSimple<T>(sorted: Interval<T>[], lo: number, hi: number): Node<T> {
-    if (lo === hi)
-      return new Node(sorted[lo])
-    if (lo + 1 === hi) {
-      const node = new Node(sorted[lo])
-      node._right = new Node(sorted[hi])
-      node.height = 2
-      node.updateAttributes()
-      return node
-    }
+  /**
+   * Builds a balanced subtree over indices [lo, hi] in O(n). `make(i)` returns
+   * a leaf node with correct attributes for index i. An empty range gives null.
+   */
+  private static _build<T>(make: (i: number) => Node<T>, lo: number, hi: number): Node<T> | null {
+    if (lo > hi)
+      return null
     const mid = (lo + hi) >> 1
-    const node = new Node(sorted[mid])
-    node._left = Node._buildSimple(sorted, lo, mid - 1)
-    node._right = Node._buildSimple(sorted, mid + 1, hi)
-    const lh = node._left?.height ?? 0
-    const rh = node._right?.height ?? 0
-    node.height = 1 + (lh > rh ? lh : rh)
-    node.updateAttributes()
+    const node = make(mid)
+    if (lo < hi) {
+      node._left = Node._build(make, lo, mid - 1)
+      node._right = Node._build(make, mid + 1, hi)
+      node.updateHeight()
+      node.updateAttributes()
+    }
     return node
   }
 
   /** Group sorted intervals by start, deduplicating same start+end+data. */
-  private static _groupByStart<T>(sorted: Interval<T>[]): Array<{ start: number, values: Interval<T>[] }> {
-    const groups: Array<{ start: number, values: Interval<T>[] }> = []
+  private static _groupByStart<T>(sorted: Interval<T>[]): Interval<T>[][] {
+    const groups: Interval<T>[][] = []
     let i = 0
     while (i < sorted.length) {
       const s = sorted[i].start
@@ -104,48 +96,18 @@ export class Node<T = unknown> {
         }
         i++
       }
-      groups.push({ start: s, values })
+      groups.push(values)
     }
     return groups
   }
 
-  /**
-   * Build a balanced AVL tree from pre-grouped intervals in O(n).
-   * Each group has a unique start and 1+ intervals.
-   */
-  private static _nodeFromGroup<T>(g: { start: number, values: Interval<T>[] }): Node<T> {
-    const node = new Node(g.values[0])
-    for (let i = 1; i < g.values.length; i++)
-      node.values.push(g.values[i])
-    return node
-  }
-
-  private static _buildFromGroups<T>(groups: Array<{ start: number, values: Interval<T>[] }>, lo: number, hi: number): Node<T> {
-    if (lo === hi) {
-      const node = Node._nodeFromGroup(groups[lo])
+  /** A leaf node holding one same-start group. */
+  private static _nodeFromGroup<T>(values: Interval<T>[]): Node<T> {
+    const node = new Node(values[0])
+    if (values.length > 1) {
+      node.values = values
       node.updateAttributes()
-      return node
     }
-    if (lo + 1 === hi) {
-      const node = Node._nodeFromGroup(groups[lo])
-      const right = Node._nodeFromGroup(groups[hi])
-      node._right = right
-      right.updateAttributes()
-      node.height = 2
-      node.updateAttributes()
-      return node
-    }
-
-    const mid = (lo + hi) >> 1
-    const node = Node._nodeFromGroup(groups[mid])
-
-    node._left = Node._buildFromGroups(groups, lo, mid - 1)
-    node._right = Node._buildFromGroups(groups, mid + 1, hi)
-
-    const lh = node._left?.height ?? 0
-    const rh = node._right?.height ?? 0
-    node.height = 1 + (lh > rh ? lh : rh)
-    node.updateAttributes()
     return node
   }
 

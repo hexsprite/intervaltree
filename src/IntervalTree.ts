@@ -28,7 +28,7 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
     if (intervals.length > 0) {
       this.root = Node.fromIntervals(intervals)
       this._dirty = true
-      this._size = this.root.countIntervals()
+      this._size = this.root?.countIntervals() ?? 0
     }
   }
 
@@ -276,7 +276,7 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
       if (wasDirty) {
         // Dirty tree may produce unsorted/duplicate fragments — full rebuild with dedup
         this.root = Node.fromIntervals(result)
-        this._size = this.root.countIntervals()
+        this._size = this.root?.countIntervals() ?? 0
       }
       else {
         // Clean tree produces sorted, unique fragments — fast path
@@ -319,7 +319,7 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
       const kept: Interval<T>[] = []
       this.root.collectNonEnveloped(start, end, kept)
       this.root = Node.fromIntervals(kept)
-      this._size = wasDirty ? this.root.countIntervals() : kept.length
+      this._size = wasDirty ? this.root?.countIntervals() ?? 0 : kept.length
     }
     else {
       for (let i = 0; i < removed.length; i++) {
@@ -540,7 +540,7 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
     if (result.length > 0) {
       if (this._dirty) {
         diff.root = Node.fromIntervals(result)
-        diff._size = diff.root.countIntervals()
+        diff._size = diff.root?.countIntervals() ?? 0
       }
       else {
         // Clean input → fragments are sorted with unique starts
