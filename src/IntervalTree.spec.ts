@@ -1479,12 +1479,12 @@ describe('chopAll correctness', () => {
   })
 })
 
-describe('dirty flag correctness', () => {
+describe('merged flag correctness', () => {
   it('mergeOverlaps does work when tree has overlaps from add', () => {
     const tree = new IntervalTree()
     tree.addInterval(0, 15)
     tree.addInterval(10, 25)
-    // Tree should be dirty — two overlapping intervals
+    // Two overlapping intervals, so the tree is not merged
     tree.mergeOverlaps()
     expect(tree.toTuples()).toEqual([[0, 25]])
   })
@@ -1501,14 +1501,53 @@ describe('dirty flag correctness', () => {
 
   it('chop followed by add marks dirty correctly', () => {
     const tree = IntervalTree.fromTuples([[0, 100]])
-    tree.chop(40, 60) // [0,40] + [60,100] — not dirty (chop preserves)
-    tree.addInterval(35, 65) // overlaps both pieces — should mark dirty
+    tree.chop(40, 60) // [0,40] + [60,100]
+    tree.addInterval(35, 65) // overlaps both pieces, so the tree is no longer merged
     tree.mergeOverlaps()
     // After merge: [0, 100] (all three merge together)
     const tuples = tree.toTuples()
     expect(tuples.length).toBe(1)
     expect(tuples[0][0]).toBe(0)
     expect(tuples[0][1]).toBe(100)
+  })
+
+  // remove, chop, chopAll, and removeEnveloped never write the merged flag.
+  // If one of them left an overlap or a touching pair behind, verify() would reject the merged tree.
+  describe('operations that keep a merged tree merged', () => {
+    function mergedTree(): IntervalTree<string> {
+      // 20 overlapping pairs merge into [10i, 10i + 7), with a gap of 3 between runs.
+      const tree = new IntervalTree<string>()
+      for (let i = 0; i < 20; i++) {
+        tree.add(new Interval(i * 10, i * 10 + 5, `d${i}`))
+        tree.add(new Interval(i * 10 + 3, i * 10 + 7, `e${i}`))
+      }
+      tree.mergeOverlaps()
+      expect(tree.size).toBe(20)
+      return tree
+    }
+
+    const ops: Array<[string, (tree: IntervalTree<string>) => void]> = [
+      ['remove', tree => tree.remove(new Interval(50, 57, 'd5'))],
+      ['chop', tree => tree.chop(52, 75)],
+      ['chopAll with few ranges', tree => tree.chopAll([[1, 2], [52, 75]])],
+      ['chopAll with many ranges', tree => tree.chopAll([[1, 2], [25, 26], [41, 42], [52, 75], [99, 150]])],
+      ['removeEnveloped, dense path', tree => tree.removeEnveloped(0, 100)],
+      ['removeEnveloped, sparse path', tree => tree.removeEnveloped(50, 57)],
+    ]
+    for (const [name, op] of ops) {
+      it(`${name} keeps verify() passing and leaves mergeOverlaps nothing to do`, () => {
+        const tree = mergedTree()
+        op(tree)
+        tree.verify()
+        const after = tree.toTuples()
+        tree.mergeOverlaps()
+        expect(tree.toTuples()).toEqual(after)
+        // A fresh tree with the same intervals agrees, so no merge was skipped.
+        const fresh = IntervalTree.fromTuples(after)
+        fresh.mergeOverlaps()
+        expect(fresh.toTuples()).toEqual(after)
+      })
+    }
   })
 })
 

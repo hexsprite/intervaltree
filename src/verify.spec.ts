@@ -15,7 +15,7 @@ function internals(tree: IntervalTree) {
   return {
     get root(): any { return t.core.root },
     setSize(size: number): void { t.core._size = size },
-    setClean(): void { t._dirty = false },
+    markMerged(): void { t.merged = true },
   }
 }
 
@@ -78,7 +78,7 @@ describe('verify() detects corruption', () => {
   // Symptom: chopAll and difference fast paths build trees assuming no overlaps, so a lying clean flag corrupts them.
   it('rejects a clean tree that holds overlapping intervals', () => {
     const tree = buildTree()
-    internals(tree).setClean()
+    internals(tree).markMerged()
     expect(() => tree.verify()).toThrow(/clean|overlap/i)
   })
 
@@ -87,7 +87,7 @@ describe('verify() detects corruption', () => {
     const tree = new IntervalTree()
     tree.add(new Interval(0, 5))
     tree.add(new Interval(5, 10))
-    internals(tree).setClean()
+    internals(tree).markMerged()
     expect(() => tree.verify()).toThrow(/clean|touching|overlap/i)
   })
 

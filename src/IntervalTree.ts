@@ -21,18 +21,23 @@ function assertValidRange(start: number, end: number): void {
 
 export class IntervalTree<T = unknown> implements IntervalCollection<T> {
   private core: TreeCore<T>
-  private _dirty: boolean
+  /**
+   * True means mergeOverlaps() would change nothing: no two intervals overlap or touch.
+   * False promises nothing. chopAll and difference rely on it to skip sorting.
+   * After construction, only add (clears it) and mergeOverlaps (sets it) write it.
+   */
+  private merged: boolean
 
   constructor(intervals: Interval<T>[] = []) {
     this.core = TreeCore.from(intervals)
-    this._dirty = intervals.length > 0
+    this.merged = intervals.length === 0
   }
 
   /** Wraps a core built elsewhere, such as a clone or a set-operation result. */
-  static #of<T>(core: TreeCore<T>, dirty: boolean): IntervalTree<T> {
+  static #of<T>(core: TreeCore<T>, merged: boolean): IntervalTree<T> {
     const tree = new IntervalTree<T>()
     tree.core = core
-    tree._dirty = dirty
+    tree.merged = merged
     tree.verifyIfDebug()
     return tree
   }
@@ -88,8 +93,8 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
   }
 
   public add(interval: Interval<T>): void {
-    this.core.insert(interval)
-    this._dirty = true
+    if (this.core.insert(interval))
+      this.merged = false
     this.verifyIfDebug()
   }
 
@@ -99,31 +104,31 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
    * intervals with identical bounds the choice is unspecified.
    */
   public mergeOverlaps(): void {
-    if (this.core.isEmpty || !this._dirty)
+    if (this.core.isEmpty || this.merged)
       return
 
     // toArray() already returns in-order (sorted by start)
     const intervals = this.toArray()
 
     // Merge overlapping intervals in a single pass
-    const merged = [intervals[0]]
+    const runs = [intervals[0]]
     for (let i = 1; i < intervals.length; i++) {
       const current = intervals[i]
-      const last = merged[merged.length - 1]
+      const last = runs[runs.length - 1]
       if (current.start <= last.end) {
         // Overlap detected, merge current with last
-        merged[merged.length - 1] = new Interval(
+        runs[runs.length - 1] = new Interval(
           last.start,
           Math.max(last.end, current.end),
           last.data,
         )
       }
       else {
-        merged.push(current)
+        runs.push(current)
       }
     }
-    this.core = TreeCore.fromSortedDistinctStarts(merged)
-    this._dirty = false
+    this.core = TreeCore.fromSortedDistinctStarts(runs)
+    this.merged = true
     this.verifyIfDebug()
   }
 
@@ -197,26 +202,20 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
     if (overlapping.length === 0)
       return
 
-    // Chop never creates overlaps — preserve dirty state so mergeOverlaps
-    // doesn't unnecessarily rebuild after every chop
-    const wasDirty = this._dirty
-
-    // Remove all overlapping, then add trimmed flanks
+    // Remove all overlapping, then add trimmed flanks. Flanks never overlap or
+    // touch anything, so chop goes to the core and leaves `merged` alone.
     for (let i = 0; i < overlapping.length; i++) {
-      this.remove(overlapping[i])
+      this.core.remove(overlapping[i])
     }
     for (let i = 0; i < overlapping.length; i++) {
       const iv = overlapping[i]
       if (iv.start < start) {
-        this.add(new Interval(iv.start, start, iv.data))
+        this.core.insert(new Interval(iv.start, start, iv.data))
       }
       if (iv.end > end) {
-        this.add(new Interval(end, iv.end, iv.data))
+        this.core.insert(new Interval(end, iv.end, iv.data))
       }
     }
-
-    // Restore dirty state — chop only splits intervals, never creates overlaps
-    this._dirty = wasDirty
 
     this.verifyIfDebug()
   }
@@ -252,17 +251,12 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
       return
     }
 
-    // Preserve dirty state to choose correct rebuild path
-    const wasDirty = this._dirty
-
     // toArray() already returns in-order (sorted by start)
     const result = subtractRanges(this.toArray(), ranges.map(([start, end]) => ({ start, end })))
 
-    // A dirty tree may produce unsorted or duplicate fragments, so it needs the full rebuild.
-    // A clean tree produces sorted fragments with distinct starts.
-    this.core = wasDirty ? TreeCore.from(result) : TreeCore.fromSortedDistinctStarts(result)
-    // Preserve dirty state — chopAll doesn't merge overlaps
-    this._dirty = wasDirty
+    // A merged tree produces sorted fragments with distinct starts. Any other
+    // tree may produce unsorted or duplicate fragments, so it needs the full rebuild.
+    this.core = this.merged ? TreeCore.fromSortedDistinctStarts(result) : TreeCore.from(result)
     this.verifyIfDebug()
   }
 
@@ -272,14 +266,12 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
    *   - All removed → drop root.
    *   - Dense (M ≥ N/8) → second walk collects survivors, rebuild via TreeCore.from (O(N)).
    *   - Sparse → per-remove path (O(M log N) with rebalancing amortized).
-   * Removing intervals never creates overlaps, so `_dirty` is preserved.
+   * Removing intervals never creates overlaps, so `merged` stays as it is.
    */
   public removeEnveloped(start: number, end: number): void {
     const removed = this.core.searchEnveloped(start, end)
     if (removed.length === 0)
       return
-
-    const wasDirty = this._dirty
 
     if (removed.length === this.core.size) {
       this.core = TreeCore.from([])
@@ -289,11 +281,10 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
     }
     else {
       for (let i = 0; i < removed.length; i++) {
-        this.remove(removed[i])
+        this.core.remove(removed[i])
       }
     }
 
-    this._dirty = wasDirty
     this.verifyIfDebug()
   }
 
@@ -306,10 +297,8 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
   }
 
   public remove(interval: Interval<T>): void {
-    if (this.core.isEmpty)
-      return
+    // Removing an interval never creates an overlap, so `merged` stays as it is.
     this.core.remove(interval)
-    this._dirty = true
     this.verifyIfDebug()
   }
 
@@ -346,7 +335,7 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
    * tuples. `JSON.stringify(tree)` will produce this form.
    *
    * Why this matters: hash() digests JSON.stringify(this). Without toJSON,
-   * JSON.stringify would serialize the raw {core, _dirty} object
+   * JSON.stringify would serialize the raw {core, merged} object
    * graph — making hash() sensitive to internal tree topology, so two
    * trees with byte-identical intervals built via different op sequences
    * produced different hashes. With toJSON, hash() becomes semantic.
@@ -394,7 +383,7 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
   }
 
   public clone(): IntervalTree<T> {
-    return IntervalTree.#of(this.core.clone(), this._dirty)
+    return IntervalTree.#of(this.core.clone(), this.merged)
   }
 
   // all intervals overlapping the given range.
@@ -478,9 +467,9 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
     }
 
     const result = subtractRanges(this.toArray(), other.toArray())
-    // Clean input gives fragments sorted with distinct starts.
-    const core = this._dirty ? TreeCore.from(result) : TreeCore.fromSortedDistinctStarts(result)
-    return IntervalTree.#of(core, this._dirty)
+    // A merged tree gives fragments sorted with distinct starts.
+    const core = this.merged ? TreeCore.fromSortedDistinctStarts(result) : TreeCore.from(result)
+    return IntervalTree.#of(core, this.merged)
   }
 
   private verifyIfDebug(): void {
@@ -489,14 +478,14 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
   }
 
   /**
-   * Check every AVL and augmentation invariant, the cached size, and the clean-tree rule.
+   * Check every AVL and augmentation invariant, the cached size, and the merged-tree rule.
    * Read-only. Throws on the first violation. O(n).
    */
   public verify(): void {
     this.core.verify()
-    // chopAll and difference rebuild a clean tree from sorted intervals and assume no overlaps.
-    // mergeOverlaps also merges touching intervals, so a clean tree needs a gap between them.
-    if (!this._dirty) {
+    // chopAll and difference rebuild a merged tree from sorted intervals and assume no overlaps.
+    // mergeOverlaps also merges touching intervals, so a merged tree needs a gap between them.
+    if (this.merged) {
       const sorted = this.core.toArray()
       for (let i = 1; i < sorted.length; i++) {
         assert(
