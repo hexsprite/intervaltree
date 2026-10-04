@@ -12,6 +12,16 @@ function tuples(ivs: Interval<unknown>[]): Range[] {
 }
 
 describe('subtractRanges', () => {
+  // Symptom: an empty range split an interval into a touching pair.
+  it('ignores empty ranges', () => {
+    const ivs = [new Interval(0, 10), new Interval(20, 30)]
+    expect(tuples(sub(ivs, [[5, 5], [20, 20], [30, 30]]))).toEqual([[0, 10], [20, 30]])
+  })
+
+  it('still subtracts real ranges next to an empty one', () => {
+    expect(tuples(sub([new Interval(0, 10)], [[5, 5], [3, 4]]))).toEqual([[0, 3], [4, 10]])
+  })
+
   it('returns nothing for no intervals', () => {
     expect(sub([], [[0, 10]])).toEqual([])
   })

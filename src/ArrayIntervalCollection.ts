@@ -1,5 +1,6 @@
 import type { IntervalCollection } from './IntervalCollection'
 import type { IntervalTuple } from './types'
+import { assert } from './assert'
 import { compareIntervals } from './compareIntervals'
 import { Interval } from './Interval'
 import { sha256 } from './sha256'
@@ -76,7 +77,16 @@ export class ArrayIntervalCollection<T = unknown> implements IntervalCollection<
     this.add(new Interval(start, end, data))
   }
 
+  /**
+   * Removes [start, end) from every interval and splits those that span it.
+   * An empty range (`start === end`) is a no-op.
+   * @throws If `start > end` or either bound is NaN.
+   */
   chop(start: number, end: number): void {
+    assert(start <= end, 'start must be <= end')
+    if (start === end)
+      return
+
     const newIntervals = this.intervals
       .map((i) => {
         if (i.start >= end || i.end <= start)
@@ -100,8 +110,14 @@ export class ArrayIntervalCollection<T = unknown> implements IntervalCollection<
     this.addAll(newIntervals)
   }
 
-  /** Naive batch chop: just chop() once per range. O(ranges * n) — fine for an oracle. */
+  /**
+   * Naive batch chop: just chop() once per range. O(ranges * n) — fine for an oracle.
+   * Validates every range first, so a thrown error leaves the collection unchanged.
+   * @throws If any range has `start > end` or a NaN bound.
+   */
   chopAll(ranges: Array<[number, number]>): void {
+    for (const [start, end] of ranges)
+      assert(start <= end, 'start must be <= end')
     for (const [start, end] of ranges)
       this.chop(start, end)
   }

@@ -319,3 +319,30 @@ describe('arrayIntervalCollection matches IntervalTree', () => {
     expect(oracle.size).toBe(1)
   })
 })
+
+describe('chop and chopAll range contract', () => {
+  const far: Array<[number, number]> = [[200, 201], [300, 301], [400, 401]]
+  const fixture: Array<[number, number, string?]> = [[0, 10, 'a'], [100, 110, 'b']]
+
+  for (const impl of impls) {
+    describe(impl.name, () => {
+      // Symptom: the sweep path accepted ranges that chop() rejected, and split intervals on empty ranges.
+      it('treats empty ranges as a no-op', () => {
+        const c = impl.make(fixture)
+        c.chop(5, 5)
+        c.chopAll([[5, 5]])
+        c.chopAll([[5, 5], ...far])
+        expect(bounds(c.toArray())).toEqual([[0, 10, 'a'], [100, 110, 'b']])
+      })
+
+      it('throws on inverted ranges and leaves the collection unchanged', () => {
+        const c = impl.make(fixture)
+        expect(() => c.chop(8, 2)).toThrow()
+        expect(() => c.chopAll([[8, 2], ...far])).toThrow()
+        expect(() => c.chopAll([[1, 2], [8, 2]])).toThrow()
+        expect(() => c.chopAll([[1, 2], [Number.NaN, 3], ...far])).toThrow()
+        expect(bounds(c.toArray())).toEqual([[0, 10, 'a'], [100, 110, 'b']])
+      })
+    })
+  }
+})

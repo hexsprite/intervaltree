@@ -1648,9 +1648,55 @@ describe('argument validation', () => {
   // (implying start equal to end was allowed) while the check itself
   // required strict inequality, so a start === end call threw a message
   // describing the opposite of the actual rule.
-  it('chop rejects start === end with a message matching the actual rule', () => {
+  // Contract change: an empty range removes zero time, so chop(start, start) is a no-op.
+  it('chop treats start === end as a no-op', () => {
     const t = IntervalTree.fromTuples([[0, 10]])
-    expect(() => t.chop(5, 5)).toThrow('start must be < end')
+    t.chop(5, 5)
+    expect(t.toTuples()).toEqual([[0, 10]])
+  })
+})
+
+describe('chop and chopAll range validation', () => {
+  const fresh = () => IntervalTree.fromTuples([[0, 10], [100, 110]])
+  const far: Array<[number, number]> = [[200, 201], [300, 301], [400, 401]]
+
+  // Symptom: the sweep path split [0,10) into the overlapping pair [0,8) and [2,10).
+  it('chopAll throws on an inverted range in a batch of more than 3 and leaves the tree unchanged', () => {
+    const t = fresh()
+    const before = t.toTuples()
+    expect(() => t.chopAll([[8, 2], ...far])).toThrow('start must be <= end')
+    expect(t.toTuples()).toEqual(before)
+  })
+
+  // Symptom: the first range mutated the tree before the second range threw.
+  it('chopAll throws on an inverted second range in a batch of 3 or fewer and leaves the tree unchanged', () => {
+    const t = fresh()
+    const before = t.toTuples()
+    expect(() => t.chopAll([[1, 2], [8, 2]])).toThrow('start must be <= end')
+    expect(t.toTuples()).toEqual(before)
+  })
+
+  it('chopAll rejects NaN bounds at both batch sizes', () => {
+    const t = fresh()
+    const before = t.toTuples()
+    expect(() => t.chopAll([[Number.NaN, 5]])).toThrow('start must be <= end')
+    expect(() => t.chopAll([[1, 2], [Number.NaN, 5], ...far])).toThrow('start must be <= end')
+    expect(t.toTuples()).toEqual(before)
+  })
+
+  it('chop throws on an inverted range', () => {
+    expect(() => fresh().chop(8, 2)).toThrow('start must be <= end')
+  })
+
+  // Symptom: an empty range in a batch of more than 3 split [0,10) into the touching pair [0,5) and [5,10).
+  it('chop and chopAll treat an empty range as a no-op at both batch sizes', () => {
+    const t = fresh()
+    const before = t.toTuples()
+    t.chop(5, 5)
+    t.chopAll([[5, 5]])
+    t.chopAll([[5, 5], [105, 105]])
+    t.chopAll([[5, 5], ...far])
+    expect(t.toTuples()).toEqual(before)
   })
 })
 

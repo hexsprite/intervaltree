@@ -14,6 +14,11 @@ import { sha256 } from './sha256'
 // `typeof process` guard keeps browser bundles from throwing on `process`.
 const DEBUG = typeof process !== 'undefined' && process.env?.INTERVALTREE_DEBUG === '1'
 
+/** Rejects inverted ranges and NaN. The `!(a <= b)` form catches NaN. */
+function assertValidRange(start: number, end: number): void {
+  assert(start <= end, 'start must be <= end')
+}
+
 export class IntervalTree<T = unknown> implements IntervalCollection<T> {
   private root: Node<T> | null = null
   private _dirty = false
@@ -190,12 +195,15 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
    * interval tree accordingly.
    * Like removeEnveloped(), but trims back Intervals hanging into the chopped
    * area so that nothing overlaps.
+   *
+   * An empty range (`start === end`) removes nothing, so it is a no-op.
    * @param start The start of the range.
    * @param end The end of the range.
+   * @throws If `start > end` or either bound is NaN.
    */
   public chop(start: number, end: number): void {
-    assert(start < end, 'start must be < end')
-    if (!this.root)
+    assertValidRange(start, end)
+    if (start === end || !this.root)
       return
 
     // Single searchOverlap to find all affected intervals
@@ -238,9 +246,15 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
    * Much faster than calling chop() N times because it does a single
    * linear sweep over sorted intervals instead of N tree modifications.
    *
+   * Empty ranges (`start === end`) are no-ops. The method checks every range
+   * before it changes anything, so a thrown error leaves the tree unchanged.
+   *
    * @param ranges Array of [start, end] pairs to remove
+   * @throws If any range has `start > end` or a NaN bound.
    */
   public chopAll(ranges: Array<[number, number]>): void {
+    for (const [start, end] of ranges)
+      assertValidRange(start, end)
     if (ranges.length === 0 || !this.root)
       return
 

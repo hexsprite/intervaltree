@@ -30,7 +30,16 @@ export interface IntervalCollection<T = unknown> {
   remove: (interval: Interval<T>) => void
   removeAll: (intervals: Interval<T>[]) => void
   removeEnveloped: (start: number, end: number) => void
+  /**
+   * Removes [start, end) from every interval, splitting those that span it.
+   * An empty range (`start === end`) is a no-op. Throws if `start > end` or a bound is NaN.
+   */
   chop: (start: number, end: number) => void
+  /**
+   * Chops every range. An empty range is a no-op. Throws if any range has
+   * `start > end` or a NaN bound. It checks all ranges first, so a throw leaves
+   * the collection unchanged.
+   */
   chopAll: (ranges: Array<[number, number]>) => void
   mergeOverlaps: () => void
   searchPoint: (point: number) => Interval<T>[]

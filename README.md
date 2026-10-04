@@ -192,6 +192,8 @@ tree.chopAll([[10, 30], [20, 40]])
 // Equivalent to chopping [10, 40]
 ```
 
+Both methods treat an empty range (`start === end`) as a no-op. They throw if `start > end` or a bound is NaN. `chopAll` checks every range before it changes anything, so a throw leaves the tree unchanged.
+
 For small numbers of ranges (≤3), `chopAll` delegates to individual `chop()` calls. For larger batches, it sorts and merges the ranges, then does a single linear sweep — O(n log n) instead of O(n × m) for n ranges on m intervals.
 
 ### Merging Overlapping Intervals

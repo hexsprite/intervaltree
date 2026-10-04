@@ -13,6 +13,7 @@ export interface RangeLike {
  * `ranges` can be in any order and can overlap or touch. The function copies
  * them before it merges, so the caller's arrays and tuples stay unchanged.
  * Each fragment keeps the `data` of the interval it came from.
+ * Empty ranges (`start === end`) are ignored. The caller must validate ranges first.
  *
  * Not used by `ArrayIntervalCollection`. That class is the model-check
  * oracle and must stay independent of this sweep.
@@ -22,8 +23,11 @@ export function subtractRanges<T>(
   ranges: Iterable<RangeLike>,
 ): Interval<T>[] {
   const sorted: Array<[number, number]> = []
-  for (const r of ranges)
-    sorted.push([r.start, r.end])
+  // An empty range removes nothing. Splitting on it would leave a touching pair.
+  for (const r of ranges) {
+    if (r.start !== r.end)
+      sorted.push([r.start, r.end])
+  }
   if (sorted.length === 0)
     return intervals.slice()
   sorted.sort((a, b) => a[0] - b[0])
