@@ -97,4 +97,20 @@ describe('successor graft height', () => {
     root = root.remove(new Interval(50, 51))!
     root.verify()
   })
+
+  // The successor node moves up with every value it holds, not just the first.
+  it('keeps every value of a multi-value successor', () => {
+    const starts = [50, 25, 75, 60, 90]
+    let root: Node<unknown> = new Node(new Interval(starts[0], starts[0] + 1))
+    for (const start of starts.slice(1))
+      root = root.insert(new Interval(start, start + 1))
+    root = root.insert(new Interval(60, 70))
+    root = root.insert(new Interval(60, 80, 'x'))
+
+    root = root.remove(new Interval(50, 51))!
+    root.verify()
+    expect(root.toArray().map(iv => iv.toTuple())).toEqual(
+      [[25, 26], [60, 61], [60, 70], [60, 80, 'x'], [75, 76], [90, 91]],
+    )
+  })
 })

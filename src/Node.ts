@@ -421,19 +421,10 @@ export class Node<T = unknown> {
         const left = this._left
         const right = this._right
         if (left && right) {
-          // Find in-order successor
-          let successor: Node<T> = right
-          while (successor._left)
-            successor = successor._left!
-
-          successor = successor.clone()
-          // Remove successor values from right subtree
-          let rightNode: Node<T> | null = right
-          for (const value of successor.values)
-            rightNode = rightNode?._remove(value, rebalance) ?? null
-
+          // Move the in-order successor node into this position, values and all.
+          const successor = right.min()
+          successor._right = right._removeMin()
           successor._left = left
-          successor._right = rightNode
           successor.updateHeight()
           result = successor
         }
@@ -447,6 +438,16 @@ export class Node<T = unknown> {
       return result.rotate()
 
     return result
+  }
+
+  /** Unlinks the leftmost node of this subtree and returns the rebalanced subtree root. */
+  private _removeMin(): Node<T> | null {
+    const left = this._left
+    if (!left)
+      return this._right
+    this._left = left._removeMin()
+    this.updateAttributes()
+    return this.rotate()
   }
 
   public clone(): Node<T> {
