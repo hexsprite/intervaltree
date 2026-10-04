@@ -1,5 +1,8 @@
+import type { MutationState } from './Node'
 import { Interval } from './Interval'
 import { Node } from './Node'
+
+const state: MutationState = { found: false, rebalancingDone: false, updateRequired: false, rebalance: false }
 
 it('should create a new node', () => {
   const iv = new Interval(0, 10)
@@ -14,7 +17,7 @@ it('should add a new interval to the node', () => {
   const iv = new Interval(0, 10)
   const node = new Node(iv)
   const iv2 = new Interval(5, 15)
-  node.insert(iv2)
+  node.insert(iv2, state)
   expect(node.maxEnd).toEqual(iv2.end)
   expect(node.minStart).toEqual(iv.start)
   expect(node._left).toBeNull()
@@ -36,29 +39,29 @@ describe('node AVL rotations', () => {
 
   it('rotates left on a right-right insertion (1, 2, 3)', () => {
     let root: Node<unknown> = new Node(new Interval(1, 2))
-    root = root.insert(new Interval(2, 3))
-    root = root.insert(new Interval(3, 4))
+    root = root.insert(new Interval(2, 3), state)
+    root = root.insert(new Interval(3, 4), state)
     expectBalancedShape(root)
   })
 
   it('rotates right on a left-left insertion (3, 2, 1)', () => {
     let root: Node<unknown> = new Node(new Interval(3, 4))
-    root = root.insert(new Interval(2, 3))
-    root = root.insert(new Interval(1, 2))
+    root = root.insert(new Interval(2, 3), state)
+    root = root.insert(new Interval(1, 2), state)
     expectBalancedShape(root)
   })
 
   it('rotates right-left on a right-left insertion (1, 3, 2)', () => {
     let root: Node<unknown> = new Node(new Interval(1, 2))
-    root = root.insert(new Interval(3, 4))
-    root = root.insert(new Interval(2, 3))
+    root = root.insert(new Interval(3, 4), state)
+    root = root.insert(new Interval(2, 3), state)
     expectBalancedShape(root)
   })
 
   it('rotates left-right on a left-right insertion (3, 1, 2)', () => {
     let root: Node<unknown> = new Node(new Interval(3, 4))
-    root = root.insert(new Interval(1, 2))
-    root = root.insert(new Interval(2, 3))
+    root = root.insert(new Interval(1, 2), state)
+    root = root.insert(new Interval(2, 3), state)
     expectBalancedShape(root)
   })
 
@@ -74,7 +77,7 @@ describe('node AVL rotations', () => {
 
     let root: Node<unknown> = new Node(new Interval(1, 2))
     for (let n = 2; n <= 7; n++)
-      root = root.insert(new Interval(n, n + 1))
+      root = root.insert(new Interval(n, n + 1), state)
 
     expect(root.height).toBe(3)
     checkBalance(root)
@@ -87,14 +90,14 @@ describe('successor graft height', () => {
     const starts = [50, 25, 75, 60, 90, 55, 65]
     let root: Node<unknown> = new Node(new Interval(starts[0], starts[0] + 1))
     for (const start of starts.slice(1))
-      root = root.insert(new Interval(start, start + 1))
+      root = root.insert(new Interval(start, start + 1), state)
 
     // Remove 75: two children, successor is 90 (no left child).
-    root = root.remove(new Interval(75, 76))!
+    root = root.remove(new Interval(75, 76), state)!
     root.verify()
 
     // Remove 50: two children, successor is 55.
-    root = root.remove(new Interval(50, 51))!
+    root = root.remove(new Interval(50, 51), state)!
     root.verify()
   })
 
@@ -103,11 +106,11 @@ describe('successor graft height', () => {
     const starts = [50, 25, 75, 60, 90]
     let root: Node<unknown> = new Node(new Interval(starts[0], starts[0] + 1))
     for (const start of starts.slice(1))
-      root = root.insert(new Interval(start, start + 1))
-    root = root.insert(new Interval(60, 70))
-    root = root.insert(new Interval(60, 80, 'x'))
+      root = root.insert(new Interval(start, start + 1), state)
+    root = root.insert(new Interval(60, 70), state)
+    root = root.insert(new Interval(60, 80, 'x'), state)
 
-    root = root.remove(new Interval(50, 51))!
+    root = root.remove(new Interval(50, 51), state)!
     root.verify()
     expect(root.toArray().map(iv => iv.toTuple())).toEqual(
       [[25, 26], [60, 61], [60, 70], [60, 80, 'x'], [75, 76], [90, 91]],

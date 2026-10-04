@@ -1,7 +1,8 @@
 import type { Interval } from './Interval'
+import type { MutationState } from './Node'
 import { assert } from './assert'
 import { compareIntervals } from './compareIntervals'
-import { _flags, Node } from './Node'
+import { Node } from './Node'
 
 /** Groups sorted intervals by start and drops repeats of the same start, end, and data. */
 function groupByStart<T>(sorted: readonly Interval<T>[]): Interval<T>[][] {
@@ -36,6 +37,7 @@ function groupByStart<T>(sorted: readonly Interval<T>[]): Interval<T>[][] {
 export class TreeCore<T> {
   private root: Node<T> | null
   private _size: number
+  private readonly state: MutationState = { found: false, rebalancingDone: false, updateRequired: false, rebalance: false }
 
   private constructor(root: Node<T> | null, size: number) {
     this.root = root
@@ -76,8 +78,8 @@ export class TreeCore<T> {
       this._size = 1
       return true
     }
-    this.root = this.root.insert(interval)
-    if (_flags.insertWasDuplicate)
+    this.root = this.root.insert(interval, this.state)
+    if (this.state.found)
       return false
     this._size++
     return true
@@ -87,8 +89,8 @@ export class TreeCore<T> {
   remove(interval: Interval<T>): boolean {
     if (!this.root)
       return false
-    this.root = this.root.remove(interval)
-    if (!_flags.removeSucceeded)
+    this.root = this.root.remove(interval, this.state)
+    if (!this.state.found)
       return false
     this._size--
     return true

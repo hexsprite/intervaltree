@@ -13,16 +13,20 @@ const LEFT = false
 const RIGHT = true
 type Direction = boolean
 
-// Shared mutable flags to avoid allocating [boolean] arrays per recursive call
-const _rebalancingDone: [boolean] = [false]
-const _updateRequired: [boolean] = [false]
-const _rebalance: [boolean] = [false]
-/** Set to true by insert() when a duplicate was detected and nothing was added */
-export const _flags = {
-  /** Set to true by insert() when a duplicate was detected and nothing was added */
-  insertWasDuplicate: false,
-  /** Set to true by remove() when the interval was actually found and removed */
-  removeSucceeded: false,
+/**
+ * Recursion scratch for one insert or remove. The return value carries the
+ * new subtree root, so results travel here. Each TreeCore owns one, so a call
+ * allocates nothing.
+ */
+export interface MutationState {
+  /** insert: an equal interval is already stored. remove: the interval was found and removed. */
+  found: boolean
+  /** insert: the subtree height stopped changing, so no ancestor needs to rebalance. */
+  rebalancingDone: boolean
+  /** insert: this subtree's augmentation changed, so the parent must recompute its own. */
+  updateRequired: boolean
+  /** remove: a node was unlinked, so every ancestor must rebalance. */
+  rebalance: boolean
 }
 
 export class Node<T = unknown> {
@@ -84,20 +88,21 @@ export class Node<T = unknown> {
     else this._left = node
   }
 
-  insert(interval: Interval<T>): Node<T> {
-    _rebalancingDone[0] = false
-    _updateRequired[0] = false
-    _flags.insertWasDuplicate = false
-    return this._insert(interval, _rebalancingDone, _updateRequired)
+  /** Returns the new subtree root. Sets `state.found` when an equal interval is already stored. */
+  insert(interval: Interval<T>, state: MutationState): Node<T> {
+    state.found = false
+    state.rebalancingDone = false
+    state.updateRequired = false
+    return this._insert(interval, state)
   }
 
-  private _insert(interval: Interval<T>, rebalancingDone: [boolean], updateRequired: [boolean]): Node<T> {
+  private _insert(interval: Interval<T>, state: MutationState): Node<T> {
     // if the interval starts at the same point as this node, add it to the values
     if (this.start === interval.start) {
       // don't add a duplicate with the same start, end, and data reference
       for (let i = 0; i < this.values.length; i++) {
         if (this.values[i].equals(interval)) {
-          _flags.insertWasDuplicate = true
+          state.found = true
           return this
         }
       }
@@ -108,8 +113,8 @@ export class Node<T = unknown> {
         pos--
       this.values.splice(pos, 0, interval)
       // no rebalancing needed because the height of this node doesn't change
-      rebalancingDone[0] = true
-      updateRequired[0] = this.updateAttributes()
+      state.rebalancingDone = true
+      state.updateRequired = this.updateAttributes()
 
       return this
     }
@@ -119,11 +124,11 @@ export class Node<T = unknown> {
     const branchNode = dir === RIGHT ? this._right : this._left
 
     if (branchNode) {
-      const inserted = branchNode._insert(interval, rebalancingDone, updateRequired)
+      const inserted = branchNode._insert(interval, state)
       if (dir === RIGHT)
         this._right = inserted
       else this._left = inserted
-      if (updateRequired[0])
+      if (state.updateRequired)
         this.updateAttributes()
     }
     else {
@@ -131,17 +136,17 @@ export class Node<T = unknown> {
       if (dir === RIGHT)
         this._right = newNode
       else this._left = newNode
-      updateRequired[0] = this.updateAttributes()
+      state.updateRequired = this.updateAttributes()
     }
 
-    if (!rebalancingDone[0]) {
+    if (!state.rebalancingDone) {
       this.updateHeight()
       if (this.balance === 0) {
-        rebalancingDone[0] = true
+        state.rebalancingDone = true
         return this
       }
       else if (Math.abs(this.balance) > 1) {
-        rebalancingDone[0] = true
+        state.rebalancingDone = true
         return this.rotate()
       }
     }
@@ -301,23 +306,24 @@ export class Node<T = unknown> {
     return result
   }
 
-  public remove(interval: Interval<T>): Node<T> | null {
-    _rebalance[0] = false
-    _flags.removeSucceeded = false
-    return this._remove(interval, _rebalance)
+  /** Returns the new subtree root. Sets `state.found` when the interval was stored and is now gone. */
+  public remove(interval: Interval<T>, state: MutationState): Node<T> | null {
+    state.found = false
+    state.rebalance = false
+    return this._remove(interval, state)
   }
 
-  private _remove(interval: Interval<T>, rebalance: [boolean]): Node<T> | null {
+  private _remove(interval: Interval<T>, state: MutationState): Node<T> | null {
     // eslint-disable-next-line ts/no-this-alias
     let result: Node<T> = this
 
     if (interval.start < this.start) {
       const left = this._left
-      this._left = left?._remove(interval, rebalance) ?? null
+      this._left = left?._remove(interval, state) ?? null
     }
     else if (interval.start > this.start) {
       const right = this._right
-      this._right = right?._remove(interval, rebalance) ?? null
+      this._right = right?._remove(interval, state) ?? null
     }
     else {
       // Found the node — remove the specific interval
@@ -325,13 +331,13 @@ export class Node<T = unknown> {
       for (let i = 0; i < values.length; i++) {
         if (values[i].end === interval.end && values[i].data === interval.data) {
           values.splice(i, 1)
-          _flags.removeSucceeded = true
+          state.found = true
           break
         }
       }
 
       if (values.length === 0) {
-        rebalance[0] = true
+        state.rebalance = true
         const left = this._left
         const right = this._right
         if (left && right) {
@@ -348,7 +354,7 @@ export class Node<T = unknown> {
       }
     }
     result.updateAttributes()
-    if (rebalance[0])
+    if (state.rebalance)
       return result.rotate()
 
     return result
