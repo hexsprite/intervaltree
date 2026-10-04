@@ -345,13 +345,11 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
   }
 
   /**
-   * Find the first (earliest start) interval with at least `minLength` available
-   * starting at or after `startingAt`. O(log n) best case via in-order traversal
-   * with early termination.
-   *
-   * If the found interval starts before `startingAt`, the returned interval is
-   * adjusted to begin at `startingAt`. Among intervals that clip to the same
-   * start, the one with the earliest original start wins.
+   * Returns the first canonical result with at least `minLength` remaining
+   * after `startingAt`. Results starting earlier are clipped to `startingAt`.
+   * Ties on clipped start choose the smallest end; identical bounds are unordered.
+   * O(log n + k) without a filter, where k counts qualifying intervals containing
+   * startingAt. A filter can require scanning O(n) intervals.
    *
    * `filterFn` receives the stored interval, not the clipped result.
    *
@@ -370,7 +368,7 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
   }
 
   /**
-   * Searches for intervals with at least `minLength` available starting at or after `startingAt`.
+   * Searches for stored intervals with at least `minLength` remaining after `startingAt`.
    * @param minLength The minimum length of the intervals to search for.
    * @param startingAt The earliest start position to consider.
    * @returns An array of matching intervals.
@@ -397,8 +395,7 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
   }
 
   public toSorted(): Interval<T>[] {
-    // toArray() is in-order by start; sort fully by start then end
-    return this.toArray().toSorted(compareIntervals)
+    return this.toArray()
   }
 
   public toTuples(): IntervalTuple<T>[] {

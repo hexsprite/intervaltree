@@ -98,10 +98,11 @@ const enveloped = tree.searchEnveloped(0, 100)
 const byLength = tree.searchByLengthStartingAt(3, 5)
 // Returns: All intervals of length >= 3 starting at position 5 or later
 
-// Find first interval of minimum length — O(log n) with early termination
+// Find the first canonical interval of minimum remaining length
 const first = tree.findOneByLengthStartingAt(3, 5)
 // Returns: First interval of length >= 3 starting at/after position 5
 // If found interval starts before 5, it's adjusted to start at 5
+// Ties on the adjusted start choose the smallest end.
 
 // With optional filter function
 const filtered = tree.findOneByLengthStartingAt(3, 5, iv => iv.data?.priority === 'high')
@@ -279,7 +280,7 @@ Since intervals work with numbers, you can use timestamps for date-based interva
 ```js
 const schedule = new IntervalTree()
 
-// Add time slots (using timestamps)
+// Store busy time (using timestamps)
 const start = new Date('2024-01-01T09:00:00').getTime()
 const end = new Date('2024-01-01T10:00:00').getTime()
 schedule.addInterval(start, end, 'Morning meeting')
@@ -290,11 +291,22 @@ const conflicts = schedule.searchPoint(when)
 
 // Find available slots
 const dayStart = new Date('2024-01-01T08:00:00').getTime()
+const dayEnd = new Date('2024-01-01T17:00:00').getTime()
+const freeSlots = IntervalTree.fromTuples([[dayStart, dayEnd]]).difference(schedule)
 const minDuration = 60 * 60 * 1000  // 1 hour in milliseconds
-const available = schedule.findOneByLengthStartingAt(minDuration, dayStart)
+const available = freeSlots.findOneByLengthStartingAt(minDuration, dayStart)
+// Returns [08:00, 09:00), before the morning meeting.
 ```
 
 ## API Reference
+
+All array results and iteration use **canonical order**: ascending start,
+then end of the returned bounds. Identical bounds with different data are
+unordered. `toArray()` is canonical; `toSorted()` remains a compatibility alias.
+`findOneByLengthStartingAt(L, t)` selects the first bounds returned by
+`searchByLengthStartingAt(L, t)`. Its optional filter receives the original
+stored interval. Neither query joins touching intervals; call `mergeOverlaps()`
+first if that is the intended interpretation. See [GLOSSARY.md](GLOSSARY.md).
 
 ### IntervalTree
 
@@ -316,7 +328,7 @@ const available = schedule.findOneByLengthStartingAt(minDuration, dayStart)
 - `searchOverlap(start: number, end: number)` - Find all intervals overlapping a range
 - `searchEnveloped(start: number, end: number)` - Find intervals completely within a range
 - `searchByLengthStartingAt(length: number, start: number)` - Find intervals by minimum length
-- `findOneByLengthStartingAt(minLength: number, startingAt: number, filterFn?: (iv: Interval<T>) => boolean)` - O(log n) first matching interval with optional filter
+- `findOneByLengthStartingAt(minLength: number, startingAt: number, filterFn?: (iv: Interval<T>) => boolean)` - First canonical result; O(log n + k) without a filter, where k counts qualifying intervals containing startingAt. A filter can require O(n).
 
 **Navigation:**
 - `first(): Interval<T> | null` - Get the earliest interval by start (O(log n))
@@ -673,7 +685,7 @@ This library uses **half-open intervals** `[start, end)` where:
 **Why half-open intervals?**
 1. **Length calculation**: Just `end - start` (no off-by-one errors)
 2. **Adjacent intervals**: `[1, 5)` and `[5, 10)` don't overlap
-3. **Empty intervals**: `[5, 5)` is naturally empty
+3. **Stored intervals must have positive length**: constructing `[5, 5)` throws. Empty ranges passed to `chop` or `chopAll` are no-ops.
 4. **Consistency**: Matches JavaScript conventions (`Array.slice`, `substring`, etc.)
 
 This follows the recommendation from Edsger W. Dijkstra's 1982 note on interval notation and is used by most programming languages and CS literature.

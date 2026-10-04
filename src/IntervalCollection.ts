@@ -7,6 +7,10 @@ import type { IntervalTuple } from './types'
  * so a second implementation (e.g. a flat typed-array tree) can conform and
  * be swapped in wherever an IntervalCollection is expected.
  *
+ * Every array result and iteration is in canonical order of returned bounds:
+ * ascending start, then end. Identical bounds with different data are unordered.
+ * `toSorted` is retained as an alias for canonical `toArray`.
+ *
  * Left out on purpose:
  * - `map` — returns `IntervalTree<U>`, tying the return type to one
  *   implementation.
@@ -46,6 +50,10 @@ export interface IntervalCollection<T = unknown> {
   searchOverlap: (start: number, end: number) => Interval<T>[]
   searchEnveloped: (start: number, end: number) => Interval<T>[]
   searchByLengthStartingAt: (minLength: number, startingAt: number) => Interval<T>[]
+  /**
+   * The first canonical length-query result whose stored interval passes filterFn.
+   * The predicate receives original bounds; the result is clipped to startingAt.
+   */
   findOneByLengthStartingAt: (
     minLength: number,
     startingAt: number,

@@ -1,6 +1,6 @@
+import type { Interval } from './Interval'
 import { assert } from './assert'
-import { compareIntervals } from './compareIntervals'
-import { Interval } from './Interval'
+import { clipStart, compareIntervals } from './order'
 
 interface Aggregates {
   height: number
@@ -236,15 +236,15 @@ class Node<T = unknown> {
     if (point < this.minStart || point > this.maxEnd)
       return
 
+    const left = this._left
+    if (left && point >= left.minStart)
+      left.searchPoint(point, result)
+
     for (let i = 0; i < this.values.length; i++) {
       const v = this.values[i]
       if (v.start <= point && point < v.end)
         result.push(v)
     }
-
-    const left = this._left
-    if (left && point >= left.minStart)
-      left.searchPoint(point, result)
 
     const right = this._right
     if (right && point <= right.maxEnd)
@@ -404,38 +404,35 @@ class Node<T = unknown> {
     startingAt: number,
     filterFn?: (iv: Interval<T>) => boolean,
   ): Interval<T> | undefined {
-    if (this.maxEnd < startingAt || this.maxLength < minLength)
+    if (this.maxEnd < startingAt + minLength || this.maxLength < minLength)
       return undefined
 
-    // Check left subtree first (in-order — earliest start wins)
-    const left = this._left
-    if (left && left.maxEnd >= startingAt && left.maxLength >= minLength) {
-      const found = left.findOneByLengthStartingAt(minLength, startingAt, filterFn)
-      if (found)
-        return found
-    }
+    let best = this._left?.findOneByLengthStartingAt(minLength, startingAt, filterFn)
+    // Once we reach future intervals, stored order and returned order agree.
+    if (best && this.start > startingAt)
+      return best
 
-    // Check self
-    for (let i = 0; i < this.values.length; i++) {
-      const interval = this.values[i]
-      if (interval.end < startingAt)
-        continue
-      if (interval.availableLength(startingAt) < minLength)
+    for (const interval of this.values) {
+      if (!(interval.availableLength(startingAt) >= minLength))
         continue
       if (filterFn && !filterFn(interval))
         continue
-      return interval.start < startingAt
-        ? new Interval(startingAt, interval.end, interval.data)
-        : interval
+      const candidate = clipStart(interval, startingAt)
+      if (!best || compareIntervals(candidate, best) < 0)
+        best = candidate
+      // Values share a start and are ordered by end; later values cannot win.
+      break
     }
 
-    // Check right subtree
     const right = this._right
-    if (right && right.maxEnd >= startingAt && right.maxLength >= minLength) {
-      return right.findOneByLengthStartingAt(minLength, startingAt, filterFn)
+    // A clipped candidate beats every future interval, but another interval
+    // containing startingAt may have a smaller end and must still be checked.
+    if (right && (!best || right.minStart <= startingAt)) {
+      const candidate = right.findOneByLengthStartingAt(minLength, startingAt, filterFn)
+      if (candidate && (!best || compareIntervals(candidate, best) < 0))
+        best = candidate
     }
-
-    return undefined
+    return best
   }
 
   public searchByLengthStartingAt(
@@ -457,9 +454,7 @@ class Node<T = unknown> {
       if (interval.end < startingAt)
         continue
       if (interval.availableLength(startingAt) >= minLength) {
-        result.push(interval.start < startingAt
-          ? new Interval(startingAt, interval.end, interval.data)
-          : interval)
+        result.push(clipStart(interval, startingAt))
       }
     }
 

@@ -55,6 +55,9 @@ npx eslint .         # Run ESLint (uses @antfu/eslint-config)
 - `IntervalTree.merged` means `mergeOverlaps()` would change nothing: no two intervals overlap or touch. Only `add` clears it and only `mergeOverlaps` sets it. `chopAll` and `difference` use it to skip sorting.
 - `chop` and `chopAll` treat an empty range (`start === end`) as a no-op and throw on an inverted range.
 - Among intervals with identical bounds and different `data`, which one `first()`, `last()`, and `mergeOverlaps()` pick is unspecified by contract.
+- Array results and iteration have canonical returned-bound order (start, then end). `toSorted()` is an alias for `toArray()`.
+- `src/order.ts` owns comparison and start clipping. `findOneByLengthStartingAt` follows the clipped order used by `searchByLengthStartingAt`, with the smallest end winning a clipped-start tie. Its filter receives the stored interval.
+- The library is generic. Busy intervals and free slots are caller interpretations; see `GLOSSARY.md`. Experimental `gaps` stays a free function over `IntervalCollection`.
 
 ### Testing Approach
 
