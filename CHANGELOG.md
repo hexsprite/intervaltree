@@ -1,5 +1,38 @@
 # Changelog
 
+## [2.1.0](https://github.com/hexsprite/intervaltree/compare/v2.0.0...v2.1.0) (2026-10-04)
+
+
+### Features
+
+* add IntervalTree.fromJSON for exact serialize round trips ([bfe9bbe](https://github.com/hexsprite/intervaltree/commit/bfe9bbe1e439785fdb9eb4bcc61427a2709d6764))
+* export ArrayIntervalCollection as reference implementation ([c4ccdf6](https://github.com/hexsprite/intervaltree/commit/c4ccdf6b9526608dbc3cfd4e3e2e93a094da26f1))
+* **spike:** prototype gaps() free-slot query with property test ([7a1d323](https://github.com/hexsprite/intervaltree/commit/7a1d323340df631d904ff3439306f1a877f275fa))
+* widen IntervalCollection to the full API ([54cf430](https://github.com/hexsprite/intervaltree/commit/54cf43029ada01661d09296473f3960ad9e23f5b))
+
+
+### Bug Fixes
+
+* add exports map so require() resolves the cjs build ([8619f02](https://github.com/hexsprite/intervaltree/commit/8619f0205c6ffb30b2f37f26441e87143ed077f7))
+* align ArrayIntervalCollection hash and constructor with IntervalTree ([d72a67b](https://github.com/hexsprite/intervaltree/commit/d72a67b5aff1c9ae422deb8e4b4ab5627a2d8812))
+* correct chop assertion message ([05a2fd3](https://github.com/hexsprite/intervaltree/commit/05a2fd39c135004ac565382aec28547eea4a1012))
+* default invariant checks off and read flag at runtime ([ccef5d9](https://github.com/hexsprite/intervaltree/commit/ccef5d9a285bd39e61a6f4bb78b3e139119d8b84))
+* guard searchByLengthStartingAt against non-positive minLength ([e7e6639](https://github.com/hexsprite/intervaltree/commit/e7e6639a662fb9ef62fb6f9f30aa2bf94393fde7))
+* keep same-start intervals sorted by end so equals/first/last are order-independent ([29d5cad](https://github.com/hexsprite/intervaltree/commit/29d5cadd727cca74d4f7a7b8c540446a0ac0886c))
+* make empty chop ranges a no-op and validate chopAll ranges up front ([a81addd](https://github.com/hexsprite/intervaltree/commit/a81addd98932a4c4b9cae2aea8171d16341f84a1))
+* make verify() read-only and check every invariant ([fe229e1](https://github.com/hexsprite/intervaltree/commit/fe229e12a8f675619970472efe42b92d7c9430de))
+* require a gap between intervals in a clean tree ([53ab6ce](https://github.com/hexsprite/intervaltree/commit/53ab6ce03540b2c0b910b93e266e417941f1726e))
+* return the largest-end interval from last() and document canonical order ([b7ae950](https://github.com/hexsprite/intervaltree/commit/b7ae950134d73a46852d3c9d90b1656e41eb5b76))
+* sort searchByLengthStartingAt results after clipping to startingAt ([686140c](https://github.com/hexsprite/intervaltree/commit/686140c7063d555c913fe69c00d60800fee59bab))
+* stop chopAll from mutating the caller's ranges ([5875f5d](https://github.com/hexsprite/intervaltree/commit/5875f5d11c828ea7cdaf99a54f7baf0ae09cbee5))
+* verify strict ordering of left child ([a927b23](https://github.com/hexsprite/intervaltree/commit/a927b234d012dea0e75d78474daa75c1c268b849))
+
+
+### Performance Improvements
+
+* copy augmentation fields in Node.clone instead of recomputing ([6a06086](https://github.com/hexsprite/intervaltree/commit/6a06086f4954db7926556d5ae305f7d3078b3517))
+* early-exit contains() and overlaps() ([802dd09](https://github.com/hexsprite/intervaltree/commit/802dd09a91a024affb181e8e17bb757e6052f07b))
+
 ## [2.0.0](https://github.com/hexsprite/intervaltree/compare/v1.4.1...v2.0.0) (2026-05-13)
 
 
