@@ -1,5 +1,16 @@
 # Changelog
 
+## [3.0.0](https://github.com/hexsprite/intervaltree/compare/v2.1.0...v3.0.0) (2026-10-04)
+
+
+### ⚠ BREAKING CHANGES
+
+* findOneByLengthStartingAt now selects by clipped start, then end, matching searchByLengthStartingAt; previously it selected by original start. ArrayIntervalCollection also returns canonical arrays and rejects nonpositive length queries.
+
+### Bug Fixes
+
+* resolve pending intervaltree work and guard releases ([#13](https://github.com/hexsprite/intervaltree/issues/13)) ([8caad30](https://github.com/hexsprite/intervaltree/commit/8caad309ed9667dedb6ca50a36db5ef3b646d02c))
+
 ## [2.1.0](https://github.com/hexsprite/intervaltree/compare/v2.0.0...v2.1.0) (2026-10-04)
 
 
