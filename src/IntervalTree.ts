@@ -9,7 +9,7 @@ import { subtractRanges } from './rangeSubtraction'
 import { sha256 } from './sha256'
 import { TreeCore } from './TreeCore'
 
-// Automatic invariant checks after every mutation are O(n log n) each.
+// Automatic invariant checks after every mutation are O(n) each.
 // Off by default; this repo's vitest configs set INTERVALTREE_DEBUG=1.
 // `typeof process` guard keeps browser bundles from throwing on `process`.
 const DEBUG = typeof process !== 'undefined' && process.env?.INTERVALTREE_DEBUG === '1'

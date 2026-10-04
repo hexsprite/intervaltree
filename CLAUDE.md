@@ -42,15 +42,18 @@ npx eslint .         # Run ESLint (uses @antfu/eslint-config)
 
 - **Interval** (`src/Interval.ts`): Represents a single interval with start/end points and optional data. Immutable value object.
 - **IntervalTree** (`src/IntervalTree.ts`): Main public API. Mutable tree structure implementing the `IntervalCollection` interface. Uses augmented AVL tree balancing internally.
-- **Node** (`src/Node.ts`): Internal node structure for the augmented AVL tree. Handles insertion, deletion, and rebalancing operations. Not exposed in public API.
+- **TreeCore** (`src/TreeCore.ts`): Owns the augmented AVL tree: the root, the interval count, and the private `Node` class that handles insertion, deletion, and rebalancing. `insert` and `remove` return a boolean. Not exported.
+- **subtractRanges** (`src/rangeSubtraction.ts`): The one sort-merge-sweep that `chopAll`, `difference`, and `gaps` use. `ArrayIntervalCollection` never uses it, so the oracle stays independent.
 - **ArrayIntervalCollection** (`src/ArrayIntervalCollection.ts`): Naive O(n) reference implementation of `IntervalCollection`. Exported. Used as the oracle in the model check and as the executable spec for any other implementation.
 
 ### Key Implementation Details
 
-- The tree uses augmented AVL tree balancing (via the Node class) to maintain O(log n) operations
+- The tree uses augmented AVL tree balancing (via the private Node class in TreeCore) to maintain O(log n) operations
 - Each Node maintains a `maxEnd` property for efficient interval overlap searches
-- Automatic invariant checks after every mutation are off by default (they cost O(n log n) each). Set `INTERVALTREE_DEBUG=1` to enable them; the vitest configs do. `tree.verify()` always runs on demand.
+- Automatic invariant checks after every mutation are off by default (they cost O(n) each). Set `INTERVALTREE_DEBUG=1` to enable them; the vitest configs do. `tree.verify()` always runs on demand.
 - Intervals are immutable - modifications create new Interval instances
+- `IntervalTree.merged` means `mergeOverlaps()` would change nothing: no two intervals overlap or touch. Only `add` clears it and only `mergeOverlaps` sets it. `chopAll` and `difference` use it to skip sorting.
+- `chop` and `chopAll` treat an empty range (`start === end`) as a no-op and throw on an inverted range.
 - Among intervals with identical bounds and different `data`, which one `first()`, `last()`, and `mergeOverlaps()` pick is unspecified by contract.
 
 ### Testing Approach
@@ -90,7 +93,7 @@ npx eslint .         # Run ESLint (uses @antfu/eslint-config)
 
 - **searchOverlap**: Uses maxEnd optimization to prune search branches
 - **chop**: Removes overlapping intervals and trims partial overlaps, creating new intervals for non-overlapping portions
-- **AVL tree balancing**: Maintains O(log n) operations via Node class (height-based; rotates when |balance| > 1)
+- **AVL tree balancing**: Maintains O(log n) operations via the Node class in TreeCore (height-based; rotates when |balance| > 1)
 - **Interval containment**: End points are exclusive (e.g., interval [1,5) contains 1-4 but not 5)
 
 <!-- BEGIN BEADS INTEGRATION v:1 profile:minimal hash:ca08a54f -->
