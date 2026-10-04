@@ -56,7 +56,7 @@ npx eslint .         # Run ESLint (uses @antfu/eslint-config)
 ### Testing Approach
 
 - Tests use Vitest with global test functions enabled
-- Property-based testing with fast-check for model checking (`src/modelCheck.ts`)
+- Property-based testing with fast-check for model checking (`src/modelCheck.test.ts`)
 - Test files are colocated with source (`.spec.ts` suffix)
 
 ## Build Configuration
