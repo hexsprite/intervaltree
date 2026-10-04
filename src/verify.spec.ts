@@ -74,6 +74,15 @@ describe('verify() detects corruption', () => {
     expect(() => tree.verify()).toThrow(/clean|overlap/i)
   })
 
+  // Symptom: the clean check allowed prev.end === next.start, but mergeOverlaps merges touching intervals.
+  it('rejects a clean tree that holds a touching pair', () => {
+    const tree = new IntervalTree()
+    tree.add(new Interval(0, 5))
+    tree.add(new Interval(5, 10))
+    ;(tree as any)._dirty = false
+    expect(() => tree.verify()).toThrow(/clean|touching|overlap/i)
+  })
+
   it('accepts a clean tree after mergeOverlaps', () => {
     const tree = buildTree()
     tree.mergeOverlaps()

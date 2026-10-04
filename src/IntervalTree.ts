@@ -574,11 +574,12 @@ export class IntervalTree<T = unknown> implements IntervalCollection<T> {
       `size is ${this._size} but the tree holds ${sorted.length} intervals`,
     )
     // chopAll and difference rebuild a clean tree from sorted intervals and assume no overlaps.
+    // mergeOverlaps also merges touching intervals, so a clean tree needs a gap between them.
     if (!this._dirty) {
       for (let i = 1; i < sorted.length; i++) {
         assert(
-          sorted[i - 1].end <= sorted[i].start,
-          `clean tree holds overlapping intervals ${sorted[i - 1]} and ${sorted[i]}`,
+          sorted[i - 1].end < sorted[i].start,
+          `clean tree holds overlapping or touching intervals ${sorted[i - 1]} and ${sorted[i]}`,
         )
       }
     }
