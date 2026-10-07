@@ -2,6 +2,6 @@
   "database": "dolt",
   "backend": "dolt",
   "dolt_mode": "server",
-  "dolt_database": "intervaltree",
+  "dolt_database": "intervaltree_reconciled_20261006",
   "project_id": "66e91b4c-9d90-401c-a09a-a9fbb74149f9"
 }
